@@ -12,6 +12,7 @@ struct TransactionModel: Identifiable, Codable, Hashable {
     let timestamp: Date
     let tokenSymbol: String
     let tokenDecimals: Int
+    let contractAddress: String?
 
     enum TransactionStatus: String, Codable, Hashable {
         case pending
@@ -38,7 +39,8 @@ struct TransactionModel: Identifiable, Codable, Hashable {
         status: TransactionStatus = .pending,
         timestamp: Date = Date(),
         tokenSymbol: String = "ETH",
-        tokenDecimals: Int = 18
+        tokenDecimals: Int = 18,
+        contractAddress: String? = nil
     ) {
         self.id = id
         self.hash = hash
@@ -51,6 +53,7 @@ struct TransactionModel: Identifiable, Codable, Hashable {
         self.timestamp = timestamp
         self.tokenSymbol = tokenSymbol
         self.tokenDecimals = tokenDecimals
+        self.contractAddress = contractAddress
     }
 
     var formattedAmount: String {

@@ -168,7 +168,8 @@ struct SendView: View {
                             to: recipientAddress,
                             amount: amountValue,
                             tokenSymbol: token.symbol,
-                            tokenDecimals: token.decimals
+                            tokenDecimals: token.decimals,
+                            contractAddress: token.contractAddress
                         )
                         router.sendPath.append(
                             AppRouter.SendDestination.confirmTransaction(transaction: tx)
