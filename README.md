@@ -54,8 +54,8 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 | EVM transaction signing (EIP-1559) | Complete | Wired to Rust FFI |
 | Solana transaction signing | Complete | Wired to Rust FFI |
 | Bitcoin transaction signing | Planned | Requires UTXO management |
-| Certificate pinning | Complete | Native URLSession delegate (pin hashes configured at build time) |
-| Binary integrity check | Complete | SHA-256 hash comparison (requires build-time hash injection) |
+| Certificate pinning | Framework ready | Native URLSession delegate wired; SPKI pin hashes not yet configured |
+| Binary integrity check | Framework ready | SHA-256 comparison wired; build-time hash injection not yet configured |
 | WalletConnect v2 | Stub | Phase 5 — Reown SDK integration |
 | Token balance fetching | Stub | RPC methods ready, UI integration pending |
 
@@ -143,10 +143,10 @@ Anvil Wallet implements 16 security layers spanning hardware, OS, application, a
 | Jailbreak Detection | 6 sub-layer detection (files, symlinks, sandbox, dyld, fork, URL schemes) |
 | Anti-Screenshot | Secure text overlay + background blur |
 | Clipboard Auto-Clear | Copied data wiped after 120 seconds |
-| Certificate Pinning | Native URLSession delegate SHA-256 pinning on all RPC connections |
+| Certificate Pinning | Native URLSession delegate with SPKI SHA-256 pinning (pin hashes not yet configured) |
 | Memory Zeroization | All keys, seeds, mnemonics zeroed on drop (Rust + Swift) |
 | Anti-Debugging | ptrace deny-attach + sysctl P_TRACED check |
-| Binary Integrity | Mach-O header + executable SHA-256 hash verification (build-time hash injection) |
+| Binary Integrity | Mach-O header + executable SHA-256 verification (build-time hash injection not yet configured) |
 | Transaction Simulation | Pre-sign simulation for EVM transactions |
 | Address Validation | Format + checksum + address poisoning detection |
 | Zero Telemetry | No analytics, no crash reporting, no third-party data SDKs |

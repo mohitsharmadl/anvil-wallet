@@ -21,11 +21,37 @@ struct ConfirmTransactionView: View {
     @State private var simulationError: String?
     @State private var isSigning = false
 
+    // Password re-entry (after app returns from background)
+    @State private var showPasswordPrompt = false
+    @State private var reenteredPassword = ""
+    @State private var passwordError: String?
+    @State private var isVerifyingPassword = false
+    // Pending sign request to retry after password re-entry
+    @State private var pendingSignRetry = false
+
     // Fetched gas params for EVM signing
     @State private var fetchedNonce: UInt64 = 0
     @State private var fetchedGasLimit: UInt64 = 21000
     @State private var fetchedMaxFeeHex: String = "0x0"
     @State private var fetchedMaxPriorityFeeHex: String = "0x0"
+
+    /// Converts a human-readable amount to the smallest unit (wei, lamports, etc.)
+    /// using Decimal arithmetic to avoid Double precision loss.
+    ///
+    /// Example: amountToSmallestUnit(1.5, decimals: 18) → "1500000000000000000"
+    private func amountToSmallestUnit(_ amount: Double, decimals: Int) -> UInt64 {
+        let decimalAmount = Decimal(amount)
+        var multiplier = Decimal(1)
+        for _ in 0..<decimals { multiplier *= 10 }
+        let result = decimalAmount * multiplier
+        return NSDecimalNumber(decimal: result).uint64Value
+    }
+
+    /// Converts a human-readable amount to a hex string of the smallest unit.
+    private func amountToHex(_ amount: Double, decimals: Int) -> String {
+        let value = amountToSmallestUnit(amount, decimals: decimals)
+        return "0x" + String(value, radix: 16)
+    }
 
     /// Maps chain model IDs to EIP-155 chain IDs
     private func evmChainId(for chainId: String) -> UInt64 {
@@ -170,6 +196,16 @@ struct ConfirmTransactionView: View {
         .task {
             await simulateTransaction()
         }
+        .sheet(isPresented: $showPasswordPrompt) {
+            PasswordReentrySheet(
+                password: $reenteredPassword,
+                errorMessage: $passwordError,
+                isVerifying: $isVerifyingPassword
+            ) {
+                await verifyAndRetrySign()
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     // MARK: - Logic
@@ -202,7 +238,7 @@ struct ConfirmTransactionView: View {
                     rpcUrl: chain.rpcUrl,
                     from: transaction.from,
                     to: transaction.to,
-                    value: "0x" + String(UInt64(transaction.amount * 1e18), radix: 16),
+                    value: amountToHex(transaction.amount, decimals: 18),
                     data: nil
                 )
                 fetchedGasLimit = UInt64(gasEstimateHex.dropFirst(2), radix: 16) ?? 21000
@@ -245,8 +281,7 @@ struct ConfirmTransactionView: View {
             switch chain.chainType {
             case .evm:
                 let chainId = evmChainId(for: chain.id)
-                let valueWei = UInt64(transaction.amount * 1e18)
-                let valueHex = "0x" + String(valueWei, radix: 16)
+                let valueHex = amountToHex(transaction.amount, decimals: 18)
 
                 let ethReq = EthTransactionRequest(
                     chainId: chainId,
@@ -267,7 +302,7 @@ struct ConfirmTransactionView: View {
                 )
 
             case .solana:
-                let lamports = UInt64(transaction.amount * 1e9)
+                let lamports = amountToSmallestUnit(transaction.amount, decimals: 9)
                 let blockhash = try await RPCService.shared.getRecentBlockhash(rpcUrl: chain.rpcUrl)
 
                 let solReq = SolTransactionRequest(
@@ -292,11 +327,124 @@ struct ConfirmTransactionView: View {
                     AppRouter.SendDestination.transactionResult(txHash: txHash, success: true)
                 )
             }
+        } catch let error as WalletError where error == .passwordRequired {
+            // Session password was cleared (app was backgrounded) — prompt re-entry
+            await MainActor.run {
+                isSigning = false
+                reenteredPassword = ""
+                passwordError = nil
+                showPasswordPrompt = true
+                pendingSignRetry = true
+            }
         } catch {
             await MainActor.run {
                 isSigning = false
                 simulationError = error.localizedDescription
             }
+        }
+    }
+
+    /// Called after user re-enters password in the sheet.
+    private func verifyAndRetrySign() async {
+        isVerifyingPassword = true
+        passwordError = nil
+
+        do {
+            try await walletService.setSessionPassword(reenteredPassword)
+            await MainActor.run {
+                isVerifyingPassword = false
+                showPasswordPrompt = false
+                reenteredPassword = ""
+            }
+            // Retry the sign
+            if pendingSignRetry {
+                pendingSignRetry = false
+                await signAndSend()
+            }
+        } catch {
+            await MainActor.run {
+                isVerifyingPassword = false
+                passwordError = "Incorrect password. Please try again."
+            }
+        }
+    }
+}
+
+// MARK: - Password Re-entry Sheet
+
+private struct PasswordReentrySheet: View {
+    @Binding var password: String
+    @Binding var errorMessage: String?
+    @Binding var isVerifying: Bool
+    let onSubmit: () async -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "lock.circle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.accentGreen)
+
+            Text("Re-enter Password")
+                .font(.title3.bold())
+                .foregroundColor(.textPrimary)
+
+            Text("Your session expired. Please re-enter your wallet password to sign this transaction.")
+                .font(.body)
+                .foregroundColor(.textSecondary)
+                .multilineTextAlignment(.center)
+
+            SecureField("Password", text: $password)
+                .font(.body)
+                .padding(12)
+                .background(Color.backgroundCard)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(errorMessage != nil ? Color.error : Color.border, lineWidth: 1)
+                )
+
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.error)
+            }
+
+            Button {
+                Task { await onSubmit() }
+            } label: {
+                if isVerifying {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text("Unlock & Sign")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle(isEnabled: !password.isEmpty))
+            .disabled(password.isEmpty || isVerifying)
+        }
+        .padding(24)
+    }
+}
+
+// MARK: - WalletError Equatable for pattern matching
+
+extension WalletError: Equatable {
+    static func == (lhs: WalletError, rhs: WalletError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidMnemonic, .invalidMnemonic),
+             (.seedNotFound, .seedNotFound),
+             (.encryptionFailed, .encryptionFailed),
+             (.decryptionFailed, .decryptionFailed),
+             (.authenticationFailed, .authenticationFailed),
+             (.keyDerivationFailed, .keyDerivationFailed),
+             (.signingFailed, .signingFailed),
+             (.passwordRequired, .passwordRequired):
+            return true
+        case (.networkError(let a), .networkError(let b)),
+             (.rustFFIError(let a), .rustFFIError(let b)):
+            return a == b
+        default:
+            return false
         }
     }
 }

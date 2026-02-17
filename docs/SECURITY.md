@@ -52,11 +52,12 @@
 - Uses UIPasteboard.general with scheduled clearing
 
 ### Layer 10: Certificate Pinning
-- Native `URLSessionDelegate` pinning for all RPC endpoint connections
-- Pins SHA-256 of certificate public keys
-- Pin hashes configured at build time per hostname
-- TrustKit planned for future if more advanced features are needed (e.g., reporting)
-- Prevents MITM attacks on blockchain RPC calls
+- Native `URLSessionDelegate` with SPKI SHA-256 pin validation
+- Constructs proper SubjectPublicKeyInfo DER for RSA and ECDSA keys before hashing
+- **Current status: framework wired, pin hashes NOT yet configured**
+- All hosts currently fall through to default OS TLS validation
+- To activate: add base64 SPKI hashes to `CertificatePinner.pinnedHashes` per hostname
+- Include 2+ pins per host (primary + backup) to avoid lockout on cert rotation
 
 ### Layer 11: Memory Zeroization
 - Rust: `zeroize` crate with `ZeroizeOnDrop` derive
@@ -72,9 +73,11 @@
 ### Layer 13: App Binary Integrity
 - Mach-O header verification (MH_PIE flag)
 - Executable SHA-256 hash validation (CryptoKit)
-- Hash comparison requires a build-time script to inject the expected hash constant
-- DEBUG builds skip hash check to avoid false positives during development
-- Detects runtime code modification
+- **Current status: framework wired, expected hash NOT yet injected**
+- Hash auto-passes when `expectedExecutableHash` is empty (current state)
+- Build-time script needed to compute hash and write it as a constant
+- DEBUG builds always skip hash check to avoid false positives
+- Release builds exit(0) on integrity failure (once hash is configured)
 
 ### Layer 14: Transaction Simulation
 - Pre-sign simulation via `eth_call` for EVM transactions
@@ -121,7 +124,7 @@ Both the password-derived AES key AND the Secure Enclave key must be compromised
 |--------|-----------|
 | Device theft | Biometric + password + device encryption |
 | Jailbreak | 6-layer detection, exit on detection |
-| MITM on RPC | Native certificate pinning via URLSession delegate |
+| MITM on RPC | Native SPKI pinning framework wired (pin hashes not yet configured — currently uses default TLS) |
 | Memory dump | Zeroize all sensitive data on drop |
 | Screenshot/recording | Anti-screenshot overlay + blur |
 | Debugger attachment | ptrace + sysctl checks |

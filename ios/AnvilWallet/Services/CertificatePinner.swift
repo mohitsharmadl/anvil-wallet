@@ -3,27 +3,33 @@ import CryptoKit
 
 /// Native URLSession certificate pinning delegate.
 ///
-/// Validates server certificates against pinned SHA-256 public key hashes.
-/// If no pins are configured for a hostname, default certificate validation is used.
+/// Validates server certificates against pinned SHA-256 hashes of the
+/// Subject Public Key Info (SPKI) DER encoding — the same format used by
+/// HTTP Public Key Pinning (HPKP) and tools like OpenSSL.
 ///
-/// Pin hashes should be the base64-encoded SHA-256 of the Subject Public Key Info (SPKI).
-/// To extract a pin hash from a live certificate:
-///   openssl s_client -connect host:443 | openssl x509 -pubkey -noout | \
-///     openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+/// If no pins are configured for a hostname, default OS certificate validation
+/// is used (no pinning enforced). This is the current state — pin hashes must
+/// be populated before pinning is active.
+///
+/// To extract an SPKI pin hash from a live certificate:
+///   openssl s_client -connect host:443 </dev/null 2>/dev/null | \
+///     openssl x509 -pubkey -noout | \
+///     openssl pkey -pubin -outform der | \
+///     openssl dgst -sha256 -binary | base64
 final class CertificatePinner: NSObject, URLSessionDelegate {
 
-    /// Pinned SHA-256 hashes keyed by hostname.
-    /// Empty array = use default validation (no pinning enforced yet).
+    /// Pinned SHA-256 SPKI hashes keyed by hostname.
+    /// Empty dictionary = no pinning enforced (all hosts use default validation).
     ///
-    /// TODO: Populate with real pin hashes at build time for production RPC endpoints.
-    /// Example:
-    ///   "eth-mainnet.g.alchemy.com": ["base64hash1", "base64hash2"],
-    ///   "api.mainnet-beta.solana.com": ["base64hash1"],
-    private let pinnedHashes: [String: [String]] = {
-        // TODO: Populate with real pin hashes at build time for production RPC endpoints.
-        // For now, all hosts fall through to default OS certificate validation.
-        return [:]
-    }()
+    /// To enable pinning, add entries like:
+    ///   "eth-mainnet.g.alchemy.com": ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="],
+    ///   "api.mainnet-beta.solana.com": ["BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="],
+    ///
+    /// Include at least 2 pins per host (primary + backup) to avoid lockout on cert rotation.
+    private let pinnedHashes: [String: [String]] = [
+        // NOT YET CONFIGURED — all hosts fall through to default OS validation.
+        // Pinning is inactive until real SPKI hashes are added here.
+    ]
 
     func urlSession(
         _ session: URLSession,
@@ -38,35 +44,34 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
 
         let hostname = challenge.protectionSpace.host
 
-        // If no pins configured for this host, use default validation
+        // If no pins configured for this host, use default OS validation
         guard let expectedHashes = pinnedHashes[hostname], !expectedHashes.isEmpty else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
 
-        // Evaluate the server trust
+        // Evaluate the certificate chain first (standard TLS validation)
         var error: CFError?
         guard SecTrustEvaluateWithError(serverTrust, &error) else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
-        // Check each certificate in the chain for a matching pin
+        // Check each certificate in the chain for a matching SPKI pin
         guard let certChain = SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate] else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
+
         for certificate in certChain {
-            guard let publicKey = SecCertificateCopyKey(certificate) else {
+            // Get the full certificate DER data, then extract the SPKI
+            // by hashing the public key in DER form (same as OpenSSL pipeline above).
+            guard let publicKey = SecCertificateCopyKey(certificate),
+                  let spkiData = spkiDER(for: publicKey) else {
                 continue
             }
 
-            // Export the public key to DER format and compute SHA-256
-            guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
-                continue
-            }
-
-            let hash = SHA256.hash(data: publicKeyData)
+            let hash = SHA256.hash(data: spkiData)
             let hashBase64 = Data(hash).base64EncodedString()
 
             if expectedHashes.contains(hashBase64) {
@@ -77,5 +82,90 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
 
         // No pin matched — reject the connection
         completionHandler(.cancelAuthenticationChallenge, nil)
+    }
+
+    // MARK: - SPKI DER Extraction
+
+    /// Constructs the SPKI DER encoding for a public key.
+    ///
+    /// SecKeyCopyExternalRepresentation returns raw key bytes (no ASN.1 wrapper).
+    /// To match OpenSSL SPKI pins, we need to prepend the correct ASN.1 header
+    /// for the key type, producing a full SubjectPublicKeyInfo DER structure.
+    private func spkiDER(for publicKey: SecKey) -> Data? {
+        guard let rawKeyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
+            return nil
+        }
+
+        let keyType = SecKeyCopyAttributes(publicKey) as? [String: Any]
+        let keySize = keyType?[kSecAttrKeySizeInBits as String] as? Int ?? 0
+        let algorithm = keyType?[kSecAttrKeyType as String] as? String ?? ""
+
+        // Select the correct ASN.1 header based on key type
+        let header: Data
+        if algorithm == kSecAttrKeyTypeRSA as String {
+            // RSA SPKI header depends on key size
+            header = rsaSpkiHeader(keySize: keySize, rawKeyLength: rawKeyData.count)
+        } else if algorithm == kSecAttrKeyTypeECSECPrimeRandom as String {
+            // ECDSA P-256 or P-384
+            if keySize == 256 {
+                // ASN.1 header for P-256 SPKI (26 bytes)
+                header = Data([
+                    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86,
+                    0x48, 0xCE, 0x3D, 0x02, 0x01, 0x06, 0x08, 0x2A,
+                    0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, 0x03,
+                    0x42, 0x00
+                ])
+            } else if keySize == 384 {
+                // ASN.1 header for P-384 SPKI (23 bytes)
+                header = Data([
+                    0x30, 0x76, 0x30, 0x10, 0x06, 0x07, 0x2A, 0x86,
+                    0x48, 0xCE, 0x3D, 0x02, 0x01, 0x06, 0x05, 0x2B,
+                    0x81, 0x04, 0x00, 0x22, 0x03, 0x62, 0x00
+                ])
+            } else {
+                return nil
+            }
+        } else {
+            // Unknown key type — cannot construct SPKI
+            return nil
+        }
+
+        return header + rawKeyData
+    }
+
+    /// Constructs the ASN.1 SEQUENCE header for an RSA SPKI.
+    /// The header wraps: SEQUENCE { AlgorithmIdentifier, BIT STRING { raw key } }
+    private func rsaSpkiHeader(keySize: Int, rawKeyLength: Int) -> Data {
+        // RSA AlgorithmIdentifier OID (1.2.840.113549.1.1.1) + NULL params
+        let algorithmIdentifier: [UInt8] = [
+            0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86,
+            0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00
+        ]
+
+        // BIT STRING: 0x00 padding byte + raw key
+        let bitStringContentLength = 1 + rawKeyLength
+        var bitStringHeader = Data([0x03])
+        bitStringHeader.append(contentsOf: asn1LengthBytes(bitStringContentLength))
+        bitStringHeader.append(0x00) // no unused bits
+
+        // Outer SEQUENCE length
+        let sequenceContentLength = algorithmIdentifier.count + bitStringHeader.count + rawKeyLength
+        var header = Data([0x30])
+        header.append(contentsOf: asn1LengthBytes(sequenceContentLength))
+        header.append(contentsOf: algorithmIdentifier)
+        header.append(bitStringHeader)
+
+        return header
+    }
+
+    /// Encodes a length value in ASN.1 DER format.
+    private func asn1LengthBytes(_ length: Int) -> [UInt8] {
+        if length < 0x80 {
+            return [UInt8(length)]
+        } else if length < 0x100 {
+            return [0x81, UInt8(length)]
+        } else {
+            return [0x82, UInt8(length >> 8), UInt8(length & 0xFF)]
+        }
     }
 }

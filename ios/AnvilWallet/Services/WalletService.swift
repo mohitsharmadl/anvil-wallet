@@ -65,9 +65,38 @@ final class WalletService: ObservableObject {
         }
     }
 
+    /// Whether the session password is currently cached in memory.
+    var hasSessionPassword: Bool {
+        sessionPassword != nil
+    }
+
     /// Clears the cached session password. Called when the app enters background.
     func clearSessionPassword() {
         sessionPassword = nil
+    }
+
+    /// Sets the session password after user re-enters it (e.g. after returning from background).
+    /// Validates the password by attempting a decrypt round-trip before accepting it.
+    func setSessionPassword(_ password: String) async throws {
+        // Validate by loading the encrypted seed and attempting decryption
+        guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
+            throw WalletError.seedNotFound
+        }
+
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+
+        // This will throw if the password is wrong
+        var seedBytes = try decryptSeedWithPassword(
+            ciphertext: [UInt8](ciphertext),
+            salt: [UInt8](salt),
+            password: password
+        )
+
+        // Zeroize immediately — we only needed to verify the password works
+        for i in seedBytes.indices { seedBytes[i] = 0 }
+
+        sessionPassword = password
     }
 
     // MARK: - Combined Data Packing
@@ -86,10 +115,15 @@ final class WalletService: ObservableObject {
         guard data.count > 4 else {
             throw WalletError.decryptionFailed
         }
-        let saltLen = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let saltStart = 4
-        let saltEnd = saltStart + Int(saltLen)
-        guard data.count > saltEnd else {
+        // Parse 4-byte big-endian length manually to avoid unaligned memory access
+        let b0 = UInt32(data[data.startIndex])
+        let b1 = UInt32(data[data.startIndex + 1])
+        let b2 = UInt32(data[data.startIndex + 2])
+        let b3 = UInt32(data[data.startIndex + 3])
+        let saltLen = Int((b0 << 24) | (b1 << 16) | (b2 << 8) | b3)
+        let saltStart = data.startIndex + 4
+        let saltEnd = saltStart + saltLen
+        guard data.endIndex >= saltEnd else {
             throw WalletError.decryptionFailed
         }
         let salt = data[saltStart..<saltEnd]
@@ -266,7 +300,7 @@ final class WalletService: ObservableObject {
     func signTransaction(request: TransactionRequest) async throws -> Data {
         // Step 1: Ensure we have the session password
         guard let password = sessionPassword else {
-            throw WalletError.passwordRequired
+            throw WalletError.passwordRequired // Caller should show password re-entry UI
         }
 
         // Step 2: Biometric authentication
