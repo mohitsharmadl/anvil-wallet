@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CryptoWalletApp: App {
+struct AnvilWalletApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var walletService = WalletService.shared
 

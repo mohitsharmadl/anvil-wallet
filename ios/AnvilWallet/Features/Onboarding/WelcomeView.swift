@@ -20,7 +20,7 @@ struct WelcomeView: View {
                         .font(.system(size: 80))
                         .foregroundColor(.accentGreen)
 
-                    Text("CryptoWallet")
+                    Text("Anvil Wallet")
                         .font(.largeTitle.bold())
                         .foregroundColor(.textPrimary)
 

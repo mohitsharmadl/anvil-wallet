@@ -1,7 +1,8 @@
-# Crypto Wallet — Claude Instructions
+# Anvil Wallet — Claude Instructions
 
 ## Project Overview
-Self-custody crypto wallet: Rust core (all crypto) + Swift UI (iOS app) connected via UniFFI.
+AnvilWallet — self-custody crypto wallet: Rust core (all crypto) + Swift UI (iOS app) connected via UniFFI.
+Website: anvilwallet.com | Twitter: @anvilwallet | Instagram: @anvilwallet
 
 ## Quick Commands
 ```bash
@@ -18,7 +19,7 @@ cargo check -p wallet-core      # Quick compile check
 - `crates/chain-btc/` — Bitcoin P2WPKH, UTXO transactions
 - `crates/chain-eth/` — Ethereum EIP-1559, ERC-20, 7 EVM chains
 - `crates/chain-sol/` — Solana Ed25519, manual wire format, SPL tokens
-- `ios/CryptoWallet/` — SwiftUI iOS app
+- `ios/AnvilWallet/` — SwiftUI iOS app
 
 ## Key Constraints
 - UniFFI 0.28 passes owned types (String, Vec<u8>) across FFI, not references

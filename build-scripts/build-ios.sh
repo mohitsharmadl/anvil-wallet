@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CRATE_DIR="$ROOT_DIR/crates/wallet-core"
 IOS_DIR="$ROOT_DIR/ios"
-GENERATED_DIR="$IOS_DIR/CryptoWallet/Generated"
+GENERATED_DIR="$IOS_DIR/AnvilWallet/Generated"
 FRAMEWORK_NAME="WalletCoreFramework"
 
 echo "=== Building wallet-core for iOS ==="
@@ -96,7 +96,7 @@ for PLATFORM_DIR in "$IOS_DIR/$FRAMEWORK_NAME-device" "$IOS_DIR/$FRAMEWORK_NAME-
     <key>CFBundleName</key>
     <string>WalletCoreFramework</string>
     <key>CFBundleIdentifier</key>
-    <string>com.cryptowallet.walletcore</string>
+    <string>com.anvilwallet.walletcore</string>
     <key>CFBundleVersion</key>
     <string>0.1.0</string>
     <key>CFBundlePackageType</key>
@@ -126,6 +126,6 @@ echo "XCFramework: $IOS_DIR/$FRAMEWORK_NAME.xcframework"
 echo "Swift bindings: $GENERATED_DIR/wallet_core.swift"
 echo ""
 echo "Next steps:"
-echo "  1. Open ios/CryptoWallet.xcodeproj in Xcode"
+echo "  1. Open ios/AnvilWallet.xcodeproj in Xcode"
 echo "  2. Add WalletCoreFramework.xcframework to the project"
 echo "  3. Build and run on simulator or device"

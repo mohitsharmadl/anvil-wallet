@@ -1,8 +1,8 @@
-# FOR-Mohit: Crypto Wallet
+# FOR-Mohit: Anvil Wallet
 
 ## What Is This?
 
-A self-custody crypto wallet for iOS (Android later). Think Trust Wallet or MetaMask mobile, but built from scratch with paranoid-level security. Supports BTC, ETH, all EVM chains (Polygon, Arbitrum, Base, etc.), and Solana. Ships to App Store with WalletConnect support so you can connect to Uniswap, OpenSea, etc.
+**Anvil Wallet** — a self-custody crypto wallet for iOS (Android later). Think Trust Wallet or MetaMask mobile, but built from scratch with paranoid-level security. Supports BTC, ETH, all EVM chains (Polygon, Arbitrum, Base, etc.), and Solana. Ships to App Store with WalletConnect support so you can connect to Uniswap, OpenSea, etc.
 
 The key architectural decision: **all crypto logic lives in Rust**, and the iOS app just handles UI + device security features (Secure Enclave, Keychain, Face ID). The Rust code talks to Swift via UniFFI (Mozilla's FFI generator).
 
@@ -18,7 +18,7 @@ Why not just write everything in Swift? Because:
 ## Project Structure
 
 ```
-crypto-wallet/
+anvil-wallet/
 ├── Cargo.toml              # Rust workspace root
 ├── crates/
 │   ├── crypto-utils/       # AES-256-GCM encryption, Argon2id KDF, zeroize wrappers
@@ -30,7 +30,7 @@ crypto-wallet/
 │   ├── build-ios.sh        # Compile Rust → XCFramework + Swift bindings
 │   └── build-sim.sh        # Quick simulator build for dev
 ├── ios/
-│   └── CryptoWallet/       # SwiftUI iOS app
+│   └── AnvilWallet/       # SwiftUI iOS app
 │       ├── App/            # App entry point
 │       ├── Features/       # All screens (Onboarding, Wallet, Send, DApps, Settings)
 │       ├── Services/       # WalletService, KeychainService, SecureEnclave, Biometrics
@@ -110,7 +110,7 @@ cargo test --workspace
 ./build-scripts/build-ios.sh
 
 # Open in Xcode
-open ios/CryptoWallet.xcodeproj
+open ios/AnvilWallet.xcodeproj
 ```
 
 ## If I Had to Rebuild This...
