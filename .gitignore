@@ -1,0 +1,37 @@
+# Rust
+/target
+**/*.rs.bk
+# Cargo.lock is committed for this application (not a library)
+
+# macOS
+.DS_Store
+*.swp
+
+# Xcode
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/**/*.xcuserstate
+ios/**/*.xcuserdatad/
+ios/**/xcshareddata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Generated
+ios/CryptoWallet/Generated/
+ios/WalletCoreFramework.xcframework/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Environment
+.env
+.env.*

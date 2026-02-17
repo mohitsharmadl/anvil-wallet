@@ -1,0 +1,134 @@
+import SwiftUI
+import CoreImage.CIFilterBuiltins
+
+/// ReceiveView displays the user's wallet address and a QR code for receiving tokens.
+struct ReceiveView: View {
+    let chain: String
+    let address: String
+
+    @State private var showCopiedFeedback = false
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Chain indicator
+            Text(chain.capitalized)
+                .font(.headline)
+                .foregroundColor(.accentGreen)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.accentGreen.opacity(0.1))
+                .cornerRadius(20)
+
+            // QR Code
+            if let qrImage = generateQRCode(from: address) {
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 220, height: 220)
+                    .padding(20)
+                    .background(Color.white)
+                    .cornerRadius(20)
+            } else {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.backgroundCard)
+                    .frame(width: 260, height: 260)
+                    .overlay(
+                        Text("QR Code")
+                            .foregroundColor(.textTertiary)
+                    )
+            }
+
+            // Address display
+            VStack(spacing: 8) {
+                Text("Your \(chain.capitalized) Address")
+                    .font(.subheadline)
+                    .foregroundColor(.textSecondary)
+
+                Text(address)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+            }
+
+            // Copy button
+            Button {
+                ClipboardManager.shared.copyToClipboard(address, sensitive: false)
+                withAnimation {
+                    showCopiedFeedback = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation {
+                        showCopiedFeedback = false
+                    }
+                }
+            } label: {
+                HStack {
+                    Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
+                    Text(showCopiedFeedback ? "Copied!" : "Copy Address")
+                }
+                .font(.headline)
+                .foregroundColor(.accentGreen)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.accentGreen.opacity(0.1))
+                .cornerRadius(12)
+            }
+            .padding(.horizontal, 24)
+
+            // Warning
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.warning)
+                    .font(.caption)
+
+                Text("Only send \(chain.capitalized) tokens to this address. Sending other tokens may result in permanent loss.")
+                    .font(.caption)
+                    .foregroundColor(.textSecondary)
+            }
+            .padding(12)
+            .background(Color.warning.opacity(0.1))
+            .cornerRadius(12)
+            .padding(.horizontal, 24)
+
+            Spacer()
+        }
+        .background(Color.backgroundPrimary)
+        .navigationTitle("Receive")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - QR Code Generation
+
+    private func generateQRCode(from string: String) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+
+        guard let data = string.data(using: .ascii) else { return nil }
+        filter.setValue(data, forKey: "inputMessage")
+        filter.setValue("H", forKey: "inputCorrectionLevel")
+
+        guard let ciImage = filter.outputImage else { return nil }
+
+        // Scale up the QR code for a crisp image
+        let transform = CGAffineTransform(scaleX: 10, y: 10)
+        let scaledImage = ciImage.transformed(by: transform)
+
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        ReceiveView(
+            chain: "ethereum",
+            address: "0x1234567890abcdef1234567890abcdef12345678"
+        )
+    }
+}

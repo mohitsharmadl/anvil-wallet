@@ -1,0 +1,17 @@
+[package]
+name = "chain-sol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ed25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true }
+sha2 = { workspace = true }
+bs58 = { workspace = true }
+hex = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }

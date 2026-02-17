@@ -1,0 +1,35 @@
+[package]
+name = "wallet-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["lib", "staticlib"]
+name = "wallet_core"
+
+[dependencies]
+crypto-utils = { path = "../crypto-utils" }
+chain-btc = { path = "../chain-btc" }
+chain-eth = { path = "../chain-eth" }
+chain-sol = { path = "../chain-sol" }
+
+bip39 = { workspace = true }
+bip32 = { workspace = true }
+k256 = { workspace = true }
+sha2 = { workspace = true }
+hmac = { workspace = true }
+hex = { workspace = true }
+zeroize = { workspace = true }
+secrecy = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uniffi = { workspace = true }
+rand = { workspace = true }
+ed25519-dalek = { workspace = true }
+
+[build-dependencies]
+uniffi = { workspace = true, features = ["build"] }
+
+[dev-dependencies]

@@ -1,0 +1,122 @@
+[Error]
+enum WalletError {
+    "InvalidMnemonic",
+    "DerivationFailed",
+    "EncryptionFailed",
+    "DecryptionFailed",
+    "InvalidSeed",
+    "InvalidPrivateKey",
+    "InvalidAddress",
+    "UnsupportedChain",
+    "SigningFailed",
+    "TransactionFailed",
+    "Internal",
+};
+
+enum Chain {
+    "Bitcoin",
+    "BitcoinTestnet",
+    "Ethereum",
+    "Polygon",
+    "Arbitrum",
+    "Base",
+    "Optimism",
+    "Bsc",
+    "Avalanche",
+    "Solana",
+    "SolanaDevnet",
+    "Sepolia",
+    "PolygonAmoy",
+};
+
+dictionary DerivedAddress {
+    Chain chain;
+    string address;
+    string derivation_path;
+};
+
+dictionary EncryptedSeedData {
+    bytes ciphertext;
+    bytes salt;
+};
+
+namespace wallet_core {
+    /// Generate a new 24-word BIP-39 mnemonic
+    [Throws=WalletError]
+    string generate_mnemonic();
+
+    /// Validate a mnemonic phrase
+    [Throws=WalletError]
+    boolean validate_mnemonic(string phrase);
+
+    /// Check if a single word is in the BIP-39 word list
+    boolean is_valid_bip39_word(string word);
+
+    /// Derive an address for a specific chain
+    [Throws=WalletError]
+    DerivedAddress derive_address_from_mnemonic(
+        string mnemonic,
+        string passphrase,
+        Chain chain,
+        u32 account,
+        u32 index
+    );
+
+    /// Derive addresses for BTC, ETH, SOL from a mnemonic
+    [Throws=WalletError]
+    sequence<DerivedAddress> derive_all_addresses_from_mnemonic(
+        string mnemonic,
+        string passphrase,
+        u32 account
+    );
+
+    /// Encrypt a seed with a password (Argon2id + AES-256-GCM)
+    [Throws=WalletError]
+    EncryptedSeedData encrypt_seed_with_password(
+        bytes seed,
+        string password
+    );
+
+    /// Decrypt a seed with a password
+    [Throws=WalletError]
+    bytes decrypt_seed_with_password(
+        bytes ciphertext,
+        bytes salt,
+        string password
+    );
+
+    /// Derive seed bytes from mnemonic + passphrase
+    [Throws=WalletError]
+    bytes mnemonic_to_seed(string mnemonic, string passphrase);
+
+    /// Validate an address for a given chain
+    [Throws=WalletError]
+    boolean validate_address(string address, Chain chain);
+
+    /// Sign an Ethereum transaction (returns raw signed tx bytes)
+    [Throws=WalletError]
+    bytes sign_eth_transaction(
+        bytes seed,
+        string passphrase,
+        u32 account,
+        u32 index,
+        u64 chain_id,
+        u64 nonce,
+        string to_address,
+        string value_wei_hex,
+        bytes data,
+        string max_priority_fee_hex,
+        string max_fee_hex,
+        u64 gas_limit
+    );
+
+    /// Sign a Solana transaction (returns serialized signed tx)
+    [Throws=WalletError]
+    bytes sign_sol_transfer(
+        bytes seed,
+        u32 account,
+        string to_address,
+        u64 lamports,
+        bytes recent_blockhash
+    );
+};

@@ -1,0 +1,16 @@
+[package]
+name = "chain-btc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bitcoin = { workspace = true }
+k256 = { workspace = true }
+sha2 = { workspace = true }
+ripemd = { workspace = true }
+hex = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

@@ -1,0 +1,181 @@
+pub mod address;
+pub mod error;
+pub mod hd_derivation;
+pub mod mnemonic;
+pub mod seed_encryption;
+pub mod types;
+
+use error::WalletError;
+use types::{Chain, DerivedAddress, EncryptedSeed};
+use zeroize::Zeroize;
+
+// Include the UniFFI scaffolding
+uniffi::include_scaffolding!("wallet_core");
+
+// ─── UniFFI-exported types ───────────────────────────────────────────
+
+/// Encrypted seed data passed across FFI
+pub struct EncryptedSeedData {
+    pub ciphertext: Vec<u8>,
+    pub salt: Vec<u8>,
+}
+
+// ─── UniFFI-exported functions ───────────────────────────────────────
+// Note: UniFFI passes owned String/Vec<u8> across FFI, so all functions
+// accept owned types (not references).
+
+/// Generate a new 24-word BIP-39 mnemonic
+pub fn generate_mnemonic() -> Result<String, WalletError> {
+    mnemonic::generate_mnemonic()
+}
+
+/// Validate a mnemonic phrase
+pub fn validate_mnemonic(phrase: String) -> Result<bool, WalletError> {
+    mnemonic::validate_mnemonic(&phrase)
+}
+
+/// Check if a single word is in the BIP-39 word list
+pub fn is_valid_bip39_word(word: String) -> bool {
+    mnemonic::is_valid_word(&word)
+}
+
+/// Derive an address for a specific chain from mnemonic
+pub fn derive_address_from_mnemonic(
+    mnemonic_phrase: String,
+    passphrase: String,
+    chain: Chain,
+    account: u32,
+    index: u32,
+) -> Result<DerivedAddress, WalletError> {
+    let mut seed = mnemonic::mnemonic_to_seed(&mnemonic_phrase, &passphrase)?;
+    let result = address::derive_address(&seed, chain, account, index);
+    seed.zeroize();
+    result
+}
+
+/// Derive addresses for BTC, ETH, SOL from a mnemonic
+pub fn derive_all_addresses_from_mnemonic(
+    mnemonic_phrase: String,
+    passphrase: String,
+    account: u32,
+) -> Result<Vec<DerivedAddress>, WalletError> {
+    let mut seed = mnemonic::mnemonic_to_seed(&mnemonic_phrase, &passphrase)?;
+    let result = address::derive_all_addresses(&seed, account);
+    seed.zeroize();
+    result
+}
+
+/// Encrypt seed with password (Argon2id + AES-256-GCM)
+pub fn encrypt_seed_with_password(
+    seed: Vec<u8>,
+    password: String,
+) -> Result<EncryptedSeedData, WalletError> {
+    let encrypted = seed_encryption::encrypt_seed(&seed, password.as_bytes())?;
+    Ok(EncryptedSeedData {
+        ciphertext: encrypted.ciphertext,
+        salt: encrypted.salt,
+    })
+}
+
+/// Decrypt seed with password
+pub fn decrypt_seed_with_password(
+    ciphertext: Vec<u8>,
+    salt: Vec<u8>,
+    password: String,
+) -> Result<Vec<u8>, WalletError> {
+    let encrypted = EncryptedSeed {
+        ciphertext,
+        salt,
+        se_ciphertext: None,
+    };
+    seed_encryption::decrypt_seed(&encrypted, password.as_bytes())
+}
+
+/// Derive seed bytes from mnemonic + passphrase
+pub fn mnemonic_to_seed(mnemonic_phrase: String, passphrase: String) -> Result<Vec<u8>, WalletError> {
+    mnemonic::mnemonic_to_seed(&mnemonic_phrase, &passphrase)
+}
+
+/// Validate an address for a given chain
+pub fn validate_address(addr: String, chain: Chain) -> Result<bool, WalletError> {
+    address::validate_address(&addr, chain)
+}
+
+/// Sign an Ethereum EIP-1559 transaction
+pub fn sign_eth_transaction(
+    seed: Vec<u8>,
+    _passphrase: String,
+    account: u32,
+    index: u32,
+    chain_id: u64,
+    nonce: u64,
+    to_address: String,
+    value_wei_hex: String,
+    data: Vec<u8>,
+    max_priority_fee_hex: String,
+    max_fee_hex: String,
+    gas_limit: u64,
+) -> Result<Vec<u8>, WalletError> {
+    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
+
+    let value_wei = u128::from_str_radix(value_wei_hex.trim_start_matches("0x"), 16)
+        .map_err(|e| WalletError::TransactionFailed(format!("Invalid value: {e}")))?;
+    let max_priority_fee = u128::from_str_radix(max_priority_fee_hex.trim_start_matches("0x"), 16)
+        .map_err(|e| WalletError::TransactionFailed(format!("Invalid priority fee: {e}")))?;
+    let max_fee = u128::from_str_radix(max_fee_hex.trim_start_matches("0x"), 16)
+        .map_err(|e| WalletError::TransactionFailed(format!("Invalid max fee: {e}")))?;
+
+    let tx = if data.is_empty() {
+        chain_eth::transaction::build_transfer(
+            chain_id,
+            nonce,
+            &to_address,
+            value_wei,
+            max_priority_fee,
+            max_fee,
+            gas_limit,
+        )?
+    } else {
+        let mut tx = chain_eth::transaction::build_transfer(
+            chain_id,
+            nonce,
+            &to_address,
+            value_wei,
+            max_priority_fee,
+            max_fee,
+            gas_limit,
+        )?;
+        tx.data = data;
+        tx
+    };
+
+    let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
+    Ok(signed.raw_tx)
+}
+
+/// Sign a Solana SOL transfer
+pub fn sign_sol_transfer(
+    seed: Vec<u8>,
+    account: u32,
+    to_address: String,
+    lamports: u64,
+    recent_blockhash: Vec<u8>,
+) -> Result<Vec<u8>, WalletError> {
+    let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, account)?;
+
+    let to_bytes = chain_sol::address::address_to_bytes(&to_address)?;
+    let blockhash: [u8; 32] = recent_blockhash
+        .as_slice()
+        .try_into()
+        .map_err(|_| WalletError::TransactionFailed("Invalid blockhash length".into()))?;
+
+    let tx = chain_sol::transaction::build_sol_transfer(
+        &key.public_key,
+        &to_bytes,
+        lamports,
+        &blockhash,
+    )?;
+
+    let signed = chain_sol::transaction::sign_transaction(&tx, &key.private_key)?;
+    Ok(signed)
+}
