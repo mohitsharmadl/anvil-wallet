@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anvil Wallet — Self-Custody Crypto Wallet Built in Rust</title>
+  <meta name="description" content="Anvil Wallet is an open-source, self-custody crypto wallet forged in Rust. Your keys never leave your device. 16 security layers. Zero telemetry.">
+  <meta name="keywords" content="crypto wallet, self-custody, Rust, open source, Bitcoin, Ethereum, Solana, secure wallet">
+  <meta name="author" content="Anvil Wallet">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Anvil Wallet — Forged in Rust. Open Source. Unbreakable.">
+  <meta property="og:description" content="Self-custody crypto wallet built from the ground up in Rust. Your keys never leave your device.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://anvilwallet.com">
+  <meta property="og:image" content="https://anvilwallet.com/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@anvilwallet">
+  <meta name="twitter:title" content="Anvil Wallet — Forged in Rust. Open Source. Unbreakable.">
+  <meta name="twitter:description" content="Self-custody crypto wallet built from the ground up in Rust. Your keys never leave your device.">
+  <meta name="twitter:image" content="https://anvilwallet.com/og-image.png">
+
+  <!-- Favicon placeholder -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0e17'/><path d='M50 18L22 40v8l28 16 28-16v-8L50 18z' fill='%23f59e0b'/><path d='M30 52v20l20 12 20-12V52L50 64 30 52z' fill='%23d97706'/></svg>">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f1420;
+      --bg-tertiary: #141926;
+      --bg-card: #161c2d;
+      --bg-card-hover: #1a2236;
+      --border: #1e2740;
+      --border-light: #2a3454;
+      --text-primary: #f0f2f5;
+      --text-secondary: #8b95a9;
+      --text-tertiary: #5c6680;
+      --accent: #f59e0b;
+      --accent-hover: #fbbf24;
+      --accent-dim: rgba(245, 158, 11, 0.12);
+      --accent-glow: rgba(245, 158, 11, 0.06);
+      --rust-orange: #e8710a;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ===== LAYOUT ===== */
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    /* ===== NAVIGATION ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(10, 14, 23, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s ease;
+    }
+
+    nav.scrolled {
+      border-bottom-color: var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .nav-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-logo span {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-github {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary) !important;
+      font-size: 13px !important;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .nav-github:hover {
+      border-color: var(--border-light);
+      background: var(--bg-tertiary);
+    }
+
+    .nav-github svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--text-primary);
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .mobile-toggle span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text-secondary);
+      margin: 4px 0;
+      transition: all 0.3s;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 180px 0 120px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 32px;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    .hero-badge svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 80px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--accent) 0%, #f97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-tagline {
+      font-size: clamp(18px, 2.5vw, 24px);
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(15px, 1.8vw, 17px);
+      color: var(--text-tertiary);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 48px;
+      animation: fadeInUp 0.6s ease-out 0.4s both;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--font-body);
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0e17;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-primary svg {
+      width: 18px;
+      height: 18px;
+      fill: #0a0e17;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .btn-secondary svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-secondary);
+    }
+
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease-out 0.5s both;
+    }
+
+    .stat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .stat-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ===== SECTION HEADERS ===== */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+    }
+
+    .section-label::before {
+      content: '';
+      display: block;
+      width: 16px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    .section-title {
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      line-height: 1.7;
+    }
+
+    /* ===== SCROLL REVEAL ===== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== WHY RUST ===== */
+    .rust-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .rust-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+      margin-top: 48px;
+    }
+
+    .rust-points {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .rust-point {
+      display: flex;
+      gap: 16px;
+    }
+
+    .rust-point-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-dim);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+      border-radius: 10px;
+      color: var(--accent);
+    }
+
+    .rust-point-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .rust-point h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .rust-point p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .rust-callout {
+      padding: 20px 24px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      margin-top: 24px;
+    }
+
+    .rust-callout p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .code-block {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .code-dot.red { background: #ef4444; }
+    .code-dot.yellow { background: #f59e0b; }
+    .code-dot.green { background: #22c55e; }
+
+    .code-filename {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-left: 8px;
+    }
+
+    .code-body {
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .code-body .kw { color: #c678dd; }
+    .code-body .fn { color: #61afef; }
+    .code-body .ty { color: #e5c07b; }
+    .code-body .st { color: #98c379; }
+    .code-body .cm { color: #5c6370; font-style: italic; }
+    .code-body .at { color: #e06c75; }
+    .code-body .mc { color: #56b6c2; }
+    .code-body .lt { color: #d19a66; }
+
+    /* ===== CHAINS ===== */
+    .chains-section {
+      /* default bg */
+    }
+
+    .chains-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 48px;
+    }
+
+    .chain-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+
+    .chain-card:hover {
+      border-color: var(--border-light);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .chain-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .chain-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .chains-footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-tertiary);
+    }
+
+    .chains-footer span {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ===== SECURITY ===== */
+    .security-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .security-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .security-header .section-desc {
+      margin: 0 auto;
+    }
+
+    .security-groups {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .security-group {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .security-group:hover {
+      border-color: var(--border-light);
+    }
+
+    .security-group-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .security-group-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .security-group-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .security-group-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .security-items {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .security-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .security-item .check {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .security-item .check svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .security-callout {
+      margin-top: 40px;
+      padding: 24px 28px;
+      background: var(--bg-primary);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 12px;
+      text-align: center;
+      position: relative;
+    }
+
+    .security-callout::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-glow), transparent 50%);
+      pointer-events: none;
+    }
+
+    .security-callout h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+
+    .security-callout p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ===== OPEN SOURCE ===== */
+    .oss-section {
+      text-align: center;
+    }
+
+    .oss-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin: 48px 0;
+    }
+
+    .oss-stat {
+      padding: 28px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: border-color 0.2s;
+    }
+
+    .oss-stat:hover {
+      border-color: var(--border-light);
+    }
+
+    .oss-stat-value {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .oss-stat-label {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+
+    .oss-quote {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* ===== ARCHITECTURE ===== */
+    .arch-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .arch-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .arch-header .section-desc {
+      margin: 0 auto;
+    }
+
+    .arch-diagram {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .arch-box {
+      padding: 20px 32px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+    }
+
+    .arch-box-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .arch-box-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .arch-box.ios {
+      background: rgba(59, 130, 246, 0.08);
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+    .arch-box.ios .arch-box-title { color: #60a5fa; }
+
+    .arch-box.bridge {
+      background: rgba(168, 85, 247, 0.08);
+      border-color: rgba(168, 85, 247, 0.2);
+    }
+    .arch-box.bridge .arch-box-title { color: #c084fc; }
+
+    .arch-box.rust {
+      background: var(--accent-dim);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+    .arch-box.rust .arch-box-title { color: var(--accent); }
+
+    .arch-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+    }
+
+    .arch-arrow {
+      width: 1px;
+      height: 100%;
+      background: var(--border-light);
+      position: relative;
+    }
+
+    .arch-arrow::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--border-light);
+    }
+
+    .arch-arrow-label {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+
+    .arch-crates {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .arch-crate {
+      padding: 10px 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      transition: border-color 0.2s;
+    }
+
+    .arch-crate:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--accent);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-brand svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .footer-brand span {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .footer-tagline {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover {
+      color: var(--text-primary);
+    }
+
+    .footer-link svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .footer-right {
+      text-align: right;
+    }
+
+    .footer-license {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .security-groups {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .oss-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      section {
+        padding: 80px 0;
+      }
+
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        gap: 16px;
+      }
+
+      .nav-links.open {
+        display: flex;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .hero {
+        padding: 140px 0 80px;
+      }
+
+      .rust-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .chains-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .security-groups {
+        grid-template-columns: 1fr;
+      }
+
+      .oss-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .arch-crates {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .footer-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .footer-right {
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-stats {
+        gap: 6px;
+      }
+
+      .stat-badge {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+
+      .chains-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .chain-card {
+        padding: 12px 14px;
+      }
+
+      .arch-crates {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .oss-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .oss-stat {
+        padding: 20px 12px;
+      }
+
+      .oss-stat-value {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAV ===== -->
+  <nav id="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="nav-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+          <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+        </svg>
+        <span>Anvil Wallet</span>
+      </a>
+
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#why-rust">Why Rust</a></li>
+        <li><a href="#chains">Chains</a></li>
+        <li><a href="#security">Security</a></li>
+        <li><a href="#open-source">Open Source</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li>
+          <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener" class="nav-github">
+            <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0L10.2 5.4L16 6.2L11.8 10.2L12.8 16L8 13.2L3.2 16L4.2 10.2L0 6.2L5.8 5.4L8 0z"/></svg>
+        Now open source on GitHub
+      </div>
+
+      <h1><span class="accent">Anvil</span> Wallet</h1>
+
+      <p class="hero-tagline">Forged in Rust. Open Source. Unbreakable.</p>
+
+      <p class="hero-subtitle">Self-custody crypto wallet built from the ground up in Rust. Your keys never leave your device.</p>
+
+      <div class="hero-ctas">
+        <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener" class="btn btn-primary">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+        <span class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83"/><path d="M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11"/></svg>
+          Coming to App Store
+        </span>
+      </div>
+
+      <div class="hero-stats">
+        <span class="stat-badge"><span class="dot"></span> Open Source</span>
+        <span class="stat-badge"><span class="dot"></span> 241 Tests</span>
+        <span class="stat-badge"><span class="dot"></span> Zero Telemetry</span>
+        <span class="stat-badge"><span class="dot"></span> 16 Security Layers</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WHY RUST ===== -->
+  <section class="rust-section" id="why-rust">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Why Rust</span>
+        <h2 class="section-title">The only mobile wallet with<br>a pure Rust core</h2>
+        <p class="section-desc">Every other mobile wallet uses JavaScript, Swift, or Kotlin for crypto operations. We use Rust.</p>
+      </div>
+
+      <div class="rust-grid reveal">
+        <div class="rust-points">
+          <div class="rust-point">
+            <div class="rust-point-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <h4>Memory safety at compile time</h4>
+              <p>Rust guarantees memory safety without a garbage collector. No buffer overflows, no use-after-free, no dangling pointers -- all verified before your code ever runs.</p>
+            </div>
+          </div>
+
+          <div class="rust-point">
+            <div class="rust-point-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            </div>
+            <div>
+              <h4>Secrets zeroized on drop</h4>
+              <p>Private keys are automatically wiped from memory when no longer needed. No garbage collector leaving secrets scattered in RAM.</p>
+            </div>
+          </div>
+
+          <div class="rust-point">
+            <div class="rust-point-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            </div>
+            <div>
+              <h4>Pure Rust cryptography</h4>
+              <p>Zero C dependencies. All cryptographic operations use audited, pure-Rust crates. The same code compiles for iOS, Android, and desktop.</p>
+            </div>
+          </div>
+
+          <div class="rust-point">
+            <div class="rust-point-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <div>
+              <h4>Cross-platform from one codebase</h4>
+              <p>Write once, compile everywhere. The Rust core runs identically on every platform via UniFFI bindings -- no platform-specific crypto bugs.</p>
+            </div>
+          </div>
+
+          <div class="rust-callout">
+            <p>"In most wallets, a single memory bug can leak your private key. In Rust, that class of bug simply cannot exist."</p>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-dot red"></span>
+            <span class="code-dot yellow"></span>
+            <span class="code-dot green"></span>
+            <span class="code-filename">wallet_core/src/keychain.rs</span>
+          </div>
+          <div class="code-body">
+<pre><span class="kw">use</span> zeroize::{<span class="ty">Zeroize</span>, <span class="ty">ZeroizeOnDrop</span>};
+
+<span class="cm">/// Private key that automatically wipes</span>
+<span class="cm">/// itself from memory when dropped.</span>
+<span class="at">#[derive(Zeroize, ZeroizeOnDrop)]</span>
+<span class="kw">pub struct</span> <span class="ty">SecretKey</span> {
+    <span class="cm">// 32 bytes, zeroized on drop</span>
+    bytes: [<span class="ty">u8</span>; <span class="lt">32</span>],
+}
+
+<span class="kw">impl</span> <span class="ty">SecretKey</span> {
+    <span class="cm">/// Derive a child key using BIP-32.</span>
+    <span class="cm">/// The parent key is consumed and</span>
+    <span class="cm">/// zeroized after derivation.</span>
+    <span class="kw">pub fn</span> <span class="fn">derive_child</span>(
+        <span class="kw">mut</span> self,
+        path: &<span class="ty">DerivationPath</span>,
+    ) -> <span class="ty">Result</span>&lt;<span class="ty">SecretKey</span>, <span class="ty">KeyError</span>&gt; {
+        <span class="kw">let</span> child = self.<span class="fn">derive_internal</span>(path)?;
+        <span class="cm">// `self` is dropped here,</span>
+        <span class="cm">// memory is automatically zeroized</span>
+        <span class="ty">Ok</span>(child)
+    }
+}
+
+<span class="cm">// When `SecretKey` goes out of scope:</span>
+<span class="cm">// 1. Rust's ownership system ensures</span>
+<span class="cm">//    exactly one owner exists</span>
+<span class="cm">// 2. ZeroizeOnDrop overwrites bytes</span>
+<span class="cm">//    with zeros</span>
+<span class="cm">// 3. Memory is deallocated</span>
+<span class="cm">// No GC, no timing gaps, no leaks.</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MULTI-CHAIN ===== -->
+  <section class="chains-section" id="chains">
+    <div class="container">
+      <div class="reveal" style="text-align: center;">
+        <span class="section-label">Multi-Chain</span>
+        <h2 class="section-title">One wallet, every chain</h2>
+        <p class="section-desc" style="margin: 0 auto;">Native support for major blockchains and their tokens. All key derivation and signing happens in the Rust core.</p>
+      </div>
+
+      <div class="chains-grid reveal">
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(247, 147, 26, 0.12); color: #f7931a;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.638 14.904c-1.602 6.425-8.113 10.34-14.542 8.736C2.67 22.034-1.244 15.525.362 9.105 1.962 2.67 8.475-1.243 14.9.358c6.43 1.605 10.342 8.115 8.738 14.546zm-6.35-4.613c.24-1.59-.974-2.45-2.64-3.03l.54-2.153-1.315-.33-.526 2.107c-.345-.087-.7-.168-1.053-.25l.53-2.12-1.313-.33-.54 2.155c-.285-.065-.565-.13-.84-.2l.002-.01-1.812-.452-.35 1.407s.975.224.955.238c.535.136.63.49.614.77l-.614 2.466c.037.01.085.025.138.047l-.14-.035-.86 3.45c-.065.16-.23.4-.6.31.013.02-.956-.24-.956-.24l-.652 1.502 1.71.427c.318.08.63.164.937.243l-.546 2.19 1.312.328.54-2.17c.36.1.708.19 1.05.273l-.537 2.154 1.313.33.546-2.183c2.245.424 3.93.253 4.64-1.774.57-1.637-.028-2.58-1.217-3.196.865-.2 1.517-.77 1.69-1.94z"/></svg>
+          </div>
+          <span class="chain-name">Bitcoin</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(98, 126, 234, 0.12); color: #627eea;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/></svg>
+          </div>
+          <span class="chain-name">Ethereum</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(153, 69, 255, 0.12); color: #9945ff;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4.52 17.63a.76.76 0 01.53-.22h17.41a.38.38 0 01.27.65l-3.32 3.34a.76.76 0 01-.53.22H1.47a.38.38 0 01-.27-.65l3.32-3.34zM4.52 2.38a.78.78 0 01.53-.22h17.41a.38.38 0 01.27.65L19.41 6.15a.76.76 0 01-.53.22H1.47a.38.38 0 01-.27-.65L4.52 2.38zM19.41 9.93a.76.76 0 00-.53-.22H1.47a.38.38 0 00-.27.65l3.32 3.34a.76.76 0 00.53.22h17.41a.38.38 0 00.27-.65l-3.32-3.34z"/></svg>
+          </div>
+          <span class="chain-name">Solana</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(130, 71, 229, 0.12); color: #8247e5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.3 10.74C18.3 10.74 14.4 3 12 3s-6.3 7.74-6.3 7.74a.63.63 0 00.06.66l6 8.16a.3.3 0 00.48 0l6-8.16a.63.63 0 00.06-.66z"/></svg>
+          </div>
+          <span class="chain-name">Polygon</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(40, 160, 240, 0.12); color: #28a0f0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 19.5h3.5L12 8l6.5 11.5H22L12 2z"/></svg>
+          </div>
+          <span class="chain-name">Arbitrum</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(0, 82, 255, 0.12); color: #0052ff;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <span class="chain-name">Base</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(255, 4, 32, 0.12); color: #ff0420;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <span class="chain-name">Optimism</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(243, 186, 47, 0.12); color: #f3ba2f;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 3-5.5 5.5L12 13l-7 7 3 3 7-7 2.5 2.5L12 24l-3-3 5.5-5.5L12 13l7-7-3-3-7 7L6.5 7.5 12 2z"/></svg>
+          </div>
+          <span class="chain-name">BSC</span>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-icon" style="background: rgba(232, 65, 66, 0.12); color: #e84142;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.2 9.1c.3-.5.3-1.1 0-1.6L13.6 1c-.3-.5-.9-.8-1.6-.8-.6 0-1.2.3-1.6.8L6.8 7.5c-.3.5-.3 1.1 0 1.6l2.1 3.6-2.1 3.6c-.3.5-.3 1.1 0 1.6L10.4 24c.3.5.9.8 1.6.8.6 0 1.2-.3 1.6-.8l3.6-6.5c.3-.5.3-1.1 0-1.6L15.1 12.3l2.1-3.2z"/></svg>
+          </div>
+          <span class="chain-name">Avalanche</span>
+        </div>
+      </div>
+
+      <p class="chains-footer reveal">
+        <span>Plus ERC-20 and SPL token support</span> -- add any token on any supported chain.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== SECURITY ===== -->
+  <section class="security-section" id="security">
+    <div class="container">
+      <div class="security-header reveal">
+        <span class="section-label">Security</span>
+        <h2 class="section-title">16 layers of defense</h2>
+        <p class="section-desc">Security is not a feature -- it is the architecture. Every layer is independently verifiable in the source code.</p>
+      </div>
+
+      <div class="security-groups reveal">
+        <!-- Hardware -->
+        <div class="security-group">
+          <div class="security-group-header">
+            <div class="security-group-icon" style="background: rgba(59, 130, 246, 0.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h4v4H6z"/><line x1="14" y1="10" x2="18" y2="10"/><line x1="14" y1="14" x2="18" y2="14"/></svg>
+            </div>
+            <span class="security-group-title">Hardware</span>
+          </div>
+          <div class="security-items">
+            <div class="security-item">
+              <span class="check" style="background: rgba(59, 130, 246, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Secure Enclave P-256
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(59, 130, 246, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              iOS Keychain Storage
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(59, 130, 246, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Biometric Authentication
+            </div>
+          </div>
+        </div>
+
+        <!-- Encryption -->
+        <div class="security-group">
+          <div class="security-group-header">
+            <div class="security-group-icon" style="background: rgba(245, 158, 11, 0.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <span class="security-group-title">Encryption</span>
+          </div>
+          <div class="security-items">
+            <div class="security-item">
+              <span class="check" style="background: rgba(245, 158, 11, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              AES-256-GCM Encryption
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(245, 158, 11, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Argon2id Key Derivation
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(245, 158, 11, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Memory Zeroization
+            </div>
+          </div>
+        </div>
+
+        <!-- Protection -->
+        <div class="security-group">
+          <div class="security-group-header">
+            <div class="security-group-icon" style="background: rgba(239, 68, 68, 0.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <span class="security-group-title">Protection</span>
+          </div>
+          <div class="security-items">
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Jailbreak Detection
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Anti-Debug Protection
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Screenshot Protection
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Clipboard Auto-Clear
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Certificate Pinning
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(239, 68, 68, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              App Integrity Checks
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation & Privacy -->
+        <div class="security-group">
+          <div class="security-group-header">
+            <div class="security-group-icon" style="background: rgba(34, 197, 94, 0.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="security-group-title">Validation & Privacy</span>
+          </div>
+          <div class="security-items">
+            <div class="security-item">
+              <span class="check" style="background: rgba(34, 197, 94, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Transaction Simulation
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(34, 197, 94, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Address Validation
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(34, 197, 94, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Zero Telemetry
+            </div>
+            <div class="security-item">
+              <span class="check" style="background: rgba(34, 197, 94, 0.12);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Zero Analytics
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="security-callout reveal">
+        <h4>Double Encryption</h4>
+        <p>Your seed phrase is encrypted by Rust (Argon2id + AES-256-GCM) AND by the Secure Enclave (P-256). An attacker would need to break both layers -- a mathematical impossibility with current technology.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OPEN SOURCE ===== -->
+  <section class="oss-section" id="open-source">
+    <div class="container">
+      <div class="reveal">
+        <span class="section-label">Open Source</span>
+        <h2 class="section-title">Every line of code is public.<br>Verify it yourself.</h2>
+      </div>
+
+      <div class="oss-stats reveal">
+        <div class="oss-stat">
+          <div class="oss-stat-value">241</div>
+          <div class="oss-stat-label">Tests passing</div>
+        </div>
+        <div class="oss-stat">
+          <div class="oss-stat-value">5</div>
+          <div class="oss-stat-label">Rust crates</div>
+        </div>
+        <div class="oss-stat">
+          <div class="oss-stat-value">17k+</div>
+          <div class="oss-stat-label">Lines of code</div>
+        </div>
+        <div class="oss-stat">
+          <div class="oss-stat-value">MIT</div>
+          <div class="oss-stat-label">License</div>
+        </div>
+      </div>
+
+      <p class="oss-quote reveal">"We believe security comes from transparency, not obscurity."</p>
+
+      <div class="reveal">
+        <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener" class="btn btn-primary">
+          <svg viewBox="0 0 16 16" width="18" height="18"><path fill="#0a0e17" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Browse the source code
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ARCHITECTURE ===== -->
+  <section class="arch-section" id="architecture">
+    <div class="container">
+      <div class="arch-header reveal">
+        <span class="section-label">Architecture</span>
+        <h2 class="section-title">Clean separation of concerns</h2>
+        <p class="section-desc">The UI layer never touches cryptography. All sensitive operations are isolated in the Rust core, exposed via type-safe UniFFI bindings.</p>
+      </div>
+
+      <div class="arch-diagram reveal">
+        <!-- iOS Layer -->
+        <div class="arch-layer">
+          <div class="arch-box ios">
+            <div class="arch-box-title">SwiftUI (iOS)</div>
+            <div class="arch-box-desc">User interface, navigation, system APIs</div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-arrow" style="position: relative;">
+            <span class="arch-arrow-label">UniFFI bindings</span>
+          </div>
+        </div>
+
+        <!-- Bridge Layer -->
+        <div class="arch-layer">
+          <div class="arch-box bridge">
+            <div class="arch-box-title">UniFFI Bridge</div>
+            <div class="arch-box-desc">Generated Swift bindings to Rust -- type-safe FFI</div>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="arch-connector">
+          <div class="arch-arrow" style="position: relative;">
+            <span class="arch-arrow-label">Rust ABI</span>
+          </div>
+        </div>
+
+        <!-- Rust Core Layer -->
+        <div class="arch-layer">
+          <div class="arch-box rust">
+            <div class="arch-box-title">Rust Core</div>
+            <div class="arch-box-desc">Cryptography, key management, signing, chain logic</div>
+          </div>
+        </div>
+
+        <!-- Crates -->
+        <div class="arch-crates">
+          <div class="arch-crate">wallet_core</div>
+          <div class="arch-crate">wallet_crypto</div>
+          <div class="arch-crate">wallet_chain</div>
+          <div class="arch-crate">wallet_storage</div>
+          <div class="arch-crate">wallet_ffi</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <div class="footer-brand">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+            <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+          </svg>
+          <span>Anvil Wallet</span>
+        </div>
+        <span class="footer-tagline">Built with Rust. Open source forever.</span>
+      </div>
+
+      <div class="footer-links">
+        <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener" class="footer-link">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="https://twitter.com/anvilwallet" target="_blank" rel="noopener" class="footer-link">
+          <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Twitter
+        </a>
+        <a href="https://instagram.com/anvilwallet" target="_blank" rel="noopener" class="footer-link">
+          <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+          Instagram
+        </a>
+      </div>
+
+      <div class="footer-right">
+        <span class="footer-license">MIT License</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== MINIMAL JS ===== -->
+  <script>
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    reveals.forEach((el) => observer.observe(el));
+
+    // Nav scroll state
+    const navbar = document.getElementById('navbar');
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          navbar.classList.toggle('scrolled', window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+
+    // Mobile menu toggle
+    const mobileToggle = document.getElementById('mobileToggle');
+    const navLinks = document.getElementById('navLinks');
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+    });
+
+    // Close mobile menu on link click
+    navLinks.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('open');
+      });
+    });
+  </script>
+</body>
+</html>
