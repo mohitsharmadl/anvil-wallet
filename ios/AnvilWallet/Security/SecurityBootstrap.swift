@@ -12,7 +12,7 @@ import os.log
 /// on legitimate devices. Each check logs its result for diagnostics.
 enum SecurityBootstrap {
 
-    private static let logger = Logger(subsystem: "com.cryptowallet", category: "Security")
+    private static let logger = Logger(subsystem: "com.anvilwallet", category: "Security")
 
     /// Shared state for UI to read check results
     @MainActor
@@ -86,8 +86,11 @@ enum SecurityBootstrap {
 
             logger.error("Security checks completed with warnings")
 
-            // In production, you might want to force-quit on critical failures:
-            // exit(0)
+            #if !DEBUG
+            if integrityFailed {
+                exit(0)
+            }
+            #endif
         } else {
             logger.info("All security checks passed")
         }

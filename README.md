@@ -43,6 +43,22 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 | **Avalanche** | EVM | AVAX + ERC-20 |
 | **Solana** | Ed25519 | SOL + SPL tokens |
 
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Rust crypto core (5 crates) | Complete | 241 tests passing |
+| BIP-39 mnemonic generation | Complete | 24-word, via Rust FFI |
+| HD key derivation (BTC, ETH, SOL) | Complete | BIP-44/84 paths |
+| AES-256-GCM + Argon2id encryption | Complete | Double encryption with SE |
+| EVM transaction signing (EIP-1559) | Complete | Wired to Rust FFI |
+| Solana transaction signing | Complete | Wired to Rust FFI |
+| Bitcoin transaction signing | Planned | Requires UTXO management |
+| Certificate pinning | Complete | Native URLSession delegate (pin hashes configured at build time) |
+| Binary integrity check | Complete | SHA-256 hash comparison (requires build-time hash injection) |
+| WalletConnect v2 | Stub | Phase 5 — Reown SDK integration |
+| Token balance fetching | Stub | RPC methods ready, UI integration pending |
+
 ## Architecture
 
 ```
@@ -127,10 +143,10 @@ Anvil Wallet implements 16 security layers spanning hardware, OS, application, a
 | Jailbreak Detection | 6 sub-layer detection (files, symlinks, sandbox, dyld, fork, URL schemes) |
 | Anti-Screenshot | Secure text overlay + background blur |
 | Clipboard Auto-Clear | Copied data wiped after 120 seconds |
-| Certificate Pinning | TrustKit SHA-256 pinning on all RPC connections |
+| Certificate Pinning | Native URLSession delegate SHA-256 pinning on all RPC connections |
 | Memory Zeroization | All keys, seeds, mnemonics zeroed on drop (Rust + Swift) |
 | Anti-Debugging | ptrace deny-attach + sysctl P_TRACED check |
-| Binary Integrity | Mach-O header + executable hash verification |
+| Binary Integrity | Mach-O header + executable SHA-256 hash verification (build-time hash injection) |
 | Transaction Simulation | Pre-sign simulation for EVM transactions |
 | Address Validation | Format + checksum + address poisoning detection |
 | Zero Telemetry | No analytics, no crash reporting, no third-party data SDKs |

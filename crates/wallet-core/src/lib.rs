@@ -67,10 +67,11 @@ pub fn derive_all_addresses_from_mnemonic(
 
 /// Encrypt seed with password (Argon2id + AES-256-GCM)
 pub fn encrypt_seed_with_password(
-    seed: Vec<u8>,
+    mut seed: Vec<u8>,
     password: String,
 ) -> Result<EncryptedSeedData, WalletError> {
     let encrypted = seed_encryption::encrypt_seed(&seed, password.as_bytes())?;
+    seed.zeroize();
     Ok(EncryptedSeedData {
         ciphertext: encrypted.ciphertext,
         salt: encrypted.salt,
@@ -103,7 +104,7 @@ pub fn validate_address(addr: String, chain: Chain) -> Result<bool, WalletError>
 
 /// Sign an Ethereum EIP-1559 transaction
 pub fn sign_eth_transaction(
-    seed: Vec<u8>,
+    mut seed: Vec<u8>,
     _passphrase: String,
     account: u32,
     index: u32,
@@ -150,12 +151,13 @@ pub fn sign_eth_transaction(
     };
 
     let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
+    seed.zeroize();
     Ok(signed.raw_tx)
 }
 
 /// Sign a Solana SOL transfer
 pub fn sign_sol_transfer(
-    seed: Vec<u8>,
+    mut seed: Vec<u8>,
     account: u32,
     to_address: String,
     lamports: u64,
@@ -177,5 +179,6 @@ pub fn sign_sol_transfer(
     )?;
 
     let signed = chain_sol::transaction::sign_transaction(&tx, &key.private_key)?;
+    seed.zeroize();
     Ok(signed)
 }

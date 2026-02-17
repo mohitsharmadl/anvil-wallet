@@ -1,6 +1,33 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Transaction Request Types
+
+/// Typed transaction request for signing — ensures correct parameters per chain.
+enum TransactionRequest {
+    case eth(EthTransactionRequest)
+    case sol(SolTransactionRequest)
+}
+
+struct EthTransactionRequest {
+    let chainId: UInt64
+    let nonce: UInt64
+    let to: String
+    let valueWeiHex: String
+    let data: Data
+    let maxPriorityFeeHex: String
+    let maxFeeHex: String
+    let gasLimit: UInt64
+}
+
+struct SolTransactionRequest {
+    let to: String
+    let lamports: UInt64
+    let recentBlockhash: Data // 32 bytes
+}
+
+// MARK: - WalletService
+
 /// WalletService is the central orchestrator for all wallet operations.
 /// It coordinates between the Rust core (via UniFFI), Secure Enclave,
 /// Keychain, and Biometric authentication to provide a secure wallet experience.
@@ -24,9 +51,12 @@ final class WalletService: ObservableObject {
     @Published var transactions: [TransactionModel] = []
 
     // Keychain storage keys
-    private let encryptedSeedKey = "com.cryptowallet.encryptedSeed"
-    private let walletMetadataKey = "com.cryptowallet.walletMetadata"
-    private let passwordSaltKey = "com.cryptowallet.passwordSalt"
+    private let encryptedSeedKey = "com.anvilwallet.encryptedSeed"
+    private let walletMetadataKey = "com.anvilwallet.walletMetadata"
+    private let passwordSaltKey = "com.anvilwallet.passwordSalt"
+
+    /// In-memory session password — cached after first use, cleared on app background.
+    private var sessionPassword: String?
 
     private init() {
         isWalletCreated = keychain.exists(key: encryptedSeedKey)
@@ -35,52 +65,78 @@ final class WalletService: ObservableObject {
         }
     }
 
+    /// Clears the cached session password. Called when the app enters background.
+    func clearSessionPassword() {
+        sessionPassword = nil
+    }
+
+    // MARK: - Combined Data Packing
+    // Format: [4-byte big-endian salt length][salt bytes][ciphertext bytes]
+
+    private func packSaltAndCiphertext(salt: Data, ciphertext: Data) -> Data {
+        var packed = Data()
+        var saltLen = UInt32(salt.count).bigEndian
+        packed.append(Data(bytes: &saltLen, count: 4))
+        packed.append(salt)
+        packed.append(ciphertext)
+        return packed
+    }
+
+    private func unpackSaltAndCiphertext(from data: Data) throws -> (salt: Data, ciphertext: Data) {
+        guard data.count > 4 else {
+            throw WalletError.decryptionFailed
+        }
+        let saltLen = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let saltStart = 4
+        let saltEnd = saltStart + Int(saltLen)
+        guard data.count > saltEnd else {
+            throw WalletError.decryptionFailed
+        }
+        let salt = data[saltStart..<saltEnd]
+        let ciphertext = data[saltEnd...]
+        return (salt: Data(salt), ciphertext: Data(ciphertext))
+    }
+
     // MARK: - Wallet Creation
 
     /// Creates a new wallet from a freshly generated mnemonic.
     ///
     /// Flow:
     ///   1. Generate 24-word mnemonic via Rust FFI
-    ///   2. Derive master seed from mnemonic (BIP-39)
-    ///   3. Encrypt seed with user password (Argon2id KDF + AES-256-GCM) via Rust
-    ///   4. Create Secure Enclave P-256 key with biometric protection
-    ///   5. Encrypt the already-encrypted seed with SE public key (double encryption)
-    ///   6. Store doubly-encrypted blob in Keychain with kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-    ///   7. Derive addresses for all supported chains
-    ///   8. Return mnemonic words so the user can write them down for backup
+    ///   2. Encrypt seed with user password (Argon2id KDF + AES-256-GCM) via Rust
+    ///   3. Create Secure Enclave P-256 key with biometric protection
+    ///   4. Encrypt the already-encrypted seed with SE public key (double encryption)
+    ///   5. Store doubly-encrypted blob in Keychain
+    ///   6. Derive addresses for all supported chains from mnemonic
+    ///   7. Return mnemonic words so the user can write them down for backup
     ///
     /// - Parameter password: User-chosen password for seed encryption
     /// - Returns: Array of 24 mnemonic words for user backup
     func createWallet(password: String) async throws -> [String] {
-        // TODO: Integrate Rust FFI
-        // Expected Rust function signatures:
-        //   fn generate_mnemonic() -> Result<String, WalletError>
-        //   fn mnemonic_to_seed(mnemonic: &str) -> Result<Vec<u8>, WalletError>
-        //   fn encrypt_seed(seed: &[u8], password: &str) -> Result<EncryptedData, WalletError>
-        //   fn derive_address(seed: &[u8], chain: &str, index: u32) -> Result<String, WalletError>
-
         // Step 1: Generate mnemonic via Rust
-        // let mnemonicString = try wallet_core.generate_mnemonic()
-        let mnemonicString = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art"
+        let mnemonicString = try generateMnemonic()
         let words = mnemonicString.split(separator: " ").map(String.init)
 
-        // Step 2: Derive seed from mnemonic
-        // let seed = try wallet_core.mnemonic_to_seed(mnemonicString)
-        let seed = Data(repeating: 0, count: 64) // Placeholder
+        // Step 2: Derive seed and encrypt with password via Rust (Argon2id + AES-256-GCM)
+        let seedBytes = try mnemonicToSeed(mnemonicPhrase: mnemonicString, passphrase: "")
+        let encrypted = try encryptSeedWithPassword(seed: [UInt8](seedBytes), password: password)
+        let packed = packSaltAndCiphertext(
+            salt: Data(encrypted.salt),
+            ciphertext: Data(encrypted.ciphertext)
+        )
 
-        // Step 3: Encrypt seed with password via Rust (Argon2id + AES-256-GCM)
-        // let encryptedSeed = try wallet_core.encrypt_seed(seed, password)
-        let encryptedSeed = seed // Placeholder - would be encrypted data
-
-        // Step 4: Create Secure Enclave key and double-encrypt
+        // Step 3: Create Secure Enclave key and double-encrypt
         let seKey = try secureEnclave.createKey()
-        let doubleEncrypted = try secureEnclave.encrypt(data: encryptedSeed, using: seKey)
+        let doubleEncrypted = try secureEnclave.encrypt(data: packed, using: seKey)
 
-        // Step 5: Store in Keychain with biometric protection
+        // Step 4: Store in Keychain with biometric protection
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 6: Derive addresses for all chains
-        let derivedAddresses = try deriveAddresses(seed: seed)
+        // Step 5: Cache session password
+        sessionPassword = password
+
+        // Step 6: Derive addresses from mnemonic (not raw seed)
+        let derivedAddresses = try deriveAddresses(mnemonic: mnemonicString)
         self.addresses = derivedAddresses
 
         // Step 7: Create and save wallet metadata
@@ -108,36 +164,32 @@ final class WalletService: ObservableObject {
     ///   - mnemonic: Space-separated mnemonic phrase (12 or 24 words)
     ///   - password: User-chosen password for seed encryption
     func importWallet(mnemonic: String, password: String) async throws {
-        // TODO: Integrate Rust FFI
-        // Expected Rust function signatures:
-        //   fn validate_mnemonic(mnemonic: &str) -> Result<bool, WalletError>
-        //   fn mnemonic_to_seed(mnemonic: &str) -> Result<Vec<u8>, WalletError>
-        //   fn encrypt_seed(seed: &[u8], password: &str) -> Result<EncryptedData, WalletError>
-
         // Step 1: Validate mnemonic via Rust
-        // let isValid = try wallet_core.validate_mnemonic(mnemonic)
-        let words = mnemonic.split(separator: " ")
-        guard words.count == 12 || words.count == 24 else {
+        let isValid = try validateMnemonic(phrase: mnemonic)
+        guard isValid else {
             throw WalletError.invalidMnemonic
         }
 
-        // Step 2: Derive seed
-        // let seed = try wallet_core.mnemonic_to_seed(mnemonic)
-        let seed = Data(repeating: 0, count: 64) // Placeholder
+        // Step 2: Derive seed and encrypt with password via Rust
+        let seedBytes = try mnemonicToSeed(mnemonicPhrase: mnemonic, passphrase: "")
+        let encrypted = try encryptSeedWithPassword(seed: [UInt8](seedBytes), password: password)
+        let packed = packSaltAndCiphertext(
+            salt: Data(encrypted.salt),
+            ciphertext: Data(encrypted.ciphertext)
+        )
 
-        // Step 3: Encrypt with password via Rust
-        // let encryptedSeed = try wallet_core.encrypt_seed(seed, password)
-        let encryptedSeed = seed // Placeholder
-
-        // Step 4: Double-encrypt with Secure Enclave
+        // Step 3: Double-encrypt with Secure Enclave
         let seKey = try secureEnclave.createKey()
-        let doubleEncrypted = try secureEnclave.encrypt(data: encryptedSeed, using: seKey)
+        let doubleEncrypted = try secureEnclave.encrypt(data: packed, using: seKey)
 
-        // Step 5: Store in Keychain
+        // Step 4: Store in Keychain
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 6: Derive addresses
-        let derivedAddresses = try deriveAddresses(seed: seed)
+        // Step 5: Cache session password
+        sessionPassword = password
+
+        // Step 6: Derive addresses from mnemonic
+        let derivedAddresses = try deriveAddresses(mnemonic: mnemonic)
         self.addresses = derivedAddresses
 
         // Step 7: Save metadata
@@ -157,31 +209,39 @@ final class WalletService: ObservableObject {
 
     // MARK: - Address Derivation
 
-    /// Derives addresses for all supported chains from the master seed.
+    /// Derives addresses for all supported chains from a mnemonic phrase.
     ///
-    /// Uses BIP-44 derivation paths:
-    ///   - Ethereum & EVM chains: m/44'/60'/0'/0/0
+    /// Uses BIP-44 derivation paths via Rust FFI:
+    ///   - Ethereum & EVM chains: m/44'/60'/0'/0/0 (shared address)
     ///   - Solana: m/44'/501'/0'/0'
     ///   - Bitcoin: m/84'/0'/0'/0/0 (native segwit)
     ///
-    /// - Parameter seed: The master seed bytes
+    /// - Parameter mnemonic: The BIP-39 mnemonic phrase
     /// - Returns: Dictionary mapping chain IDs to derived addresses
-    func deriveAddresses(seed: Data) throws -> [String: String] {
-        // TODO: Integrate Rust FFI
-        // Expected Rust function signature:
-        //   fn derive_address(seed: &[u8], chain: &str, index: u32) -> Result<String, WalletError>
+    func deriveAddresses(mnemonic: String) throws -> [String: String] {
+        // Call Rust to derive BTC, ETH, SOL addresses in one shot
+        let rustAddresses = try deriveAllAddressesFromMnemonic(
+            mnemonicPhrase: mnemonic,
+            passphrase: "",
+            account: 0
+        )
 
         var addresses: [String: String] = [:]
 
-        for chain in ChainModel.defaults {
-            // let address = try wallet_core.derive_address(seed, chain.id, 0)
-            switch chain.chainType {
-            case .evm:
-                addresses[chain.id] = "0x0000000000000000000000000000000000000000" // Placeholder
+        // Map Rust Chain enum results to our ChainModel IDs
+        for derived in rustAddresses {
+            switch derived.chain {
+            case .ethereum:
+                // EVM chains all share the ETH address
+                for chain in ChainModel.defaults where chain.chainType == .evm {
+                    addresses[chain.id] = derived.address
+                }
             case .solana:
-                addresses[chain.id] = "11111111111111111111111111111111" // Placeholder
+                addresses["solana"] = derived.address
             case .bitcoin:
-                addresses[chain.id] = "bc1q000000000000000000000000000000000000000" // Placeholder
+                addresses["bitcoin"] = derived.address
+            default:
+                break
             }
         }
 
@@ -190,22 +250,26 @@ final class WalletService: ObservableObject {
 
     // MARK: - Transaction Signing
 
-    /// Signs a transaction for a given chain.
+    /// Signs a transaction using the stored encrypted seed.
     ///
     /// Flow:
     ///   1. Authenticate with biometrics
     ///   2. Load doubly-encrypted seed from Keychain
     ///   3. Decrypt outer layer with Secure Enclave (requires biometric)
-    ///   4. Decrypt inner layer with password via Rust
-    ///   5. Sign transaction with Rust core
-    ///   6. Zeroize seed material immediately after signing
+    ///   4. Unpack salt + ciphertext from combined data
+    ///   5. Decrypt inner layer with password via Rust
+    ///   6. Sign transaction with Rust core
+    ///   7. Zeroize seed material immediately after signing
     ///
-    /// - Parameters:
-    ///   - chain: The chain ID to sign for
-    ///   - txData: Raw transaction data to sign
+    /// - Parameter request: Typed transaction request (ETH or SOL)
     /// - Returns: Signed transaction bytes
-    func signTransaction(chain: String, txData: Data) async throws -> Data {
-        // Step 1: Biometric authentication
+    func signTransaction(request: TransactionRequest) async throws -> Data {
+        // Step 1: Ensure we have the session password
+        guard let password = sessionPassword else {
+            throw WalletError.passwordRequired
+        }
+
+        // Step 2: Biometric authentication
         let authenticated = try await biometric.authenticate(
             reason: "Authenticate to sign transaction"
         )
@@ -213,29 +277,57 @@ final class WalletService: ObservableObject {
             throw WalletError.authenticationFailed
         }
 
-        // Step 2: Load encrypted seed from Keychain
+        // Step 3: Load encrypted seed from Keychain
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
             throw WalletError.seedNotFound
         }
 
-        // Step 3: Decrypt with Secure Enclave
-        let encryptedSeed = try secureEnclave.decrypt(data: doubleEncrypted)
+        // Step 4: Decrypt with Secure Enclave
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
 
-        // Step 4: Decrypt with password via Rust
-        // TODO: Integrate Rust FFI
-        // let seed = try wallet_core.decrypt_seed(encryptedSeed, password)
-        let seed = encryptedSeed // Placeholder
+        // Step 5: Unpack salt + ciphertext and decrypt with password via Rust
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+        var seedBytes = try decryptSeedWithPassword(
+            ciphertext: [UInt8](ciphertext),
+            salt: [UInt8](salt),
+            password: password
+        )
 
-        // Step 5: Sign transaction via Rust
-        // TODO: Integrate Rust FFI
-        // Expected Rust function signature:
-        //   fn sign_transaction(seed: &[u8], chain: &str, tx_data: &[u8]) -> Result<Vec<u8>, WalletError>
-        // let signedTx = try wallet_core.sign_transaction(seed, chain, txData)
-        let signedTx = Data() // Placeholder
+        // Step 6: Sign transaction via Rust (seed is zeroized in Rust after signing)
+        defer {
+            // Also zeroize the Swift-side copy
+            for i in seedBytes.indices { seedBytes[i] = 0 }
+        }
 
-        // Step 6: Zeroize seed material
-        // Rust side handles zeroization via zeroize crate
-        // Swift side: seed variable goes out of scope
+        let signedTx: Data
+        switch request {
+        case .eth(let ethReq):
+            let result = try signEthTransaction(
+                seed: seedBytes,
+                passphrase: "",
+                account: 0,
+                index: 0,
+                chainId: ethReq.chainId,
+                nonce: ethReq.nonce,
+                toAddress: ethReq.to,
+                valueWeiHex: ethReq.valueWeiHex,
+                data: [UInt8](ethReq.data),
+                maxPriorityFeeHex: ethReq.maxPriorityFeeHex,
+                maxFeeHex: ethReq.maxFeeHex,
+                gasLimit: ethReq.gasLimit
+            )
+            signedTx = Data(result)
+
+        case .sol(let solReq):
+            let result = try signSolTransfer(
+                seed: seedBytes,
+                account: 0,
+                toAddress: solReq.to,
+                lamports: solReq.lamports,
+                recentBlockhash: [UInt8](solReq.recentBlockhash)
+            )
+            signedTx = Data(result)
+        }
 
         return signedTx
     }
@@ -276,6 +368,7 @@ final class WalletService: ObservableObject {
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
 
+        sessionPassword = nil
         currentWallet = nil
         addresses = [:]
         tokens = []
@@ -311,6 +404,7 @@ enum WalletError: LocalizedError {
     case authenticationFailed
     case keyDerivationFailed
     case signingFailed
+    case passwordRequired
     case networkError(String)
     case rustFFIError(String)
 
@@ -330,6 +424,8 @@ enum WalletError: LocalizedError {
             return "Failed to derive keys from seed."
         case .signingFailed:
             return "Failed to sign the transaction."
+        case .passwordRequired:
+            return "Password required. Please re-enter your password."
         case .networkError(let message):
             return "Network error: \(message)"
         case .rustFFIError(let message):

@@ -59,7 +59,12 @@ final class WalletConnectService: ObservableObject {
     func pair(uri: String) async throws {
         // TODO: Phase 5 - Integrate Reown SDK
         // try await Pair.instance.pair(uri: WalletConnectURI(string: uri)!)
-        print("[WalletConnect] Pairing with URI: \(uri)")
+        let redactedUri = uri.replacingOccurrences(
+            of: "symKey=[^&]+",
+            with: "symKey=REDACTED",
+            options: .regularExpression
+        )
+        print("[WalletConnect] Pairing with URI: \(redactedUri)")
     }
 
     // MARK: - Session Management

@@ -9,7 +9,7 @@ import Security
 ///   - Uses kSecClassGenericPassword for all items
 final class KeychainService {
 
-    private let serviceName = "com.cryptowallet.keychain"
+    private let serviceName = "com.anvilwallet.keychain"
 
     enum KeychainError: LocalizedError {
         case duplicateItem

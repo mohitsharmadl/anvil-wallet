@@ -128,10 +128,79 @@ open ios/AnvilWallet.xcodeproj
 
 ## Current Status
 
-Phase 1 complete:
+Phase 1 complete + security hardening pass:
 - All 5 Rust crates implemented and tested (241 tests passing)
-- iOS project skeleton with all views, services, security modules
+- iOS app wired to real Rust FFI (create, import, derive, sign)
+- EVM + Solana transaction signing fully wired (BTC planned — needs UTXO mgmt)
+- Security modules hardened (see Codex review below)
 - Build scripts for XCFramework generation
 - Documentation
 
-Next: Phase 2 (Bitcoin testnet), Phase 3 (Ethereum), Phase 4 (Solana), Phase 5 (WalletConnect), Phase 6 (Security hardening), Phase 7 (App Store).
+Next: Phase 2 (Bitcoin UTXO signing), Phase 5 (WalletConnect), Phase 7 (App Store).
+
+---
+
+## Codex Security Review — Feb 2026
+
+A comprehensive security review (Codex) identified 10 issues in the iOS app. Here's what was found, what was fixed, and what was deferred.
+
+### Finding 1: All Rust FFI calls were placeholders
+**Severity:** Critical
+**What:** `WalletService.swift` used hardcoded "abandon abandon..." mnemonic, zero-byte seeds, and fake tx hashes. Nothing was actually calling the Rust core.
+**Fix:** Rewrote `createWallet()`, `importWallet()`, `deriveAddresses()`, and `signTransaction()` to call real UniFFI-exported functions (`generateMnemonic()`, `mnemonicToSeed()`, `encryptSeedWithPassword()`, `deriveAllAddressesFromMnemonic()`, `signEthTransaction()`, `signSolTransfer()`). Added `TransactionRequest` enum for typed signing.
+**Lesson:** Build FFI integration tests early. A working UI with zero backend is dangerous because it *looks* done.
+
+### Finding 2: Seed not zeroized in Rust signing functions
+**Severity:** High
+**What:** `sign_eth_transaction()` and `sign_sol_transfer()` in `lib.rs` accepted `seed: Vec<u8>` but never zeroized it. The seed could linger in memory after signing.
+**Fix:** Added `mut` to seed parameters, added `seed.zeroize()` before `Ok(...)` return in both functions. Also added zeroization to `encrypt_seed_with_password()`.
+**Lesson:** Rust's `zeroize` crate is great, but you have to actually call it on function parameters that aren't wrapped in `ZeroizeOnDrop` structs.
+
+### Finding 3: No session password management
+**Severity:** High
+**What:** The signing flow needed a password to decrypt the seed, but there was no mechanism to cache or prompt for it.
+**Fix:** Added `sessionPassword` in-memory cache to `WalletService`. Password is set during create/import and cleared when the app enters background (via `scenePhase` observer in `AnvilWalletApp`). Added `WalletError.passwordRequired` case.
+**Design decision:** Cache in memory rather than prompt every transaction — better UX while still clearing on background.
+
+### Finding 4: Transaction signing used fake hashes
+**Severity:** Critical
+**What:** `ConfirmTransactionView.signAndSend()` just slept 2 seconds and returned `UUID().uuidString` as the transaction hash.
+**Fix:** Wired to real flow: fetch nonce + gas → build `TransactionRequest` → `walletService.signTransaction()` → `RPCService.shared.sendRawTransaction()`. Removed hardcoded $3,500 ETH price.
+
+### Finding 5: No BIP-39 word validation in import flow
+**Severity:** Medium
+**What:** `ImportWalletView` only checked word count (12 or 24), not whether words were valid BIP-39 words or whether the checksum was correct.
+**Fix:** Added real-time per-word validation via `isValidBip39Word()` (highlights invalid words), plus full `validateMnemonic()` call before proceeding. Also clears clipboard after pasting mnemonic.
+
+### Finding 6: Password policy too weak
+**Severity:** Medium
+**What:** `PasswordStrength.fair` passed `meetsMinimum`, meaning a password with just 2 of 5 criteria could proceed.
+**Fix:** Changed `meetsMinimum` to require `.strong` or `.veryStrong`. Scoring now requires ALL four criteria (length>=8, uppercase, digit, special char) for `.strong`. Length>=12 + all four criteria = `.veryStrong`.
+
+### Finding 7: WalletConnect URI logged with full symKey
+**Severity:** Medium
+**What:** `pair(uri:)` printed the full URI including the symmetric key.
+**Fix:** Regex replacement of `symKey=[^&]+` → `symKey=REDACTED` before logging.
+
+### Finding 8: Certificate pinning was a comment/TODO
+**Severity:** High
+**What:** `RPCService` had `// TODO: Phase 3 - Configure TrustKit certificate pinning delegate` and used a plain `URLSession`.
+**Fix:** Created `CertificatePinner.swift` — a native `URLSessionDelegate` that validates server certificates against pinned SHA-256 public key hashes. Wired it to `RPCService`'s session. Pin hashes left empty for now (need real certs at build time) — hosts without pins fall through to default OS validation.
+**Deferred:** TrustKit integration (adds a dependency). Native pinning is sufficient for now.
+
+### Finding 9: App integrity checker was a stub
+**Severity:** Medium
+**What:** `checkExecutableIntegrity()` just checked if the file was readable. `checkBundleSignature()` used `"com.cryptowallet"` prefix.
+**Fix:** Implemented real SHA-256 hash comparison via CryptoKit (skipped in DEBUG builds). Fixed bundle ID to `"com.anvilwallet"`. Added `exit(0)` in Release builds when integrity check fails.
+**Deferred:** Build-time hash injection script (needs Xcode build phase setup).
+
+### Finding 10: Bundle ID still "com.cryptowallet" everywhere
+**Severity:** Low
+**What:** 7 occurrences of `"com.cryptowallet"` across WalletService, KeychainService, SecureEnclaveService, AppIntegrityChecker, SecurityBootstrap.
+**Fix:** Global rename to `"com.anvilwallet"`. Verified zero remaining occurrences.
+
+### What Was Deferred
+- **BTC transaction signing** — needs UTXO management (fetching, selecting, change addresses). Out of scope for this review.
+- **Build-time hash injection** — `AppIntegrityChecker` has the comparison code but needs an Xcode build phase script to compute and inject the expected hash.
+- **Real certificate pin hashes** — `CertificatePinner` is wired up but pin dictionaries are empty. Need to extract SPKI hashes from production RPC endpoint certificates.
+- **TrustKit** — native pinning covers the same attack surface. TrustKit adds reporting capabilities if needed later.

@@ -99,10 +99,11 @@ final class RPCService {
         config.timeoutIntervalForResource = requestTimeout * 2
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
 
-        // TODO: Phase 3 - Configure TrustKit certificate pinning delegate
-        // let pinningDelegate = TrustKitPinningDelegate()
-        // session = URLSession(configuration: config, delegate: pinningDelegate, delegateQueue: nil)
-        session = URLSession(configuration: config)
+        session = URLSession(
+            configuration: config,
+            delegate: CertificatePinner(),
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Generic RPC Call
@@ -242,7 +243,72 @@ final class RPCService {
         return result["value"] ?? 0
     }
 
+    /// Gets a recent blockhash from Solana for transaction signing.
+    /// Returns 32 bytes of the blockhash decoded from base58.
+    func getRecentBlockhash(rpcUrl: String) async throws -> Data {
+        struct BlockhashResult: Decodable {
+            struct Value: Decodable {
+                let blockhash: String
+            }
+            let value: Value
+        }
+
+        let result: BlockhashResult = try await call(
+            url: rpcUrl,
+            method: "getLatestBlockhash",
+            params: []
+        )
+
+        // Decode base58 blockhash to 32 bytes
+        guard let hashData = Base58.decode(result.value.blockhash),
+              hashData.count == 32 else {
+            throw RPCServiceError.decodingError("Invalid blockhash from Solana RPC")
+        }
+        return hashData
+    }
+
+    /// Sends a signed Solana transaction. Returns the transaction signature.
+    func sendSolanaTransaction(rpcUrl: String, signedTx: String) async throws -> String {
+        try await call(
+            url: rpcUrl,
+            method: "sendTransaction",
+            params: [
+                .string(signedTx),
+                .dictionary(["encoding": .string("base64")])
+            ]
+        )
+    }
+
     // MARK: - Bitcoin-specific Methods (REST API)
+
+    // MARK: - Base58 Decoder (for Solana blockhash)
+
+    private enum Base58 {
+        private static let alphabet = Array("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+
+        static func decode(_ string: String) -> Data? {
+            var result: [UInt8] = [0]
+            for char in string {
+                guard let charIndex = alphabet.firstIndex(of: char) else { return nil }
+                var carry = Int(charIndex - alphabet.startIndex)
+                for j in stride(from: result.count - 1, through: 0, by: -1) {
+                    carry += 58 * Int(result[j])
+                    result[j] = UInt8(carry % 256)
+                    carry /= 256
+                }
+                while carry > 0 {
+                    result.insert(UInt8(carry % 256), at: 0)
+                    carry /= 256
+                }
+            }
+            // Add leading zeros
+            let leadingZeros = string.prefix(while: { $0 == "1" }).count
+            let zeros = [UInt8](repeating: 0, count: leadingZeros)
+            // Remove leading zero from bignum result
+            let stripped = result.drop(while: { $0 == 0 })
+            return Data(zeros + stripped)
+        }
+    }
 
     /// Gets Bitcoin address info via Blockstream/Mempool REST API.
     func getBitcoinBalance(apiUrl: String, address: String) async throws -> Int {

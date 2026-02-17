@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import MachO
 
 /// AppIntegrityChecker verifies that the app binary has not been tampered with.
@@ -10,7 +11,7 @@ import MachO
 ///
 /// Checks:
 ///   1. MH_PIE flag -- verifies Position Independent Executable (should be set on iOS)
-///   2. Executable hash verification (placeholder -- actual hash is set at build time)
+///   2. Executable hash verification (SHA-256, compared to build-time constant)
 ///   3. Embedded mobile provision check (App Store vs. sideloaded)
 enum AppIntegrityChecker {
 
@@ -18,6 +19,11 @@ enum AppIntegrityChecker {
         let isPassed: Bool
         let failedChecks: [String]
     }
+
+    // TODO: Replace with actual SHA-256 hash of the executable at build time.
+    // Generate with: shasum -a 256 path/to/AnvilWallet | awk '{print $1}'
+    // Then inject via a build phase script that writes to a generated Swift file.
+    private static let expectedExecutableHash = ""
 
     /// Runs all integrity checks.
     static func check() -> IntegrityResult {
@@ -64,27 +70,29 @@ enum AppIntegrityChecker {
 
     // MARK: - Executable Hash
 
-    /// Verifies the executable hash matches the expected value.
+    /// Verifies the executable hash matches the expected build-time value.
     ///
-    /// In production, the expected hash would be computed at build time and
-    /// embedded as a constant. At runtime, we recompute the hash and compare.
+    /// In DEBUG builds, this check is skipped (always passes) since the binary
+    /// changes on every rebuild. In Release builds, the SHA-256 of the main
+    /// executable is compared against `expectedExecutableHash`.
     private static func checkExecutableIntegrity() -> Bool {
-        // TODO: Implement executable hash verification
-        // At build time:
-        //   1. Compute SHA-256 of the main executable
-        //   2. Embed the hash as a compile-time constant
-        // At runtime:
-        //   1. Read the main executable from disk
-        //   2. Compute its SHA-256 hash
-        //   3. Compare with the embedded expected hash
-        //
-        // Placeholder -- always returns true until build-time hash is configured
-        guard let executablePath = Bundle.main.executablePath else {
+        #if DEBUG
+        return true
+        #else
+        guard !expectedExecutableHash.isEmpty else {
+            // No hash configured yet — pass until build-time injection is set up
+            return true
+        }
+
+        guard let executablePath = Bundle.main.executablePath,
+              let executableData = FileManager.default.contents(atPath: executablePath) else {
             return false
         }
 
-        // Verify the executable file exists and is readable
-        return FileManager.default.isReadableFile(atPath: executablePath)
+        let hash = SHA256.hash(data: executableData)
+        let hashHex = hash.compactMap { String(format: "%02x", $0) }.joined()
+        return hashHex == expectedExecutableHash
+        #endif
     }
 
     // MARK: - Environment Variables
@@ -122,8 +130,7 @@ enum AppIntegrityChecker {
         }
 
         // Verify bundle identifier starts with our expected prefix
-        // TODO: Update with actual bundle identifier
-        let expectedPrefix = "com.cryptowallet"
+        let expectedPrefix = "com.anvilwallet"
         guard bundleId.hasPrefix(expectedPrefix) else {
             return false
         }

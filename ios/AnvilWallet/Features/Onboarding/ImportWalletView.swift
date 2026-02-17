@@ -3,6 +3,7 @@ import SwiftUI
 /// ImportWalletView allows users to restore a wallet from an existing mnemonic phrase.
 ///
 /// Accepts 12-word or 24-word mnemonic phrases, then proceeds to SetPasswordView.
+/// Each word is validated against the BIP-39 word list via Rust FFI in real time.
 struct ImportWalletView: View {
     @EnvironmentObject var router: AppRouter
     @EnvironmentObject var walletService: WalletService
@@ -10,6 +11,8 @@ struct ImportWalletView: View {
     @State private var mnemonicInput = ""
     @State private var errorMessage: String?
     @State private var wordCount = 0
+    @State private var invalidWords: [String] = []
+    @State private var isValidating = false
 
     private var isValidWordCount: Bool {
         wordCount == 12 || wordCount == 24
@@ -54,12 +57,18 @@ struct ImportWalletView: View {
                                 .stroke(Color.border, lineWidth: 1)
                         )
                         .onChange(of: mnemonicInput) { _, newValue in
-                            wordCount = newValue
+                            let words = newValue
                                 .trimmingCharacters(in: .whitespacesAndNewlines)
+                                .lowercased()
                                 .split(separator: " ")
                                 .filter { !$0.isEmpty }
-                                .count
+                                .map(String.init)
+
+                            wordCount = words.count
                             errorMessage = nil
+
+                            // Validate each word against BIP-39 word list
+                            invalidWords = words.filter { !isValidBip39Word(word: $0) }
                         }
 
                     HStack {
@@ -69,9 +78,20 @@ struct ImportWalletView: View {
 
                         Spacer()
 
+                        if !invalidWords.isEmpty {
+                            Text("Invalid: \(invalidWords.joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundColor(.error)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
                         Button("Paste") {
                             if let clipboard = UIPasteboard.general.string {
                                 mnemonicInput = clipboard
+                                // Clear clipboard after pasting sensitive mnemonic
+                                ClipboardManager.shared.clearClipboard()
                             }
                         }
                         .font(.caption.bold())
@@ -104,25 +124,19 @@ struct ImportWalletView: View {
 
                 // Continue button
                 Button {
-                    let trimmed = mnemonicInput
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .lowercased()
-                    let words = trimmed.split(separator: " ").map(String.init)
-
-                    guard words.count == 12 || words.count == 24 else {
-                        errorMessage = "Please enter exactly 12 or 24 words."
-                        return
+                    Task {
+                        await validateAndProceed()
                     }
-
-                    let mnemonic = words.joined(separator: " ")
-                    router.onboardingPath.append(
-                        AppRouter.OnboardingDestination.setPassword(mnemonic: mnemonic)
-                    )
                 } label: {
-                    Text("Continue")
+                    if isValidating {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Continue")
+                    }
                 }
-                .buttonStyle(PrimaryButtonStyle(isEnabled: isValidWordCount))
-                .disabled(!isValidWordCount)
+                .buttonStyle(PrimaryButtonStyle(isEnabled: isValidWordCount && invalidWords.isEmpty))
+                .disabled(!isValidWordCount || !invalidWords.isEmpty || isValidating)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
@@ -132,6 +146,48 @@ struct ImportWalletView: View {
         .navigationBarTitleDisplayMode(.inline)
         .hideKeyboard()
         .screenshotProtected()
+    }
+
+    // MARK: - Validation
+
+    private func validateAndProceed() async {
+        isValidating = true
+        errorMessage = nil
+
+        let trimmed = mnemonicInput
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let words = trimmed.split(separator: " ").map(String.init)
+
+        guard words.count == 12 || words.count == 24 else {
+            errorMessage = "Please enter exactly 12 or 24 words."
+            isValidating = false
+            return
+        }
+
+        let mnemonic = words.joined(separator: " ")
+
+        do {
+            // Full mnemonic validation via Rust (checksum + word list)
+            let isValid = try validateMnemonic(phrase: mnemonic)
+            guard isValid else {
+                errorMessage = "Invalid mnemonic. Please check your words and checksum."
+                isValidating = false
+                return
+            }
+
+            await MainActor.run {
+                isValidating = false
+                router.onboardingPath.append(
+                    AppRouter.OnboardingDestination.setPassword(mnemonic: mnemonic)
+                )
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = "Validation failed: \(error.localizedDescription)"
+                isValidating = false
+            }
+        }
     }
 }
 

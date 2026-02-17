@@ -52,8 +52,10 @@
 - Uses UIPasteboard.general with scheduled clearing
 
 ### Layer 10: Certificate Pinning
-- TrustKit for all RPC endpoint connections
+- Native `URLSessionDelegate` pinning for all RPC endpoint connections
 - Pins SHA-256 of certificate public keys
+- Pin hashes configured at build time per hostname
+- TrustKit planned for future if more advanced features are needed (e.g., reporting)
 - Prevents MITM attacks on blockchain RPC calls
 
 ### Layer 11: Memory Zeroization
@@ -69,7 +71,9 @@
 
 ### Layer 13: App Binary Integrity
 - Mach-O header verification (MH_PIE flag)
-- Executable hash validation
+- Executable SHA-256 hash validation (CryptoKit)
+- Hash comparison requires a build-time script to inject the expected hash constant
+- DEBUG builds skip hash check to avoid false positives during development
 - Detects runtime code modification
 
 ### Layer 14: Transaction Simulation
@@ -117,10 +121,10 @@ Both the password-derived AES key AND the Secure Enclave key must be compromised
 |--------|-----------|
 | Device theft | Biometric + password + device encryption |
 | Jailbreak | 6-layer detection, exit on detection |
-| MITM on RPC | Certificate pinning via TrustKit |
+| MITM on RPC | Native certificate pinning via URLSession delegate |
 | Memory dump | Zeroize all sensitive data on drop |
 | Screenshot/recording | Anti-screenshot overlay + blur |
 | Debugger attachment | ptrace + sysctl checks |
 | Clipboard sniffing | Auto-clear after 2 minutes |
-| Supply chain | Zero third-party SDKs (except TrustKit + Reown) |
+| Supply chain | Zero third-party SDKs (except Reown SDK for WalletConnect) |
 | iCloud backup | Keychain data not synced, not included in backups |

@@ -16,7 +16,7 @@ import LocalAuthentication
 /// On the simulator (no SE hardware), it falls back to software CryptoKit P-256 keys.
 final class SecureEnclaveService {
 
-    private let keyTag = "com.cryptowallet.secureenclave.key"
+    private let keyTag = "com.anvilwallet.secureenclave.key"
 
     enum SecureEnclaveError: LocalizedError {
         case keyCreationFailed(String)

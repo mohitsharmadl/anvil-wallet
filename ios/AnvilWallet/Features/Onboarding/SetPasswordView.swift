@@ -208,8 +208,8 @@ enum PasswordStrength {
 
     var meetsMinimum: Bool {
         switch self {
-        case .empty, .weak: return false
-        case .fair, .strong, .veryStrong: return true
+        case .empty, .weak, .fair: return false
+        case .strong, .veryStrong: return true
         }
     }
 
@@ -246,18 +246,20 @@ enum PasswordStrength {
     static func evaluate(_ password: String) -> PasswordStrength {
         guard !password.isEmpty else { return .empty }
 
-        var score = 0
-        if password.count >= 8 { score += 1 }
-        if password.count >= 12 { score += 1 }
-        if password.range(of: "[A-Z]", options: .regularExpression) != nil { score += 1 }
-        if password.range(of: "[0-9]", options: .regularExpression) != nil { score += 1 }
-        if password.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil { score += 1 }
+        // All four criteria must be met for minimum acceptance
+        let hasLength = password.count >= 8
+        let hasUppercase = password.range(of: "[A-Z]", options: .regularExpression) != nil
+        let hasDigit = password.range(of: "[0-9]", options: .regularExpression) != nil
+        let hasSpecial = password.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil
 
-        switch score {
+        let criteriaCount = [hasLength, hasUppercase, hasDigit, hasSpecial].filter { $0 }.count
+
+        switch criteriaCount {
         case 0...1: return .weak
-        case 2: return .fair
-        case 3...4: return .strong
-        default: return .veryStrong
+        case 2...3: return .fair
+        case 4 where password.count >= 12: return .veryStrong
+        case 4: return .strong
+        default: return .weak
         }
     }
 }

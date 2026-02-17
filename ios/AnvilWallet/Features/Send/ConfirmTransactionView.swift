@@ -15,11 +15,34 @@ struct ConfirmTransactionView: View {
 
     let transaction: TransactionModel
 
-    @State private var estimatedFee: Double = 0.002
-    @State private var estimatedFeeUsd: Double = 7.00
+    @State private var estimatedFee: Double = 0
+    @State private var estimatedFeeUsd: Double = 0
     @State private var isSimulating = true
     @State private var simulationError: String?
     @State private var isSigning = false
+
+    // Fetched gas params for EVM signing
+    @State private var fetchedNonce: UInt64 = 0
+    @State private var fetchedGasLimit: UInt64 = 21000
+    @State private var fetchedMaxFeeHex: String = "0x0"
+    @State private var fetchedMaxPriorityFeeHex: String = "0x0"
+
+    /// Maps chain model IDs to EIP-155 chain IDs
+    private func evmChainId(for chainId: String) -> UInt64 {
+        switch chainId {
+        case "ethereum": return 1
+        case "polygon": return 137
+        case "arbitrum": return 42161
+        case "base": return 8453
+        case "sepolia": return 11155111
+        default: return 1
+        }
+    }
+
+    /// Finds the ChainModel for the transaction's chain string
+    private var chainModel: ChainModel? {
+        ChainModel.allChains.first { $0.id == transaction.chain }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,10 +114,6 @@ struct ConfirmTransactionView: View {
                                 Text(String(format: "%.4f %@", transaction.amount + estimatedFee, transaction.tokenSymbol))
                                     .font(.headline.monospacedDigit())
                                     .foregroundColor(.textPrimary)
-
-                                Text(String(format: "~$%.2f", (transaction.amount * 3500) + estimatedFeeUsd))
-                                    .font(.caption)
-                                    .foregroundColor(.textSecondary)
                             }
                         }
                         .padding()
@@ -157,30 +176,120 @@ struct ConfirmTransactionView: View {
 
     private func simulateTransaction() async {
         isSimulating = true
-        // TODO: Integrate TransactionSimulator
-        // let simulator = TransactionSimulator()
-        // let result = try await simulator.simulate(...)
-        try? await Task.sleep(nanoseconds: 1_000_000_000) // Simulate delay
-        isSimulating = false
+
+        guard let chain = chainModel else {
+            simulationError = "Unknown chain"
+            isSimulating = false
+            return
+        }
+
+        do {
+            switch chain.chainType {
+            case .evm:
+                // Fetch nonce, gas price, and estimate gas
+                let nonceHex: String = try await RPCService.shared.getTransactionCount(
+                    rpcUrl: chain.rpcUrl,
+                    address: transaction.from
+                )
+                fetchedNonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
+
+                let gasPriceHex: String = try await RPCService.shared.gasPrice(rpcUrl: chain.rpcUrl)
+                fetchedMaxFeeHex = gasPriceHex
+                // Use 1.5 gwei priority fee as default
+                fetchedMaxPriorityFeeHex = "0x59682f00"
+
+                let gasEstimateHex: String = try await RPCService.shared.estimateGas(
+                    rpcUrl: chain.rpcUrl,
+                    from: transaction.from,
+                    to: transaction.to,
+                    value: "0x" + String(UInt64(transaction.amount * 1e18), radix: 16),
+                    data: nil
+                )
+                fetchedGasLimit = UInt64(gasEstimateHex.dropFirst(2), radix: 16) ?? 21000
+
+                // Calculate fee in native token
+                let gasPrice = Double(UInt64(gasPriceHex.dropFirst(2), radix: 16) ?? 0)
+                estimatedFee = (gasPrice * Double(fetchedGasLimit)) / 1e18
+
+            case .solana:
+                // Solana fees are fixed (~5000 lamports)
+                estimatedFee = 0.000005
+
+            case .bitcoin:
+                // BTC signing not yet supported
+                simulationError = "Bitcoin signing is not yet supported"
+                isSimulating = false
+                return
+            }
+
+            isSimulating = false
+        } catch {
+            simulationError = error.localizedDescription
+            isSimulating = false
+        }
     }
 
     private func signAndSend() async {
         isSigning = true
 
+        guard let chain = chainModel else {
+            simulationError = "Unknown chain"
+            isSigning = false
+            return
+        }
+
         do {
-            // TODO: Integrate Rust FFI for transaction signing
-            // 1. Build raw transaction
-            // 2. walletService.signTransaction(chain:txData:)
-            // 3. RPCService.shared.sendRawTransaction(...)
+            let signedTx: Data
+            let txHash: String
 
-            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate signing
+            switch chain.chainType {
+            case .evm:
+                let chainId = evmChainId(for: chain.id)
+                let valueWei = UInt64(transaction.amount * 1e18)
+                let valueHex = "0x" + String(valueWei, radix: 16)
 
-            let fakeTxHash = "0x" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+                let ethReq = EthTransactionRequest(
+                    chainId: chainId,
+                    nonce: fetchedNonce,
+                    to: transaction.to,
+                    valueWeiHex: valueHex,
+                    data: Data(),
+                    maxPriorityFeeHex: fetchedMaxPriorityFeeHex,
+                    maxFeeHex: fetchedMaxFeeHex,
+                    gasLimit: fetchedGasLimit
+                )
+
+                signedTx = try await walletService.signTransaction(request: .eth(ethReq))
+                let signedHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
+                txHash = try await RPCService.shared.sendRawTransaction(
+                    rpcUrl: chain.rpcUrl,
+                    signedTx: signedHex
+                )
+
+            case .solana:
+                let lamports = UInt64(transaction.amount * 1e9)
+                let blockhash = try await RPCService.shared.getRecentBlockhash(rpcUrl: chain.rpcUrl)
+
+                let solReq = SolTransactionRequest(
+                    to: transaction.to,
+                    lamports: lamports,
+                    recentBlockhash: blockhash
+                )
+
+                signedTx = try await walletService.signTransaction(request: .sol(solReq))
+                txHash = try await RPCService.shared.sendSolanaTransaction(
+                    rpcUrl: chain.rpcUrl,
+                    signedTx: signedTx.base64EncodedString()
+                )
+
+            case .bitcoin:
+                throw WalletError.signingFailed
+            }
 
             await MainActor.run {
                 isSigning = false
                 router.sendPath.append(
-                    AppRouter.SendDestination.transactionResult(txHash: fakeTxHash, success: true)
+                    AppRouter.SendDestination.transactionResult(txHash: txHash, success: true)
                 )
             }
         } catch {

@@ -4,6 +4,7 @@ import SwiftUI
 struct AnvilWalletApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var walletService = WalletService.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         SecurityBootstrap.performChecks()
@@ -18,6 +19,11 @@ struct AnvilWalletApp: App {
                 .onAppear {
                     router.isOnboarded = walletService.isWalletCreated
                 }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                walletService.clearSessionPassword()
+            }
         }
     }
 }
