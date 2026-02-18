@@ -25,6 +25,25 @@ HOSTS=(
 )
 
 FAILURES=0
+# SHA-256 of empty input — produced when openssl silently fails.
+# Any pin matching this value is invalid and must be rejected.
+EMPTY_HASH="47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+
+# Extracts SPKI pin from a PEM certificate on stdin.
+# Returns empty string if any step fails.
+extract_pin() {
+    local pubkey der_bytes pin
+    pubkey=$(openssl x509 -pubkey -noout 2>/dev/null) || return 1
+    [ -n "$pubkey" ] || return 1
+    der_bytes=$(echo "$pubkey" | openssl pkey -pubin -outform der 2>/dev/null) || return 1
+    [ -n "$der_bytes" ] || return 1
+    pin=$(echo "$der_bytes" | openssl dgst -sha256 -binary 2>/dev/null | base64 2>/dev/null)
+    # Reject the empty-input hash sentinel
+    if [ -z "$pin" ] || [ "$pin" = "$EMPTY_HASH" ]; then
+        return 1
+    fi
+    echo "$pin"
+}
 
 echo "=== SPKI Pin Hashes for Anvil Wallet RPC Hosts ==="
 echo ""
@@ -35,25 +54,24 @@ for host in "${HOSTS[@]}"; do
     # Fetch full certificate chain
     CHAIN=$(openssl s_client -connect "$host:443" -servername "$host" -showcerts </dev/null 2>/dev/null)
 
+    # Verify we got at least one certificate
+    if ! echo "$CHAIN" | grep -q 'BEGIN CERTIFICATE'; then
+        echo "  ERROR: No certificates received (host unreachable or TLS failure)"
+        FAILURES=$((FAILURES + 1))
+        echo ""
+        continue
+    fi
+
     # Leaf certificate pin (cert #1)
-    leaf_pin=$(echo "$CHAIN" | \
-        openssl x509 -pubkey -noout 2>/dev/null | \
-        openssl pkey -pubin -outform der 2>/dev/null | \
-        openssl dgst -sha256 -binary 2>/dev/null | \
-        base64 2>/dev/null)
+    leaf_pin=$(echo "$CHAIN" | extract_pin)
 
     # Intermediate CA pin (cert #2 in the chain)
-    intermediate_pin=$(echo "$CHAIN" | \
-        awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n==2' | \
-        openssl x509 -pubkey -noout 2>/dev/null | \
-        openssl pkey -pubin -outform der 2>/dev/null | \
-        openssl dgst -sha256 -binary 2>/dev/null | \
-        base64 2>/dev/null)
+    intermediate_pin=$(echo "$CHAIN" | awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n==2' | extract_pin)
 
     if [ -n "$leaf_pin" ]; then
         echo "  Leaf pin:         $leaf_pin"
     else
-        echo "  ERROR: Could not extract leaf pin (host may be unreachable)"
+        echo "  ERROR: Could not extract valid leaf pin"
         FAILURES=$((FAILURES + 1))
     fi
 
