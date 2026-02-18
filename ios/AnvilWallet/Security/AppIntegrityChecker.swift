@@ -79,8 +79,9 @@ enum AppIntegrityChecker {
         return true
         #else
         guard !expectedExecutableHash.isEmpty else {
-            // No hash configured yet — pass until build-time injection is set up
-            return true
+            // FAIL CLOSED: If no hash was injected by build script, the binary
+            // integrity check cannot verify anything — treat as failure.
+            return false
         }
 
         guard let executablePath = Bundle.main.executablePath,

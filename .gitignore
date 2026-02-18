@@ -23,8 +23,8 @@ ios/**/xcshareddata/
 *.dSYM.zip
 *.dSYM
 
-# Generated
-ios/CryptoWallet/Generated/
+# Generated (overwritten by inject-binary-hash.sh at build time)
+ios/AnvilWallet/Generated/BinaryHash.swift
 ios/WalletCoreFramework.xcframework/
 
 # IDE

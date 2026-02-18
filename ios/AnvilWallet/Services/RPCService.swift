@@ -124,6 +124,11 @@ final class RPCService {
             throw RPCServiceError.invalidURL
         }
 
+        // Reject non-HTTPS endpoints — all RPC calls must be encrypted
+        guard endpoint.scheme == "https" else {
+            throw RPCServiceError.invalidURL
+        }
+
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -230,6 +235,29 @@ final class RPCService {
         )
     }
 
+    /// Fetches EIP-1559 fee data: base fee from the latest block + priority fee percentiles.
+    /// Returns (baseFeePerGas, suggestedPriorityFee) as hex strings.
+    func feeHistory(rpcUrl: String) async throws -> (baseFeeHex: String, priorityFeeHex: String) {
+        // Request 1 block of history, 50th percentile of priority fees
+        struct FeeHistoryResult: Decodable {
+            let baseFeePerGas: [String]?
+            let reward: [[String]]?
+        }
+
+        let result: FeeHistoryResult = try await call(
+            url: rpcUrl,
+            method: "eth_feeHistory",
+            params: [.string("0x1"), .string("latest"), .array([.int(50)])]
+        )
+
+        // baseFeePerGas has N+1 entries for N blocks; last entry is the pending block's base fee
+        let baseFeeHex = result.baseFeePerGas?.last ?? "0x0"
+        // reward[0][0] is the 50th-percentile priority fee from the sampled block
+        let priorityFeeHex = result.reward?.first?.first ?? "0x59682f00" // fallback: 1.5 gwei
+
+        return (baseFeeHex: baseFeeHex, priorityFeeHex: priorityFeeHex)
+    }
+
     // MARK: - Solana-specific Methods
 
     /// Gets the SOL balance for a Solana address.
@@ -279,14 +307,26 @@ final class RPCService {
         )
     }
 
+    /// Validates a URL string is well-formed and uses HTTPS.
+    private func httpsURL(_ urlString: String) throws -> URL {
+        guard let url = URL(string: urlString), url.scheme == "https" else {
+            throw RPCServiceError.invalidURL
+        }
+        return url
+    }
+
     // MARK: - Bitcoin-specific Methods (REST API)
 
     /// Fetches unspent transaction outputs (UTXOs) for a Bitcoin address.
     /// Uses Blockstream/Mempool REST API.
+    ///
+    /// Populates script_pubkey from the address: for P2WPKH (bc1q/tb1q),
+    /// the script is `OP_0 <20-byte witness program>` derived from bech32.
     func getBitcoinUtxos(apiUrl: String, address: String) async throws -> [UtxoData] {
-        guard let url = URL(string: "\(apiUrl)/address/\(address)/utxo") else {
-            throw RPCServiceError.invalidURL
-        }
+        let url = try httpsURL("\(apiUrl)/address/\(address)/utxo")
+
+        // Derive P2WPKH scriptPubkey from the bech32 address
+        let scriptPubkey = try Self.p2wpkhScriptPubkey(from: address)
 
         let (data, response) = try await session.data(from: url)
 
@@ -308,8 +348,6 @@ final class RPCService {
 
         let utxos = try JSONDecoder().decode([BlockstreamUtxo].self, from: data)
 
-        // Only use confirmed UTXOs; script_pubkey will be set by the caller
-        // (P2WPKH script from the address)
         return utxos
             .filter { $0.status.confirmed }
             .map { utxo in
@@ -317,17 +355,90 @@ final class RPCService {
                     txid: utxo.txid,
                     vout: utxo.vout,
                     amountSat: utxo.value,
-                    scriptPubkey: Data()
+                    scriptPubkey: scriptPubkey
                 )
             }
+    }
+
+    /// Derives P2WPKH scriptPubkey (OP_0 + PUSH20 + 20-byte witness program)
+    /// from a bech32/bech32m address (bc1q... or tb1q...).
+    private static func p2wpkhScriptPubkey(from address: String) throws -> Data {
+        // Bech32 decode: strip HRP (bc1/tb1), decode the witness program
+        guard let witnessProgram = Bech32.decode(address) else {
+            throw RPCServiceError.decodingError("Invalid bech32 address: \(address)")
+        }
+        guard witnessProgram.count == 20 else {
+            throw RPCServiceError.decodingError("Expected 20-byte witness program, got \(witnessProgram.count)")
+        }
+        // P2WPKH scriptPubkey: OP_0 (0x00) + OP_PUSH20 (0x14) + 20 bytes
+        var script = Data([0x00, 0x14])
+        script.append(witnessProgram)
+        return script
+    }
+
+    /// Minimal bech32 decoder — extracts the witness program bytes from a bech32 address.
+    private enum Bech32 {
+        private static let charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+
+        /// Decodes a bech32/bech32m address and returns the witness program bytes.
+        /// Returns nil on invalid input.
+        static func decode(_ addr: String) -> Data? {
+            let lower = addr.lowercased()
+            guard let sepIndex = lower.lastIndex(of: "1") else { return nil }
+            let dataPart = lower[lower.index(after: sepIndex)...]
+            guard dataPart.count >= 7 else { return nil } // 1 witness version + 6 checksum
+
+            // Decode from charset to 5-bit values
+            var values: [UInt8] = []
+            for char in dataPart {
+                guard let idx = charset.firstIndex(of: char) else { return nil }
+                values.append(UInt8(charset.distance(from: charset.startIndex, to: idx)))
+            }
+
+            // Strip checksum (last 6 values) and witness version (first value)
+            guard values.count > 7 else { return nil }
+            let witnessVersion = values[0]
+            let data5bit = Array(values[1..<(values.count - 6)])
+
+            // Convert from 5-bit groups to 8-bit bytes
+            guard witnessVersion == 0, // P2WPKH uses witness version 0
+                  let bytes = convertBits(data: data5bit, fromBits: 5, toBits: 8, pad: false) else {
+                return nil
+            }
+            return Data(bytes)
+        }
+
+        /// Converts between bit groupings (e.g., 5-bit to 8-bit for bech32).
+        private static func convertBits(data: [UInt8], fromBits: Int, toBits: Int, pad: Bool) -> [UInt8]? {
+            var acc = 0
+            var bits = 0
+            var result: [UInt8] = []
+            let maxv = (1 << toBits) - 1
+
+            for value in data {
+                if value < 0 || (value >> fromBits) != 0 { return nil }
+                acc = (acc << fromBits) | Int(value)
+                bits += fromBits
+                while bits >= toBits {
+                    bits -= toBits
+                    result.append(UInt8((acc >> bits) & maxv))
+                }
+            }
+            if pad {
+                if bits > 0 {
+                    result.append(UInt8((acc << (toBits - bits)) & maxv))
+                }
+            } else if bits >= fromBits || ((acc << (toBits - bits)) & maxv) != 0 {
+                return nil
+            }
+            return result
+        }
     }
 
     /// Fetches recommended fee rates from Blockstream/Mempool API.
     /// Returns the recommended fee rate in sat/vbyte for medium-priority confirmation.
     func getBitcoinFeeRate(apiUrl: String) async throws -> UInt64 {
-        guard let url = URL(string: "\(apiUrl)/fee-estimates") else {
-            throw RPCServiceError.invalidURL
-        }
+        let url = try httpsURL("\(apiUrl)/fee-estimates")
 
         let (data, response) = try await session.data(from: url)
 
@@ -347,9 +458,7 @@ final class RPCService {
     /// Broadcasts a signed Bitcoin transaction via Blockstream/Mempool API.
     /// Returns the transaction ID (txid) on success.
     func broadcastBitcoinTransaction(apiUrl: String, txHex: String) async throws -> String {
-        guard let url = URL(string: "\(apiUrl)/tx") else {
-            throw RPCServiceError.invalidURL
-        }
+        let url = try httpsURL("\(apiUrl)/tx")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -403,9 +512,7 @@ final class RPCService {
 
     /// Gets Bitcoin address info via Blockstream/Mempool REST API.
     func getBitcoinBalance(apiUrl: String, address: String) async throws -> Int {
-        guard let url = URL(string: "\(apiUrl)/address/\(address)") else {
-            throw RPCServiceError.invalidURL
-        }
+        let url = try httpsURL("\(apiUrl)/address/\(address)")
 
         let (data, response) = try await session.data(from: url)
 

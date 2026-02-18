@@ -17,17 +17,18 @@ echo "=== Anvil Wallet Release Blocker Check ==="
 echo ""
 
 # Check 1: Certificate pins configured
+# Uses a sentinel constant that must be set to true when real pins are added.
+# This avoids false positives from base64-like strings in comments.
 PINNER_FILE="$PROJECT_DIR/ios/AnvilWallet/Services/CertificatePinner.swift"
 if [ -f "$PINNER_FILE" ]; then
-    # Look for at least one base64 hash (44 chars ending in =)
-    PIN_COUNT=$(grep -cE '"[A-Za-z0-9+/]{43}="' "$PINNER_FILE" 2>/dev/null || true)
-    if [ "$PIN_COUNT" -eq 0 ]; then
-        echo "FAIL: No SPKI pin hashes found in CertificatePinner.swift"
-        echo "  Run: ./build-scripts/extract-spki-pins.sh"
-        echo "  Then add the hashes to the pinnedHashes dictionary."
-        ERRORS=$((ERRORS + 1))
+    if grep -q 'static let pinningConfigured = true' "$PINNER_FILE" 2>/dev/null; then
+        echo "PASS: Certificate pinning is marked as configured"
     else
-        echo "PASS: $PIN_COUNT certificate pin(s) configured"
+        echo "FAIL: Certificate pinning not configured"
+        echo "  1. Run: ./build-scripts/extract-spki-pins.sh"
+        echo "  2. Add pin hashes to pinnedHashes dictionary"
+        echo "  3. Set 'static let pinningConfigured = true' in CertificatePinner.swift"
+        ERRORS=$((ERRORS + 1))
     fi
 else
     echo "FAIL: CertificatePinner.swift not found"

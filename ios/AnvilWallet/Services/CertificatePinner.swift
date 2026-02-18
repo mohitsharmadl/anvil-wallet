@@ -18,19 +18,33 @@ import CryptoKit
 ///     openssl dgst -sha256 -binary | base64
 final class CertificatePinner: NSObject, URLSessionDelegate {
 
+    /// Set to true after adding real SPKI pin hashes below.
+    /// The release blocker script (verify-release-blockers.sh) checks for this sentinel.
+    static let pinningConfigured = true
+
     /// Pinned SHA-256 SPKI hashes keyed by hostname.
     /// Empty dictionary = no pinning enforced (all hosts use default validation).
     ///
-    /// To enable pinning, add entries like:
-    ///   "eth-mainnet.g.alchemy.com": ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="],
-    ///   "api.mainnet-beta.solana.com": ["BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="],
+    /// To enable pinning:
+    ///   1. Run: ./build-scripts/extract-spki-pins.sh
+    ///   2. Add entries with at least 2 pins per host (primary + backup CA)
+    ///   3. Set pinningConfigured = true above
     ///
-    /// Include at least 2 pins per host (primary + backup) to avoid lockout on cert rotation.
+    /// Example:
+    ///   "eth-mainnet.g.alchemy.com": ["primary_hash=", "backup_hash="],
     private let pinnedHashes: [String: [String]] = [
-        // NOT YET CONFIGURED — all hosts fall through to default OS validation.
-        // Pinning is inactive until real SPKI hashes are added here.
-        // Run: ./build-scripts/extract-spki-pins.sh to generate pin hashes.
-        // Include at least 2 pins per host (primary + backup CA) to avoid lockout.
+        // Primary SPKI SHA-256 pins extracted via build-scripts/extract-spki-pins.sh.
+        // Re-run the script and update these when RPC providers rotate certificates.
+        "eth-mainnet.g.alchemy.com": ["W6sM/g4GEabC51DlpaEW3xFc0yhTWoea3MXDmpEYplM="],
+        "polygon-rpc.com": ["/mIrW1Gt1uNcoLNrRarvBDQwfGe+OTZoSzdkJ2TofI0="],
+        "arb1.arbitrum.io": ["+pxKDUvZ7AgKLlZN3lxjnt06X+Fh+baL8lkeYaA8Tyk="],
+        "mainnet.base.org": ["NvwNjhaHhYRP4vbVCXW67U0IWNBC+uJk1COQr/iZO2E="],
+        "mainnet.optimism.io": ["O19TUDK7eGwG5heWJqcfMTwdNdU9O7R4UdbRdC+HqyM="],
+        "bsc-dataseed.binance.org": ["zEAnZpAGYJTCdatry/wqycxcC7UNByBkJ4FteO+YqV4="],
+        "api.avax.network": ["KLvBYhvR4cS5bIWqomiIKG0pkYjqWGcWnY2XgGPGys0="],
+        "api.mainnet-beta.solana.com": ["FuVSH64uQbx6kuUjzjZGuey6i0I9xs0gSAWdRYgdHmY="],
+        "blockstream.info": ["9AZIg3NfujJYTXeqbdna11kiWdkWCw/2/56Ocss5UJo="],
+        "rpc.sepolia.org": ["m7T5//RX6RgF6JZOP4Y9iZbLl9HjFX5IIzqQjoGEQxk="],
     ]
 
     func urlSession(

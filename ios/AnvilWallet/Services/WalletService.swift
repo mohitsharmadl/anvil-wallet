@@ -82,11 +82,14 @@ final class WalletService: ObservableObject {
         sessionPasswordBytes != nil
     }
 
-    /// Clears the cached session password. Zeros all bytes before releasing.
+    /// Clears the cached session password. Zeros all bytes in-place before releasing.
     /// Called when the app enters background.
+    ///
+    /// Note: `if var bytes = ...` would copy due to Swift copy-on-write.
+    /// We must mutate the stored property directly to zero the actual backing storage.
     func clearSessionPassword() {
-        if var bytes = sessionPasswordBytes {
-            for i in bytes.indices { bytes[i] = 0 }
+        if sessionPasswordBytes != nil {
+            for i in sessionPasswordBytes!.indices { sessionPasswordBytes![i] = 0 }
         }
         sessionPasswordBytes = nil
     }
@@ -435,9 +438,9 @@ final class WalletService: ObservableObject {
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
 
-        // Zero password bytes before releasing
-        if var bytes = sessionPasswordBytes {
-            for i in bytes.indices { bytes[i] = 0 }
+        // Zero password bytes in-place before releasing (avoid COW copy)
+        if sessionPasswordBytes != nil {
+            for i in sessionPasswordBytes!.indices { sessionPasswordBytes![i] = 0 }
         }
         sessionPasswordBytes = nil
         currentWallet = nil

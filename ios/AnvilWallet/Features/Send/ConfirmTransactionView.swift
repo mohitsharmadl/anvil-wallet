@@ -294,17 +294,23 @@ struct ConfirmTransactionView: View {
         do {
             switch chain.chainType {
             case .evm:
-                // Fetch nonce, gas price, and estimate gas
+                // Fetch nonce and EIP-1559 fee data
                 let nonceHex: String = try await RPCService.shared.getTransactionCount(
                     rpcUrl: chain.rpcUrl,
                     address: transaction.from
                 )
                 fetchedNonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
 
-                let gasPriceHex: String = try await RPCService.shared.gasPrice(rpcUrl: chain.rpcUrl)
-                fetchedMaxFeeHex = gasPriceHex
-                // Use 1.5 gwei priority fee as default
-                fetchedMaxPriorityFeeHex = "0x59682f00"
+                // Use eth_feeHistory for robust EIP-1559 fee estimation
+                let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.rpcUrl)
+                let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
+                let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
+
+                fetchedMaxPriorityFeeHex = feeData.priorityFeeHex
+
+                // maxFeePerGas = 2 * baseFee + priorityFee (2x multiplier absorbs 1 block of base fee increase)
+                let maxFee = baseFee * 2 + priorityFee
+                fetchedMaxFeeHex = "0x" + String(maxFee, radix: 16)
 
                 // For ERC-20: gas estimation must target the contract with transfer calldata
                 // For native: gas estimation targets the recipient with the value
@@ -337,9 +343,8 @@ struct ConfirmTransactionView: View {
                 )
                 fetchedGasLimit = UInt64(gasEstimateHex.dropFirst(2), radix: 16) ?? 21000
 
-                // Calculate fee in native token
-                let gasPriceVal = Double(UInt64(gasPriceHex.dropFirst(2), radix: 16) ?? 0)
-                let feeWei = gasPriceVal * Double(fetchedGasLimit)
+                // Fee estimate uses maxFee (worst-case), actual cost may be lower
+                let feeWei = Double(maxFee) * Double(fetchedGasLimit)
                 estimatedFee = String(format: "%.18g", feeWei / 1e18)
 
             case .solana:
