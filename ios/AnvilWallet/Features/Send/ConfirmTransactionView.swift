@@ -309,7 +309,14 @@ struct ConfirmTransactionView: View {
                 fetchedMaxPriorityFeeHex = feeData.priorityFeeHex
 
                 // maxFeePerGas = 2 * baseFee + priorityFee (2x multiplier absorbs 1 block of base fee increase)
-                let maxFee = baseFee * 2 + priorityFee
+                // Use checked arithmetic to guard against adversarial/buggy RPC values.
+                let (doubled, mulOverflow) = baseFee.multipliedReportingOverflow(by: 2)
+                let (maxFee, addOverflow) = doubled.addingReportingOverflow(priorityFee)
+                guard !mulOverflow && !addOverflow else {
+                    simulationError = "Fee estimate overflow — RPC returned unreasonable values"
+                    isSimulating = false
+                    return
+                }
                 fetchedMaxFeeHex = "0x" + String(maxFee, radix: 16)
 
                 // For ERC-20: gas estimation must target the contract with transfer calldata
@@ -343,8 +350,14 @@ struct ConfirmTransactionView: View {
                 )
                 fetchedGasLimit = UInt64(gasEstimateHex.dropFirst(2), radix: 16) ?? 21000
 
-                // Fee estimate uses maxFee (worst-case), actual cost may be lower
+                // Fee estimate uses maxFee (worst-case), actual cost may be lower.
+                // Double has 53-bit mantissa — sufficient precision for display purposes.
                 let feeWei = Double(maxFee) * Double(fetchedGasLimit)
+                guard feeWei.isFinite else {
+                    simulationError = "Fee estimate overflow"
+                    isSimulating = false
+                    return
+                }
                 estimatedFee = String(format: "%.18g", feeWei / 1e18)
 
             case .solana:

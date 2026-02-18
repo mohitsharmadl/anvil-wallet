@@ -17,14 +17,36 @@ echo "=== Anvil Wallet Release Blocker Check ==="
 echo ""
 
 # Check 1: Certificate pins configured
-# Uses a sentinel constant that must be set to true when real pins are added.
-# This avoids false positives from base64-like strings in comments.
+# Verifies BOTH:
+#   a) The sentinel constant is set to true
+#   b) pinnedHashes contains at least one real base64 pin entry (host: ["hash="])
 PINNER_FILE="$PROJECT_DIR/ios/AnvilWallet/Services/CertificatePinner.swift"
 if [ -f "$PINNER_FILE" ]; then
+    SENTINEL_OK=false
+    PINS_OK=false
+
     if grep -q 'static let pinningConfigured = true' "$PINNER_FILE" 2>/dev/null; then
-        echo "PASS: Certificate pinning is marked as configured"
+        SENTINEL_OK=true
+    fi
+
+    # Count distinct host keys in the pinnedHashes dictionary.
+    # Matches non-comment lines like:   "eth-mainnet.g.alchemy.com": [
+    PIN_COUNT=$(grep -v '^ *//' "$PINNER_FILE" 2>/dev/null | grep -cE '"[a-zA-Z0-9_-]+\.[a-zA-Z0-9._-]+": *\[' || true)
+    # Also verify at least one real base64 pin hash exists (not just empty arrays).
+    HASH_COUNT=$(grep -cE '"[A-Za-z0-9+/]{20,}="' "$PINNER_FILE" 2>/dev/null || true)
+    if [ "$HASH_COUNT" -lt 1 ]; then
+        PIN_COUNT=0
+    fi
+    if [ "$PIN_COUNT" -ge 1 ]; then
+        PINS_OK=true
+    fi
+
+    if $SENTINEL_OK && $PINS_OK; then
+        echo "PASS: Certificate pinning configured (sentinel=true, $PIN_COUNT host(s) pinned)"
     else
-        echo "FAIL: Certificate pinning not configured"
+        echo "FAIL: Certificate pinning not fully configured"
+        $SENTINEL_OK || echo "  - pinningConfigured is not set to true"
+        $PINS_OK    || echo "  - pinnedHashes contains no real pin entries"
         echo "  1. Run: ./build-scripts/extract-spki-pins.sh"
         echo "  2. Add pin hashes to pinnedHashes dictionary"
         echo "  3. Set 'static let pinningConfigured = true' in CertificatePinner.swift"

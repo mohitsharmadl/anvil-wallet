@@ -27,19 +27,38 @@ echo ""
 
 for host in "${HOSTS[@]}"; do
     echo "Host: $host"
-    pin=$(openssl s_client -connect "$host:443" -servername "$host" </dev/null 2>/dev/null | \
+
+    # Fetch full certificate chain
+    CHAIN=$(openssl s_client -connect "$host:443" -servername "$host" -showcerts </dev/null 2>/dev/null)
+
+    # Leaf certificate pin (cert #1)
+    leaf_pin=$(echo "$CHAIN" | \
         openssl x509 -pubkey -noout 2>/dev/null | \
         openssl pkey -pubin -outform der 2>/dev/null | \
         openssl dgst -sha256 -binary 2>/dev/null | \
         base64 2>/dev/null)
 
-    if [ -n "$pin" ]; then
-        echo "  Pin: $pin"
+    # Intermediate CA pin (cert #2 in the chain)
+    intermediate_pin=$(echo "$CHAIN" | \
+        awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n==2' | \
+        openssl x509 -pubkey -noout 2>/dev/null | \
+        openssl pkey -pubin -outform der 2>/dev/null | \
+        openssl dgst -sha256 -binary 2>/dev/null | \
+        base64 2>/dev/null)
+
+    if [ -n "$leaf_pin" ]; then
+        echo "  Leaf pin:         $leaf_pin"
     else
-        echo "  ERROR: Could not extract pin (host may be unreachable)"
+        echo "  ERROR: Could not extract leaf pin (host may be unreachable)"
+    fi
+
+    if [ -n "$intermediate_pin" ]; then
+        echo "  Intermediate pin: $intermediate_pin"
+    else
+        echo "  WARN: Could not extract intermediate CA pin"
     fi
     echo ""
 done
 
-echo "Add these to CertificatePinner.swift pinnedHashes dictionary."
-echo "Include at least 2 pins per host (primary + backup CA) to avoid lockout."
+echo "Add both pins per host to CertificatePinner.swift pinnedHashes dictionary."
+echo "The intermediate CA pin acts as a backup when leaf certs rotate."

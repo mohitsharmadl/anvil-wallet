@@ -33,18 +33,51 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
     /// Example:
     ///   "eth-mainnet.g.alchemy.com": ["primary_hash=", "backup_hash="],
     private let pinnedHashes: [String: [String]] = [
-        // Primary SPKI SHA-256 pins extracted via build-scripts/extract-spki-pins.sh.
+        // SPKI SHA-256 pins: [leaf, intermediate CA] per host.
+        // Extracted via build-scripts/extract-spki-pins.sh.
+        // Two pins per host ensures resilience when leaf certs rotate —
+        // the intermediate CA pin acts as a backup until new leaf pins are deployed.
         // Re-run the script and update these when RPC providers rotate certificates.
-        "eth-mainnet.g.alchemy.com": ["W6sM/g4GEabC51DlpaEW3xFc0yhTWoea3MXDmpEYplM="],
-        "polygon-rpc.com": ["/mIrW1Gt1uNcoLNrRarvBDQwfGe+OTZoSzdkJ2TofI0="],
-        "arb1.arbitrum.io": ["+pxKDUvZ7AgKLlZN3lxjnt06X+Fh+baL8lkeYaA8Tyk="],
-        "mainnet.base.org": ["NvwNjhaHhYRP4vbVCXW67U0IWNBC+uJk1COQr/iZO2E="],
-        "mainnet.optimism.io": ["O19TUDK7eGwG5heWJqcfMTwdNdU9O7R4UdbRdC+HqyM="],
-        "bsc-dataseed.binance.org": ["zEAnZpAGYJTCdatry/wqycxcC7UNByBkJ4FteO+YqV4="],
-        "api.avax.network": ["KLvBYhvR4cS5bIWqomiIKG0pkYjqWGcWnY2XgGPGys0="],
-        "api.mainnet-beta.solana.com": ["FuVSH64uQbx6kuUjzjZGuey6i0I9xs0gSAWdRYgdHmY="],
-        "blockstream.info": ["9AZIg3NfujJYTXeqbdna11kiWdkWCw/2/56Ocss5UJo="],
-        "rpc.sepolia.org": ["m7T5//RX6RgF6JZOP4Y9iZbLl9HjFX5IIzqQjoGEQxk="],
+        "eth-mainnet.g.alchemy.com": [
+            "W6sM/g4GEabC51DlpaEW3xFc0yhTWoea3MXDmpEYplM=",  // leaf
+            "kZwN96eHtZftBWrOZUsd6cA4es80n3NzSk/XtYz2EqQ=",  // intermediate CA
+        ],
+        "polygon-rpc.com": [
+            "/mIrW1Gt1uNcoLNrRarvBDQwfGe+OTZoSzdkJ2TofI0=",
+            "yDu9og255NN5GEf+Bwa9rTrqFQ0EydZ0r1FCh9TdAW4=",
+        ],
+        "arb1.arbitrum.io": [
+            "+pxKDUvZ7AgKLlZN3lxjnt06X+Fh+baL8lkeYaA8Tyk=",
+            "y7xVm0TVJNahMr2sZydE2jQH8SquXV9yLF9seROHHHU=",
+        ],
+        "mainnet.base.org": [
+            "NvwNjhaHhYRP4vbVCXW67U0IWNBC+uJk1COQr/iZO2E=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "mainnet.optimism.io": [
+            "O19TUDK7eGwG5heWJqcfMTwdNdU9O7R4UdbRdC+HqyM=",
+            "OdSlmQD9NWJh4EbcOHBxkhygPwNSwA9Q91eounfbcoE=",
+        ],
+        "bsc-dataseed.binance.org": [
+            "zEAnZpAGYJTCdatry/wqycxcC7UNByBkJ4FteO+YqV4=",
+            "G9LNNAql897egYsabashkzUCTEJkWBzgoEtk8X/678c=",
+        ],
+        "api.avax.network": [
+            "KLvBYhvR4cS5bIWqomiIKG0pkYjqWGcWnY2XgGPGys0=",
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+        ],
+        "api.mainnet-beta.solana.com": [
+            "FuVSH64uQbx6kuUjzjZGuey6i0I9xs0gSAWdRYgdHmY=",
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+        ],
+        "blockstream.info": [
+            "9AZIg3NfujJYTXeqbdna11kiWdkWCw/2/56Ocss5UJo=",
+            "AlSQhgtJirc8ahLyekmtX+Iw+v46yPYRLJt9Cq1GlB0=",
+        ],
+        "rpc.sepolia.org": [
+            "m7T5//RX6RgF6JZOP4Y9iZbLl9HjFX5IIzqQjoGEQxk=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
     ]
 
     func urlSession(
@@ -60,9 +93,10 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
 
         let hostname = challenge.protectionSpace.host
 
-        // If no pins configured for this host, use default OS validation
+        // Fail closed: reject connections to hosts not in our pin set.
+        // Only explicitly pinned RPC hosts are allowed through this session.
         guard let expectedHashes = pinnedHashes[hostname], !expectedHashes.isEmpty else {
-            completionHandler(.performDefaultHandling, nil)
+            completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
