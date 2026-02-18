@@ -51,11 +51,11 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 | BIP-39 mnemonic generation | Complete | 24-word, via Rust FFI |
 | HD key derivation (BTC, ETH, SOL) | Complete | BIP-44/84 paths |
 | AES-256-GCM + Argon2id encryption | Complete | Double encryption with SE |
-| EVM transaction signing (EIP-1559) | Complete | Wired to Rust FFI |
+| EVM transaction signing (EIP-1559) | Complete | Wired to Rust FFI, checked fee arithmetic |
 | Solana transaction signing | Complete | Wired to Rust FFI |
-| Bitcoin transaction signing | Planned | Requires UTXO management |
-| Certificate pinning | Framework ready | Native URLSession delegate wired; SPKI pin hashes not yet configured |
-| Binary integrity check | Framework ready | SHA-256 comparison wired; build-time hash injection not yet configured |
+| Bitcoin transaction signing | Complete | P2WPKH via Rust FFI, UTXO coin selection, Blockstream API |
+| Certificate pinning | Complete | Fail-closed SPKI SHA-256 pinning, dual pins (leaf + intermediate CA) per host |
+| Binary integrity check | Complete | Build-time SHA-256 injection, fail-closed in Release |
 | WalletConnect v2 | Stub | Phase 5 — Reown SDK integration |
 | Token balance fetching | Stub | RPC methods ready, UI integration pending |
 
@@ -109,6 +109,9 @@ anvil-wallet/
 |-- build-scripts/
 |   |-- build-ios.sh        # Build XCFramework for device + simulator
 |   |-- build-sim.sh        # Quick simulator-only build
+|   |-- extract-spki-pins.sh       # Extract leaf + intermediate CA SPKI pins for all RPC hosts
+|   |-- inject-binary-hash.sh      # Xcode Build Phase: SHA-256 hash injection
+|   |-- verify-release-blockers.sh # Pre-release check (pins, binary hash, tests)
 |-- docs/
 |   |-- SECURITY.md         # Full 16-layer security breakdown
 |   |-- ARCHITECTURE.md     # Detailed architecture and data flows
@@ -143,10 +146,10 @@ Anvil Wallet implements 16 security layers spanning hardware, OS, application, a
 | Jailbreak Detection | 6 sub-layer detection (files, symlinks, sandbox, dyld, fork, URL schemes) |
 | Anti-Screenshot | Secure text overlay + background blur |
 | Clipboard Auto-Clear | Copied data wiped after 120 seconds |
-| Certificate Pinning | Native URLSession delegate with SPKI SHA-256 pinning (pin hashes not yet configured) |
-| Memory Zeroization | All keys, seeds, mnemonics zeroed on drop (Rust + Swift) |
+| Certificate Pinning | Fail-closed SPKI SHA-256 pinning — dual pins (leaf + intermediate CA) for all 10 RPC hosts; unlisted hosts rejected |
+| Memory Zeroization | All keys, seeds, mnemonics zeroed on drop (Rust + Swift); session passwords zeroed in-place (no COW copies) |
 | Anti-Debugging | ptrace deny-attach + sysctl P_TRACED check |
-| Binary Integrity | Mach-O header + executable SHA-256 verification (build-time hash injection not yet configured) |
+| Binary Integrity | Mach-O header + executable SHA-256 verification; build-time hash injection; fail-closed in Release |
 | Transaction Simulation | Pre-sign simulation for EVM transactions |
 | Address Validation | Format + checksum + address poisoning detection |
 | Zero Telemetry | No analytics, no crash reporting, no third-party data SDKs |
