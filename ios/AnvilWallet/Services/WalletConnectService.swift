@@ -269,7 +269,7 @@ final class WalletConnectService: ObservableObject {
             "eip155": SessionNamespace(
                 chains: accounts.map { $0.blockchain },
                 accounts: accounts,
-                methods: Set(["personal_sign", "eth_signTypedData", "eth_signTypedData_v4", "eth_sendTransaction"]),
+                methods: Self.supportedMethods,
                 events: Set(["chainChanged", "accountsChanged"])
             )
         ]
@@ -327,9 +327,11 @@ final class WalletConnectService: ObservableObject {
         case "personal_sign":
             // personal_sign params: [message_hex, address]
             guard let messageHex = parsePersonalSignMessage(from: request.params) else {
-                throw WCError.unsupportedMethod("Malformed personal_sign params")
+                throw WCError.malformedParams("Malformed personal_sign params")
             }
-            let messageBytes = hexToBytes(messageHex)
+            guard let messageBytes = strictHexToBytes(messageHex), !messageBytes.isEmpty else {
+                throw WCError.malformedParams("Invalid hex in personal_sign message")
+            }
 
             // Sign using the wallet service (requires biometric auth)
             let signature = try await walletService.signMessage(messageBytes)
@@ -339,10 +341,14 @@ final class WalletConnectService: ObservableObject {
             throw WCError.unsupportedMethod(request.method)
         }
 
+        guard let rpcId = RPCID(request.id) else {
+            throw WCError.malformedParams("Invalid request ID: \(request.id)")
+        }
+
         let response = RPCResult.response(responseValue)
         try await WalletKit.instance.respond(
             topic: request.sessionId,
-            requestId: RPCID(request.id)!,
+            requestId: rpcId,
             response: response
         )
 
@@ -353,9 +359,14 @@ final class WalletConnectService: ObservableObject {
 
     /// Rejects a pending sign request.
     func rejectRequest(_ request: WCSignRequest) async throws {
+        guard let rpcId = RPCID(request.id) else {
+            // Can't even reject — just clear the pending request
+            await MainActor.run { pendingRequest = nil }
+            return
+        }
         try await WalletKit.instance.respond(
             topic: request.sessionId,
-            requestId: RPCID(request.id)!,
+            requestId: rpcId,
             response: .error(.init(code: 4001, message: "User rejected"))
         )
 
@@ -379,15 +390,19 @@ final class WalletConnectService: ObservableObject {
         return first.hasPrefix("0x") ? String(first.dropFirst(2)) : first
     }
 
-    private func hexToBytes(_ hex: String) -> [UInt8] {
+    /// Strict hex decoder — returns nil on any invalid hex character or odd length.
+    private func strictHexToBytes(_ hex: String) -> [UInt8]? {
         let cleaned = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+        guard cleaned.count % 2 == 0 else { return nil }
         var bytes: [UInt8] = []
+        bytes.reserveCapacity(cleaned.count / 2)
         var index = cleaned.startIndex
         while index < cleaned.endIndex {
-            let nextIndex = cleaned.index(index, offsetBy: 2, limitedBy: cleaned.endIndex) ?? cleaned.endIndex
-            if let byte = UInt8(String(cleaned[index..<nextIndex]), radix: 16) {
-                bytes.append(byte)
+            let nextIndex = cleaned.index(index, offsetBy: 2)
+            guard let byte = UInt8(String(cleaned[index..<nextIndex]), radix: 16) else {
+                return nil // Invalid hex pair — reject entire message
             }
+            bytes.append(byte)
             index = nextIndex
         }
         return bytes
@@ -398,6 +413,7 @@ final class WalletConnectService: ObservableObject {
     enum WCError: LocalizedError {
         case invalidURI
         case unsupportedMethod(String)
+        case malformedParams(String)
 
         var errorDescription: String? {
             switch self {
@@ -405,6 +421,8 @@ final class WalletConnectService: ObservableObject {
                 return "Invalid WalletConnect URI"
             case .unsupportedMethod(let method):
                 return "Unsupported signing method: \(method)"
+            case .malformedParams(let detail):
+                return "Malformed request: \(detail)"
             }
         }
     }

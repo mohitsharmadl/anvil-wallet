@@ -15,7 +15,7 @@ struct AnvilWalletApp: App {
         // Replace with your Reown project ID from https://cloud.reown.com
         #if !DEBUG
         if Self.reownProjectId == "YOUR_REOWN_PROJECT_ID" {
-            assertionFailure("Ship blocker: replace YOUR_REOWN_PROJECT_ID with a real Reown project ID")
+            fatalError("Ship blocker: replace YOUR_REOWN_PROJECT_ID with a real Reown project ID")
         }
         #endif
         WalletConnectService.shared.configure(projectId: Self.reownProjectId)
