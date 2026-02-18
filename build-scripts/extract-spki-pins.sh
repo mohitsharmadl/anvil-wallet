@@ -7,7 +7,9 @@
 # encoding. These values should be added to CertificatePinner.swift's
 # pinnedHashes dictionary before release.
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e is intentionally omitted so that a single host failure
+# does not abort the entire run. Failures are tracked and reported.
 
 HOSTS=(
     "eth-mainnet.g.alchemy.com"
@@ -21,6 +23,8 @@ HOSTS=(
     "blockstream.info"
     "rpc.sepolia.org"
 )
+
+FAILURES=0
 
 echo "=== SPKI Pin Hashes for Anvil Wallet RPC Hosts ==="
 echo ""
@@ -50,6 +54,7 @@ for host in "${HOSTS[@]}"; do
         echo "  Leaf pin:         $leaf_pin"
     else
         echo "  ERROR: Could not extract leaf pin (host may be unreachable)"
+        FAILURES=$((FAILURES + 1))
     fi
 
     if [ -n "$intermediate_pin" ]; then
@@ -60,5 +65,14 @@ for host in "${HOSTS[@]}"; do
     echo ""
 done
 
+echo "=== Summary ==="
+if [ "$FAILURES" -gt 0 ]; then
+    echo "$FAILURES host(s) failed pin extraction. Re-run or check connectivity."
+else
+    echo "All hosts extracted successfully."
+fi
+echo ""
 echo "Add both pins per host to CertificatePinner.swift pinnedHashes dictionary."
 echo "The intermediate CA pin acts as a backup when leaf certs rotate."
+
+exit "$FAILURES"

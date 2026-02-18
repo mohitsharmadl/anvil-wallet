@@ -33,7 +33,8 @@ if [ -f "$PINNER_FILE" ]; then
     # Matches non-comment lines like:   "eth-mainnet.g.alchemy.com": [
     PIN_COUNT=$(grep -v '^ *//' "$PINNER_FILE" 2>/dev/null | grep -cE '"[a-zA-Z0-9_-]+\.[a-zA-Z0-9._-]+": *\[' || true)
     # Also verify at least one real base64 pin hash exists (not just empty arrays).
-    HASH_COUNT=$(grep -cE '"[A-Za-z0-9+/]{20,}="' "$PINNER_FILE" 2>/dev/null || true)
+    # Scoped to non-comment lines to prevent commented-out hashes from satisfying the check.
+    HASH_COUNT=$(grep -v '^ *//' "$PINNER_FILE" 2>/dev/null | grep -cE '"[A-Za-z0-9+/]{20,}="' || true)
     if [ "$HASH_COUNT" -lt 1 ]; then
         PIN_COUNT=0
     fi

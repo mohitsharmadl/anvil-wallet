@@ -7,15 +7,13 @@ import CryptoKit
 /// Subject Public Key Info (SPKI) DER encoding — the same format used by
 /// HTTP Public Key Pinning (HPKP) and tools like OpenSSL.
 ///
-/// If no pins are configured for a hostname, default OS certificate validation
-/// is used (no pinning enforced). This is the current state — pin hashes must
-/// be populated before pinning is active.
+/// Behavior:
+///   - Pinned hosts: connection is allowed only if a certificate in the chain
+///     matches one of the pinned SPKI hashes. Otherwise the connection is rejected.
+///   - Unlisted hosts: connection is rejected (fail-closed). Only hosts explicitly
+///     listed in `pinnedHashes` are reachable through this session.
 ///
-/// To extract an SPKI pin hash from a live certificate:
-///   openssl s_client -connect host:443 </dev/null 2>/dev/null | \
-///     openssl x509 -pubkey -noout | \
-///     openssl pkey -pubin -outform der | \
-///     openssl dgst -sha256 -binary | base64
+/// To refresh pins, run: ./build-scripts/extract-spki-pins.sh
 final class CertificatePinner: NSObject, URLSessionDelegate {
 
     /// Set to true after adding real SPKI pin hashes below.
