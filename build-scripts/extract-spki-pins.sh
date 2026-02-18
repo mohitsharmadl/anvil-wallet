@@ -30,15 +30,18 @@ FAILURES=0
 EMPTY_HASH="47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
 
 # Extracts SPKI pin from a PEM certificate on stdin.
-# Returns empty string if any step fails.
+# Uses a single pipeline — no binary data stored in shell variables.
+# Returns empty string (and exit 1) if any step fails.
 extract_pin() {
-    local pubkey der_bytes pin
-    pubkey=$(openssl x509 -pubkey -noout 2>/dev/null) || return 1
-    [ -n "$pubkey" ] || return 1
-    der_bytes=$(echo "$pubkey" | openssl pkey -pubin -outform der 2>/dev/null) || return 1
-    [ -n "$der_bytes" ] || return 1
-    pin=$(echo "$der_bytes" | openssl dgst -sha256 -binary 2>/dev/null | base64 2>/dev/null)
-    # Reject the empty-input hash sentinel
+    local pin
+    # Validate that stdin contains a PEM certificate before hashing.
+    # Then run the full pipeline: PEM → pubkey PEM → DER → SHA-256 → base64.
+    # pipefail ensures any stage failure propagates.
+    pin=$(openssl x509 -pubkey -noout 2>/dev/null \
+        | openssl pkey -pubin -outform der 2>/dev/null \
+        | openssl dgst -sha256 -binary 2>/dev/null \
+        | base64 2>/dev/null) || return 1
+    # Reject empty output or the known SHA-256("") sentinel
     if [ -z "$pin" ] || [ "$pin" = "$EMPTY_HASH" ]; then
         return 1
     fi
