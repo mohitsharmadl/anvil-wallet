@@ -93,8 +93,7 @@ struct BackupSettingsView: View {
                             .background(Color.warning.opacity(0.1))
                             .cornerRadius(8)
 
-                            // Placeholder -- actual mnemonic would be decrypted from Keychain
-                            Text("Recovery phrase display requires Rust FFI integration. In production, the encrypted seed would be decrypted and the mnemonic reconstructed.")
+                            Text("Recovery phrase viewing will be available in a future update. Please ensure you have your written backup stored safely.")
                                 .font(.body)
                                 .foregroundColor(.textSecondary)
                                 .multilineTextAlignment(.center)

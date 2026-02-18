@@ -20,10 +20,9 @@ enum AppIntegrityChecker {
         let failedChecks: [String]
     }
 
-    // TODO: Replace with actual SHA-256 hash of the executable at build time.
-    // Generate with: shasum -a 256 path/to/AnvilWallet | awk '{print $1}'
-    // Then inject via a build phase script that writes to a generated Swift file.
-    private static let expectedExecutableHash = ""
+    // In Release builds, this references the hash injected by inject-binary-hash.sh.
+    // In Debug builds, the hash is empty and the check is skipped.
+    private static let expectedExecutableHash = GeneratedBinaryHash.executableHash
 
     /// Runs all integrity checks.
     static func check() -> IntegrityResult {

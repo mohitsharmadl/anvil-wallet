@@ -212,7 +212,7 @@ After building:
 
 ### WalletConnect
 
-Anvil Wallet supports WalletConnect v2 for connecting to dApps (Uniswap, OpenSea, Aave, and others). Pair by scanning a QR code, then approve sessions and sign transactions directly from the wallet.
+WalletConnect v2 integration is planned (Phase 5). Once available, you will be able to connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code, then approve sessions and sign transactions directly from the wallet.
 
 ## Dependencies
 

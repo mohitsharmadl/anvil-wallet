@@ -40,6 +40,13 @@ dictionary EncryptedSeedData {
     bytes salt;
 };
 
+dictionary UtxoData {
+    string txid;
+    u32 vout;
+    u64 amount_sat;
+    bytes script_pubkey;
+};
+
 namespace wallet_core {
     /// Generate a new 24-word BIP-39 mnemonic
     [Throws=WalletError]
@@ -118,5 +125,19 @@ namespace wallet_core {
         string to_address,
         u64 lamports,
         bytes recent_blockhash
+    );
+
+    /// Sign a Bitcoin P2WPKH transaction (returns serialized signed tx bytes)
+    [Throws=WalletError]
+    bytes sign_btc_transaction(
+        bytes seed,
+        u32 account,
+        u32 index,
+        sequence<UtxoData> utxos,
+        string recipient_address,
+        u64 amount_sat,
+        string change_address,
+        u64 fee_rate_sat_vbyte,
+        boolean is_testnet
     );
 };

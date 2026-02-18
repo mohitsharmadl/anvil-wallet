@@ -16,6 +16,21 @@ struct DAppsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
+                    // Coming Soon banner
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.accentGreen)
+                        Text("WalletConnect v2 integration is coming in a future update.")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.accentGreen.opacity(0.08))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
                     // Pairing section
                     VStack(spacing: 16) {
                         Text("Connect to DApp")
@@ -49,8 +64,8 @@ struct DAppsView: View {
                         } label: {
                             Text("Connect")
                         }
-                        .buttonStyle(PrimaryButtonStyle(isEnabled: !pairingURI.isEmpty))
-                        .disabled(pairingURI.isEmpty || isPairing)
+                        .buttonStyle(PrimaryButtonStyle(isEnabled: false))
+                        .disabled(true)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)

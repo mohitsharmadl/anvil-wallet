@@ -281,6 +281,97 @@ final class RPCService {
 
     // MARK: - Bitcoin-specific Methods (REST API)
 
+    /// Fetches unspent transaction outputs (UTXOs) for a Bitcoin address.
+    /// Uses Blockstream/Mempool REST API.
+    func getBitcoinUtxos(apiUrl: String, address: String) async throws -> [UtxoData] {
+        guard let url = URL(string: "\(apiUrl)/address/\(address)/utxo") else {
+            throw RPCServiceError.invalidURL
+        }
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        struct BlockstreamUtxo: Decodable {
+            let txid: String
+            let vout: UInt32
+            let value: UInt64
+            let status: Status
+
+            struct Status: Decodable {
+                let confirmed: Bool
+            }
+        }
+
+        let utxos = try JSONDecoder().decode([BlockstreamUtxo].self, from: data)
+
+        // Only use confirmed UTXOs; script_pubkey will be set by the caller
+        // (P2WPKH script from the address)
+        return utxos
+            .filter { $0.status.confirmed }
+            .map { utxo in
+                UtxoData(
+                    txid: utxo.txid,
+                    vout: utxo.vout,
+                    amountSat: utxo.value,
+                    scriptPubkey: Data()
+                )
+            }
+    }
+
+    /// Fetches recommended fee rates from Blockstream/Mempool API.
+    /// Returns the recommended fee rate in sat/vbyte for medium-priority confirmation.
+    func getBitcoinFeeRate(apiUrl: String) async throws -> UInt64 {
+        guard let url = URL(string: "\(apiUrl)/fee-estimates") else {
+            throw RPCServiceError.invalidURL
+        }
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        // Response is { "1": 50.5, "3": 30.2, "6": 15.1, ... } (sat/vbyte per block target)
+        let estimates = try JSONDecoder().decode([String: Double].self, from: data)
+
+        // Use 6-block target (~1 hour) as medium priority, fallback to 3-block or 1 sat/vbyte
+        let feeRate = estimates["6"] ?? estimates["3"] ?? 1.0
+        return UInt64(feeRate.rounded(.up))
+    }
+
+    /// Broadcasts a signed Bitcoin transaction via Blockstream/Mempool API.
+    /// Returns the transaction ID (txid) on success.
+    func broadcastBitcoinTransaction(apiUrl: String, txHex: String) async throws -> String {
+        guard let url = URL(string: "\(apiUrl)/tx") else {
+            throw RPCServiceError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
+        request.httpBody = txHex.data(using: .utf8)
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw RPCServiceError.decodingError("Broadcast failed: \(errorBody)")
+        }
+
+        guard let txid = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !txid.isEmpty else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        return txid
+    }
+
     // MARK: - Base58 Decoder (for Solana blockhash)
 
     private enum Base58 {

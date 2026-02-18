@@ -7,6 +7,7 @@ import SwiftUI
 enum TransactionRequest {
     case eth(EthTransactionRequest)
     case sol(SolTransactionRequest)
+    case btc(BtcTransactionRequest)
 }
 
 struct EthTransactionRequest {
@@ -24,6 +25,15 @@ struct SolTransactionRequest {
     let to: String
     let lamports: UInt64
     let recentBlockhash: Data // 32 bytes
+}
+
+struct BtcTransactionRequest {
+    let utxos: [UtxoData]
+    let recipientAddress: String
+    let amountSat: UInt64
+    let changeAddress: String
+    let feeRateSatVbyte: UInt64
+    let isTestnet: Bool
 }
 
 // MARK: - WalletService
@@ -55,8 +65,10 @@ final class WalletService: ObservableObject {
     private let walletMetadataKey = "com.anvilwallet.walletMetadata"
     private let passwordSaltKey = "com.anvilwallet.passwordSalt"
 
-    /// In-memory session password — cached after first use, cleared on app background.
-    private var sessionPassword: String?
+    /// In-memory session password stored as raw bytes for explicit zeroization.
+    /// Swift String instances are immutable and may linger in memory after deallocation.
+    /// ContiguousArray<UInt8> allows us to overwrite every byte before releasing.
+    private var sessionPasswordBytes: ContiguousArray<UInt8>?
 
     private init() {
         isWalletCreated = keychain.exists(key: encryptedSeedKey)
@@ -67,12 +79,16 @@ final class WalletService: ObservableObject {
 
     /// Whether the session password is currently cached in memory.
     var hasSessionPassword: Bool {
-        sessionPassword != nil
+        sessionPasswordBytes != nil
     }
 
-    /// Clears the cached session password. Called when the app enters background.
+    /// Clears the cached session password. Zeros all bytes before releasing.
+    /// Called when the app enters background.
     func clearSessionPassword() {
-        sessionPassword = nil
+        if var bytes = sessionPasswordBytes {
+            for i in bytes.indices { bytes[i] = 0 }
+        }
+        sessionPasswordBytes = nil
     }
 
     /// Sets the session password after user re-enters it (e.g. after returning from background).
@@ -96,7 +112,7 @@ final class WalletService: ObservableObject {
         // Zeroize immediately — we only needed to verify the password works
         for i in seedBytes.indices { seedBytes[i] = 0 }
 
-        sessionPassword = password
+        sessionPasswordBytes = ContiguousArray(password.utf8)
     }
 
     // MARK: - Combined Data Packing
@@ -166,8 +182,8 @@ final class WalletService: ObservableObject {
         // Step 4: Store in Keychain with biometric protection
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 5: Cache session password
-        sessionPassword = password
+        // Step 5: Cache session password as zeroizable bytes
+        sessionPasswordBytes = ContiguousArray(password.utf8)
 
         // Step 6: Derive addresses from mnemonic (not raw seed)
         let derivedAddresses = try deriveAddresses(mnemonic: mnemonicString)
@@ -219,8 +235,8 @@ final class WalletService: ObservableObject {
         // Step 4: Store in Keychain
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 5: Cache session password
-        sessionPassword = password
+        // Step 5: Cache session password as zeroizable bytes
+        sessionPasswordBytes = ContiguousArray(password.utf8)
 
         // Step 6: Derive addresses from mnemonic
         let derivedAddresses = try deriveAddresses(mnemonic: mnemonic)
@@ -299,9 +315,12 @@ final class WalletService: ObservableObject {
     /// - Returns: Signed transaction bytes
     func signTransaction(request: TransactionRequest) async throws -> Data {
         // Step 1: Ensure we have the session password
-        guard let password = sessionPassword else {
+        // Convert from zeroizable bytes to String for the Rust FFI call.
+        // This creates a short-lived String copy — unavoidable since UniFFI accepts String.
+        guard let pwBytes = sessionPasswordBytes else {
             throw WalletError.passwordRequired // Caller should show password re-entry UI
         }
+        let password = String(decoding: pwBytes, as: UTF8.self)
 
         // Step 2: Biometric authentication
         let authenticated = try await biometric.authenticate(
@@ -361,6 +380,20 @@ final class WalletService: ObservableObject {
                 recentBlockhash: [UInt8](solReq.recentBlockhash)
             )
             signedTx = Data(result)
+
+        case .btc(let btcReq):
+            let result = try signBtcTransaction(
+                seed: seedBytes,
+                account: 0,
+                index: 0,
+                utxos: btcReq.utxos,
+                recipientAddress: btcReq.recipientAddress,
+                amountSat: btcReq.amountSat,
+                changeAddress: btcReq.changeAddress,
+                feeRateSatVbyte: btcReq.feeRateSatVbyte,
+                isTestnet: btcReq.isTestnet
+            )
+            signedTx = Data(result)
         }
 
         return signedTx
@@ -402,7 +435,11 @@ final class WalletService: ObservableObject {
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
 
-        sessionPassword = nil
+        // Zero password bytes before releasing
+        if var bytes = sessionPasswordBytes {
+            for i in bytes.indices { bytes[i] = 0 }
+        }
+        sessionPasswordBytes = nil
         currentWallet = nil
         addresses = [:]
         tokens = []

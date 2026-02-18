@@ -28,13 +28,14 @@ struct SecuritySettingsView: View {
                         VStack(alignment: .leading) {
                             Text(biometricService.biometricName())
                                 .foregroundColor(.textPrimary)
-                            Text("Require biometric to open wallet and sign transactions")
+                            Text("Biometric auth is always required for signing")
                                 .font(.caption)
                                 .foregroundColor(.textSecondary)
                         }
                     }
                 }
                 .tint(.accentGreen)
+                .disabled(true)
 
                 Picker("Auto-Lock", selection: $autoLockInterval) {
                     ForEach(AutoLockInterval.allCases, id: \.self) { interval in
@@ -42,15 +43,23 @@ struct SecuritySettingsView: View {
                     }
                 }
                 .foregroundColor(.textPrimary)
+                .disabled(true)
             }
             .listRowBackground(Color.backgroundCard)
 
             // Password
             Section("Password") {
-                Button {
-                    showChangePassword = true
-                } label: {
-                    SettingsRow(icon: "key.fill", title: "Change Password", color: .warning)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button {
+                        showChangePassword = true
+                    } label: {
+                        SettingsRow(icon: "key.fill", title: "Change Password", color: .warning)
+                    }
+                    .disabled(true)
+
+                    Text("Coming soon")
+                        .font(.caption)
+                        .foregroundColor(.textTertiary)
                 }
             }
             .listRowBackground(Color.backgroundCard)

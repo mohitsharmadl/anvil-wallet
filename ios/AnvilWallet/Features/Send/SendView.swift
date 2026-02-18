@@ -18,6 +18,23 @@ struct SendView: View {
         !recipientAddress.isEmpty && !amount.isEmpty && selectedToken != nil
     }
 
+    /// Maps our chain ID strings to the Rust Chain enum for address validation.
+    static func rustChain(for chainId: String) -> Chain? {
+        switch chainId {
+        case "ethereum": return .ethereum
+        case "polygon": return .polygon
+        case "arbitrum": return .arbitrum
+        case "base": return .base
+        case "optimism": return .optimism
+        case "bsc": return .bsc
+        case "avalanche": return .avalanche
+        case "solana": return .solana
+        case "bitcoin": return .bitcoin
+        case "sepolia": return .sepolia
+        default: return nil
+        }
+    }
+
     var body: some View {
         NavigationStack(path: $router.sendPath) {
             ScrollView {
@@ -119,7 +136,7 @@ struct SendView: View {
                                     .foregroundColor(.textSecondary)
 
                                 Button("Max") {
-                                    amount = String(token.balance)
+                                    amount = token.formattedBalance
                                 }
                                 .font(.caption.bold())
                                 .foregroundColor(.accentGreen)
@@ -134,8 +151,9 @@ struct SendView: View {
                         .cornerRadius(12)
 
                         if let token = selectedToken {
-                            let amountDouble = Double(amount) ?? 0
-                            Text(String(format: "~$%.2f", amountDouble * token.priceUsd))
+                            let amountDecimal = Decimal(string: amount) ?? 0
+                            let usdValue = amountDecimal * Decimal(token.priceUsd)
+                            Text(String(format: "~$%.2f", NSDecimalNumber(decimal: usdValue).doubleValue))
                                 .font(.caption)
                                 .foregroundColor(.textTertiary)
                         }
@@ -155,10 +173,20 @@ struct SendView: View {
                     // Review button
                     Button {
                         guard let token = selectedToken,
-                              let amountValue = Double(amount),
+                              !amount.isEmpty,
+                              Decimal(string: amount) != nil,
                               !recipientAddress.isEmpty else {
-                            errorMessage = "Please fill in all fields."
+                            errorMessage = "Please fill in all fields with valid values."
                             return
+                        }
+
+                        // Validate address against the chain's format using Rust FFI
+                        if let rustChain = Self.rustChain(for: token.chain) {
+                            let isValid = (try? validateAddress(address: recipientAddress, chain: rustChain)) ?? false
+                            if !isValid {
+                                errorMessage = "Invalid address for \(token.chain.capitalized)"
+                                return
+                            }
                         }
 
                         let tx = TransactionModel(
@@ -166,7 +194,7 @@ struct SendView: View {
                             chain: token.chain,
                             from: walletService.addresses[token.chain] ?? "",
                             to: recipientAddress,
-                            amount: amountValue,
+                            amount: amount,
                             tokenSymbol: token.symbol,
                             tokenDecimals: token.decimals,
                             contractAddress: token.contractAddress

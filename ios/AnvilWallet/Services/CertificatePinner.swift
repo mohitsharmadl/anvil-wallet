@@ -29,6 +29,8 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
     private let pinnedHashes: [String: [String]] = [
         // NOT YET CONFIGURED — all hosts fall through to default OS validation.
         // Pinning is inactive until real SPKI hashes are added here.
+        // Run: ./build-scripts/extract-spki-pins.sh to generate pin hashes.
+        // Include at least 2 pins per host (primary + backup CA) to avoid lockout.
     ]
 
     func urlSession(

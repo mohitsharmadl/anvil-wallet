@@ -6,8 +6,8 @@ struct TransactionModel: Identifiable, Codable, Hashable {
     let chain: String
     let from: String
     let to: String
-    let amount: Double
-    let fee: Double
+    let amount: String
+    let fee: String
     let status: TransactionStatus
     let timestamp: Date
     let tokenSymbol: String
@@ -34,8 +34,8 @@ struct TransactionModel: Identifiable, Codable, Hashable {
         chain: String,
         from: String,
         to: String,
-        amount: Double,
-        fee: Double = 0.0,
+        amount: String,
+        fee: String = "0",
         status: TransactionStatus = .pending,
         timestamp: Date = Date(),
         tokenSymbol: String = "ETH",
@@ -57,11 +57,11 @@ struct TransactionModel: Identifiable, Codable, Hashable {
     }
 
     var formattedAmount: String {
-        String(format: "%.4f %@", amount, tokenSymbol)
+        "\(amount) \(tokenSymbol)"
     }
 
     var formattedFee: String {
-        String(format: "%.6f", fee)
+        fee
     }
 
     var shortHash: String {
@@ -92,8 +92,8 @@ struct TransactionModel: Identifiable, Codable, Hashable {
         chain: "ethereum",
         from: "0x1234567890abcdef1234567890abcdef12345678",
         to: "0xabcdef1234567890abcdef1234567890abcdef12",
-        amount: 0.5,
-        fee: 0.002,
+        amount: "0.5",
+        fee: "0.002",
         status: .confirmed,
         timestamp: Date().addingTimeInterval(-3600),
         tokenSymbol: "ETH"
