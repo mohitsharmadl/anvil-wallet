@@ -136,6 +136,13 @@ namespace wallet_core {
         bytes recent_blockhash
     );
 
+    /// Compute Keccak-256 hash
+    bytes keccak256(bytes data);
+
+    /// Recover uncompressed public key from 65-byte signature + 32-byte message hash
+    [Throws=WalletError]
+    bytes recover_eth_pubkey(bytes signature, bytes message_hash);
+
     /// Sign a Bitcoin P2WPKH transaction (returns serialized signed tx bytes)
     [Throws=WalletError]
     bytes sign_btc_transaction(

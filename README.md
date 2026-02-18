@@ -216,15 +216,18 @@ After building:
    cp ios/Secrets.xcconfig.example ios/Secrets.xcconfig
    # Edit ios/Secrets.xcconfig — set REOWN_PROJECT_ID (free from https://cloud.reown.com)
    ```
-2. Open `ios/AnvilWallet.xcodeproj` in Xcode
-3. Add `WalletCoreFramework.xcframework` to the project
+2. Generate the Xcode project:
+   ```bash
+   cd ios && xcodegen generate
+   ```
+3. Open `ios/AnvilWallet.xcodeproj` in Xcode
 4. Build and run on simulator or device
 
 > **Note:** `ios/Secrets.xcconfig` is gitignored. The release blocker script (`./build-scripts/verify-release-blockers.sh`) will fail if this file is missing or contains placeholder values.
 
 ### WalletConnect
 
-WalletConnect v2 is integrated via the [Reown SDK](https://reown.com). You can connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code or pasting a WalletConnect URI. Currently supports session approval and `personal_sign` message signing. `eth_sendTransaction` and `eth_signTypedData_v4` are planned.
+WalletConnect v2 is integrated via the [Reown SDK](https://reown.com). You can connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code or pasting a WalletConnect URI. Currently supports session approval and `personal_sign` message signing. The SDK's `CryptoProvider` (keccak256 + secp256k1 public key recovery) is bridged to the Rust core via UniFFI -- no Swift crypto libraries needed. `eth_sendTransaction` and `eth_signTypedData_v4` are planned.
 
 ## Dependencies
 
@@ -240,6 +243,7 @@ Anvil follows a strict dependency policy: only audited, well-known crates from e
 | BIP-32 HD keys | `bip32` | RustCrypto |
 | Bitcoin | `bitcoin` | rust-bitcoin |
 | Ethereum RLP/types | `alloy-*` | Alloy (Paradigm) |
+| Keccak-256 hashing | `sha3` | RustCrypto |
 | Memory zeroization | `zeroize` | RustCrypto |
 | FFI generation | `uniffi` | Mozilla |
 

@@ -37,6 +37,11 @@ cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "
     --language swift \
     --out-dir "$GENERATED_DIR" 2>/dev/null || true
 
+# Rename modulemap to standard name (Swift convention)
+if [ -f "$GENERATED_DIR/wallet_coreFFI.modulemap" ]; then
+    mv "$GENERATED_DIR/wallet_coreFFI.modulemap" "$GENERATED_DIR/module.modulemap"
+fi
+
 echo ""
 echo "=== Simulator build complete! ==="
 echo "Library: $SIM_LIB"

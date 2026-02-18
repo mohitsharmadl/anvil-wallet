@@ -1127,6 +1127,16 @@ public func isValidBip39Word(word: String) -> Bool {
 })
 }
 /**
+ * Compute Keccak-256 hash
+ */
+public func keccak256(data: Data) -> Data {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_wallet_core_fn_func_keccak256(
+        FfiConverterData.lower(data),$0
+    )
+})
+}
+/**
  * Derive seed bytes from mnemonic + passphrase
  */
 public func mnemonicToSeed(mnemonic: String, passphrase: String)throws  -> Data {
@@ -1134,6 +1144,17 @@ public func mnemonicToSeed(mnemonic: String, passphrase: String)throws  -> Data 
     uniffi_wallet_core_fn_func_mnemonic_to_seed(
         FfiConverterString.lower(mnemonic),
         FfiConverterString.lower(passphrase),$0
+    )
+})
+}
+/**
+ * Recover uncompressed public key from 65-byte signature + 32-byte message hash
+ */
+public func recoverEthPubkey(signature: Data, messageHash: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_recover_eth_pubkey(
+        FfiConverterData.lower(signature),
+        FfiConverterData.lower(messageHash),$0
     )
 })
 }
@@ -1152,6 +1173,19 @@ public func signBtcTransaction(seed: Data, account: UInt32, index: UInt32, utxos
         FfiConverterString.lower(changeAddress),
         FfiConverterUInt64.lower(feeRateSatVbyte),
         FfiConverterBool.lower(isTestnet),$0
+    )
+})
+}
+/**
+ * Sign an arbitrary message with EIP-191 personal_sign (returns 65-byte signature)
+ */
+public func signEthMessage(seed: Data, account: UInt32, index: UInt32, message: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_eth_message(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterUInt32.lower(index),
+        FfiConverterData.lower(message),$0
     )
 })
 }
@@ -1245,10 +1279,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_wallet_core_checksum_func_is_valid_bip39_word() != 34893) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wallet_core_checksum_func_keccak256() != 791) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wallet_core_checksum_func_mnemonic_to_seed() != 42595) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wallet_core_checksum_func_recover_eth_pubkey() != 37744) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wallet_core_checksum_func_sign_btc_transaction() != 52378) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wallet_core_checksum_func_sign_eth_message() != 57108) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_sign_eth_transaction() != 65117) {

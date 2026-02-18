@@ -50,7 +50,6 @@
 		BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB100FAD507BD2544E37B5E /* AnvilWalletApp.swift */; };
 		C0676203BBE51E352C463925 /* BinaryHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437238B7B37EE05127BE7047 /* BinaryHash.swift */; };
 		C4769A3CB5FF7D8F4C579E5E /* SignRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE79EF2F2800CBF93803A637 /* SignRequestView.swift */; };
-		CD4E83622139DF5E38E3DB10 /* WalletCoreFramework.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CEA9F41780C1E6B759BF7B21 /* TransactionSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */; };
 		DBE88BF61BAC5E27872F15D5 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F84C764CA78A1E0F0836B25 /* SettingsView.swift */; };
 		E000F0725A217D022EFE1983 /* TransactionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28339F8B631830F6157C457F /* TransactionResultView.swift */; };
@@ -65,20 +64,6 @@
 		FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1503B5B796CC0E77739FE776 /* AntiDebugger.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		24E5CEF59937616325BB71CF /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				CD4E83622139DF5E38E3DB10 /* WalletCoreFramework.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		0079E88284024F5987051DED /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0211E06D53277076763E8D5F /* NetworkSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSettingsView.swift; sourceTree = "<group>"; };
@@ -91,6 +76,7 @@
 		16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = WalletCoreFramework.xcframework; sourceTree = "<group>"; };
 		1A83FAB612E5C33A4A1AA7C5 /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		1D56C315A34F049854265ADC /* TokenDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDetailView.swift; sourceTree = "<group>"; };
+		22E1D25AC9A98B5D5C24285E /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		267C5F07D51E8455CA12C849 /* WalletModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletModel.swift; sourceTree = "<group>"; };
 		28339F8B631830F6157C457F /* TransactionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionResultView.swift; sourceTree = "<group>"; };
 		29C117C34C14ACC9CCAAA929 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
@@ -137,7 +123,6 @@
 		DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificatePinner.swift; sourceTree = "<group>"; };
 		EC308EC0F3396DDAC8A038AE /* SendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendView.swift; sourceTree = "<group>"; };
 		F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettingsView.swift; sourceTree = "<group>"; };
-		F4EF78E4EFE088FCC53CE85D /* wallet_coreFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = wallet_coreFFI.modulemap; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -175,9 +160,9 @@
 			isa = PBXGroup;
 			children = (
 				437238B7B37EE05127BE7047 /* BinaryHash.swift */,
+				22E1D25AC9A98B5D5C24285E /* module.modulemap */,
 				C3D702762E9000A6EA8D1000 /* wallet_core.swift */,
 				165D718D5E67FBEF7259F60C /* wallet_coreFFI.h */,
-				F4EF78E4EFE088FCC53CE85D /* wallet_coreFFI.modulemap */,
 			);
 			path = Generated;
 			sourceTree = "<group>";
@@ -380,7 +365,6 @@
 				ED0053BEB7CABD99747D0851 /* Sources */,
 				E8EDA91335BF7EAEC4B165C1 /* Resources */,
 				3007DE10F7BE4AAE9D3092E2 /* Frameworks */,
-				24E5CEF59937616325BB71CF /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

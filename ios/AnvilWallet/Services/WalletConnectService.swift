@@ -46,9 +46,9 @@ final class NativeWebSocket: WebSocketConnecting {
         onDisconnect?(nil)
     }
 
-    func write(string: String, completion: @escaping (Error?) -> Void) {
-        task?.send(.string(string)) { error in
-            completion(error)
+    func write(string: String, completion: (() -> Void)?) {
+        task?.send(.string(string)) { _ in
+            completion?()
         }
     }
 
@@ -68,6 +68,25 @@ final class NativeWebSocket: WebSocketConnecting {
                 self?.onDisconnect?(error)
             }
         }
+    }
+}
+
+// MARK: - CryptoProvider (required by Reown SDK for SIWE verification)
+
+/// Bridges Reown SDK crypto operations to the Rust wallet-core FFI.
+struct AnvilCryptoProvider: CryptoProvider {
+    func recoverPubKey(signature: EthereumSignature, message: Data) throws -> Data {
+        // Reconstruct 65-byte signature: r(32) + s(32) + v(1)
+        let sigBytes = Data(signature.r + signature.s + [signature.v + 27])
+        let recovered = try recoverEthPubkey(
+            signature: sigBytes,
+            messageHash: message
+        )
+        return Data(recovered)
+    }
+
+    func keccak256(_ data: Data) -> Data {
+        return AnvilWallet.keccak256(data: data)
     }
 }
 
@@ -126,12 +145,14 @@ final class WalletConnectService: ObservableObject {
 
     /// Configures the Reown WalletKit. Must be called once at app launch.
     func configure(projectId: String) {
+        // swiftlint:disable:next force_try
+        let redirect = try! AppMetadata.Redirect(native: "anvilwallet://", universal: nil)
         let metadata = AppMetadata(
             name: "Anvil Wallet",
             description: "Self-custody crypto wallet",
             url: "https://anvilwallet.com",
             icons: ["https://anvilwallet.com/icon.png"],
-            redirect: try? .init(native: "anvilwallet://", universal: nil, linkMode: false)
+            redirect: redirect
         )
 
         Networking.configure(
@@ -140,7 +161,7 @@ final class WalletConnectService: ObservableObject {
             socketFactory: NativeSocketFactory()
         )
 
-        WalletKit.configure(metadata: metadata)
+        WalletKit.configure(metadata: metadata, crypto: AnvilCryptoProvider())
 
         setupSubscriptions()
         refreshSessions()
@@ -243,7 +264,10 @@ final class WalletConnectService: ObservableObject {
         guard trimmed.hasPrefix("wc:") else {
             throw WCError.invalidURI
         }
-        guard let wcUri = WalletConnectURI(string: trimmed) else {
+        let wcUri: WalletConnectURI
+        do {
+            wcUri = try WalletConnectURI(uriString: trimmed)
+        } catch {
             throw WCError.invalidURI
         }
         try await WalletKit.instance.pair(uri: wcUri)
@@ -274,7 +298,7 @@ final class WalletConnectService: ObservableObject {
             )
         ]
 
-        try await WalletKit.instance.approve(
+        _ = try await WalletKit.instance.approve(
             proposalId: proposal.id,
             namespaces: sessionNamespaces
         )
@@ -341,10 +365,7 @@ final class WalletConnectService: ObservableObject {
             throw WCError.unsupportedMethod(request.method)
         }
 
-        guard let rpcId = RPCID(request.id) else {
-            throw WCError.malformedParams("Invalid request ID: \(request.id)")
-        }
-
+        let rpcId = RPCID(request.id)
         let response = RPCResult.response(responseValue)
         try await WalletKit.instance.respond(
             topic: request.sessionId,
@@ -359,11 +380,7 @@ final class WalletConnectService: ObservableObject {
 
     /// Rejects a pending sign request.
     func rejectRequest(_ request: WCSignRequest) async throws {
-        guard let rpcId = RPCID(request.id) else {
-            // Can't even reject — just clear the pending request
-            await MainActor.run { pendingRequest = nil }
-            return
-        }
+        let rpcId = RPCID(request.id)
         try await WalletKit.instance.respond(
             topic: request.sessionId,
             requestId: rpcId,

@@ -206,6 +206,39 @@ pub fn sign_sol_transfer(
     Ok(signed)
 }
 
+/// Compute Keccak-256 hash (used by WalletConnect CryptoProvider on Swift side)
+pub fn keccak256(data: Vec<u8>) -> Vec<u8> {
+    use sha3::{Digest, Keccak256};
+    Keccak256::digest(&data).to_vec()
+}
+
+/// Recover uncompressed secp256k1 public key from a 65-byte signature + 32-byte message hash.
+/// Returns 65-byte uncompressed public key (0x04 || x || y).
+pub fn recover_eth_pubkey(signature: Vec<u8>, message_hash: Vec<u8>) -> Result<Vec<u8>, WalletError> {
+    use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
+
+    if signature.len() != 65 {
+        return Err(WalletError::SigningFailed("Signature must be 65 bytes".into()));
+    }
+    if message_hash.len() != 32 {
+        return Err(WalletError::SigningFailed("Message hash must be 32 bytes".into()));
+    }
+
+    let r_s = &signature[..64];
+    let v = signature[64];
+    let recovery_id = if v >= 27 { v - 27 } else { v };
+
+    let sig = Signature::from_slice(r_s)
+        .map_err(|e| WalletError::SigningFailed(format!("Invalid signature: {e}")))?;
+    let recid = RecoveryId::from_byte(recovery_id)
+        .ok_or_else(|| WalletError::SigningFailed("Invalid recovery ID".into()))?;
+
+    let recovered_key = VerifyingKey::recover_from_prehash(&message_hash, &sig, recid)
+        .map_err(|e| WalletError::SigningFailed(format!("Recovery failed: {e}")))?;
+
+    Ok(recovered_key.to_encoded_point(false).as_bytes().to_vec())
+}
+
 /// Sign a Bitcoin P2WPKH transaction
 pub fn sign_btc_transaction(
     mut seed: Vec<u8>,

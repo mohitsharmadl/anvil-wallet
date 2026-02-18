@@ -35,7 +35,7 @@ targets:
       - path: AnvilWallet/Resources/Assets.xcassets
     dependencies:
       - framework: WalletCoreFramework.xcframework
-        embed: true
+        embed: false
       - package: reown-swift
         product: ReownWalletKit
     settings:

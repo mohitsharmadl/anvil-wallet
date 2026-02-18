@@ -54,24 +54,9 @@ if [ ! -f "$SIM_LIB" ]; then
     exit 1
 fi
 
-# 5. Create module maps for each platform
-for PLATFORM_DIR in "$IOS_DIR/$FRAMEWORK_NAME-device" "$IOS_DIR/$FRAMEWORK_NAME-sim"; do
-    HEADERS_DIR="$PLATFORM_DIR/Headers"
-    MODULES_DIR="$PLATFORM_DIR/Modules"
-    mkdir -p "$HEADERS_DIR" "$MODULES_DIR"
-
-    cat > "$MODULES_DIR/module.modulemap" << 'MODULEMAP'
-framework module WalletCoreFramework {
-    header "wallet_coreFFI.h"
-    export *
-}
-MODULEMAP
-done
-
-# 6. Generate Swift bindings and C header using uniffi-bindgen
+# 5. Generate Swift bindings and C header using uniffi-bindgen
 echo ">>> Generating Swift bindings..."
 UDL_FILE="$CRATE_DIR/src/wallet_core.udl"
-DEVICE_DYLIB="$DEVICE_LIB"  # uniffi-bindgen works with static libs too
 
 cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "$UDL_FILE" \
     --language swift \
@@ -81,49 +66,20 @@ cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "
     --language swift \
     --out-dir "$GENERATED_DIR"
 
-# Move the generated header to framework headers
-if [ -f "$GENERATED_DIR/wallet_coreFFI.h" ]; then
-    cp "$GENERATED_DIR/wallet_coreFFI.h" "$IOS_DIR/$FRAMEWORK_NAME-device/Headers/"
-    cp "$GENERATED_DIR/wallet_coreFFI.h" "$IOS_DIR/$FRAMEWORK_NAME-sim/Headers/"
+# Rename modulemap to standard name (Swift convention)
+if [ -f "$GENERATED_DIR/wallet_coreFFI.modulemap" ]; then
+    mv "$GENERATED_DIR/wallet_coreFFI.modulemap" "$GENERATED_DIR/module.modulemap"
 fi
 
-# 7. Copy static libraries into framework structure
-cp "$DEVICE_LIB" "$IOS_DIR/$FRAMEWORK_NAME-device/$FRAMEWORK_NAME"
-cp "$SIM_LIB" "$IOS_DIR/$FRAMEWORK_NAME-sim/$FRAMEWORK_NAME"
-
-# 8. Create Info.plist for each
-for PLATFORM_DIR in "$IOS_DIR/$FRAMEWORK_NAME-device" "$IOS_DIR/$FRAMEWORK_NAME-sim"; do
-    cat > "$PLATFORM_DIR/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>WalletCoreFramework</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.anvilwallet.walletcore</string>
-    <key>CFBundleVersion</key>
-    <string>0.1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>FMWK</string>
-</dict>
-</plist>
-PLIST
-done
-
-# 9. Create XCFramework
+# 6. Create XCFramework (library-only, no headers — headers live in Generated/)
+# This avoids module.modulemap conflicts with Reown SDK's Yttrium xcframework.
 echo ">>> Creating XCFramework..."
 rm -rf "$IOS_DIR/$FRAMEWORK_NAME.xcframework"
 
 xcodebuild -create-xcframework \
     -library "$DEVICE_LIB" \
-    -headers "$IOS_DIR/$FRAMEWORK_NAME-device/Headers" \
     -library "$SIM_LIB" \
-    -headers "$IOS_DIR/$FRAMEWORK_NAME-sim/Headers" \
     -output "$IOS_DIR/$FRAMEWORK_NAME.xcframework"
-
-# 10. Cleanup temp directories
-rm -rf "$IOS_DIR/$FRAMEWORK_NAME-device" "$IOS_DIR/$FRAMEWORK_NAME-sim"
 
 echo ""
 echo "=== Build complete! ==="

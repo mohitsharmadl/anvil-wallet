@@ -483,7 +483,7 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token prices from price service.
     func refreshPrices() async throws {
-        let priceService = PriceService()
+        let priceService = PriceService.shared
         let symbols = tokens.map { $0.symbol.lowercased() }
         let prices = try await priceService.fetchPrices(for: symbols)
 
@@ -556,7 +556,7 @@ final class WalletService: ObservableObject {
             seed: seedBytes,
             account: 0,
             index: 0,
-            message: message
+            message: Data(message)
         )
 
         return [UInt8](signature)
@@ -567,7 +567,7 @@ final class WalletService: ObservableObject {
     /// Encrypts and stores the mnemonic string using the same double-encryption pipeline as the seed.
     private func encryptAndStoreMnemonic(_ mnemonic: String, password: String, seKey: SecKey) throws {
         let mnemonicData = Data(mnemonic.utf8)
-        let encrypted = try encryptSeedWithPassword(seed: [UInt8](mnemonicData), password: password)
+        let encrypted = try encryptSeedWithPassword(seed: mnemonicData, password: password)
         let packed = packSaltAndCiphertext(
             salt: Data(encrypted.salt),
             ciphertext: Data(encrypted.ciphertext)

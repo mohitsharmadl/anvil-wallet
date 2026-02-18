@@ -282,14 +282,29 @@ RustBuffer uniffi_wallet_core_fn_func_generate_mnemonic(RustCallStatus *_Nonnull
 int8_t uniffi_wallet_core_fn_func_is_valid_bip39_word(RustBuffer word, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_KECCAK256
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_KECCAK256
+RustBuffer uniffi_wallet_core_fn_func_keccak256(RustBuffer data, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_MNEMONIC_TO_SEED
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_MNEMONIC_TO_SEED
 RustBuffer uniffi_wallet_core_fn_func_mnemonic_to_seed(RustBuffer mnemonic, RustBuffer passphrase, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_RECOVER_ETH_PUBKEY
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_RECOVER_ETH_PUBKEY
+RustBuffer uniffi_wallet_core_fn_func_recover_eth_pubkey(RustBuffer signature, RustBuffer message_hash, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_BTC_TRANSACTION
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_BTC_TRANSACTION
 RustBuffer uniffi_wallet_core_fn_func_sign_btc_transaction(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer utxos, RustBuffer recipient_address, uint64_t amount_sat, RustBuffer change_address, uint64_t fee_rate_sat_vbyte, int8_t is_testnet, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_MESSAGE
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_MESSAGE
+RustBuffer uniffi_wallet_core_fn_func_sign_eth_message(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer message, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_TRANSACTION
@@ -628,15 +643,33 @@ uint16_t uniffi_wallet_core_checksum_func_is_valid_bip39_word(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_KECCAK256
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_KECCAK256
+uint16_t uniffi_wallet_core_checksum_func_keccak256(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_MNEMONIC_TO_SEED
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_MNEMONIC_TO_SEED
 uint16_t uniffi_wallet_core_checksum_func_mnemonic_to_seed(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_RECOVER_ETH_PUBKEY
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_RECOVER_ETH_PUBKEY
+uint16_t uniffi_wallet_core_checksum_func_recover_eth_pubkey(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_BTC_TRANSACTION
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_BTC_TRANSACTION
 uint16_t uniffi_wallet_core_checksum_func_sign_btc_transaction(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_MESSAGE
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_MESSAGE
+uint16_t uniffi_wallet_core_checksum_func_sign_eth_message(void
     
 );
 #endif
