@@ -18,6 +18,11 @@ echo "=== Building wallet-core for iOS ==="
 echo "Root: $ROOT_DIR"
 echo ""
 
+# Set minimum iOS deployment target to match project.yml (17.0)
+# Without this, Rust links against the SDK version (e.g. 26.2) causing
+# "object file was built for newer iOS version" warnings in Xcode.
+export IPHONEOS_DEPLOYMENT_TARGET=17.0
+
 # 1. Build for iOS device (arm64)
 echo ">>> Building for aarch64-apple-ios (device)..."
 cargo build --manifest-path "$CRATE_DIR/Cargo.toml" \

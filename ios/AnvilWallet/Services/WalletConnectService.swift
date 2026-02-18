@@ -428,15 +428,15 @@ final class WalletConnectService: ObservableObject {
     }
 }
 
-// Make WCSessionProposal conform to Identifiable for .sheet(item:)
-extension WalletConnectService.WCSessionProposal: @retroactive Equatable {
+// Make WCSessionProposal conform to Equatable for .sheet(item:)
+extension WalletConnectService.WCSessionProposal: Equatable {
     static func == (lhs: WalletConnectService.WCSessionProposal, rhs: WalletConnectService.WCSessionProposal) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-// Make WCSignRequest conform to Identifiable for .sheet(item:)
-extension WalletConnectService.WCSignRequest: @retroactive Equatable {
+// Make WCSignRequest conform to Equatable for .sheet(item:)
+extension WalletConnectService.WCSignRequest: Equatable {
     static func == (lhs: WalletConnectService.WCSignRequest, rhs: WalletConnectService.WCSignRequest) -> Bool {
         lhs.id == rhs.id
     }

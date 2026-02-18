@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -18,6 +18,7 @@
 		261F508DC246530978564B9C /* RPCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D843EF46CD12F68B4CB725 /* RPCService.swift */; };
 		2B9B0D5FE362705F39AD0E38 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */; };
 		2BF38250A34E6EB5F68E254E /* WalletConnectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FBA54B2133A7026944FC0E /* WalletConnectService.swift */; };
+		2E6E29B1DDC12823A49E176E /* ReownWalletKit in Frameworks */ = {isa = PBXBuildFile; productRef = E63217C73035A0A5697A6434 /* ReownWalletKit */; };
 		3837CE208C95482FC8E7CFF3 /* TokenDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D56C315A34F049854265ADC /* TokenDetailView.swift */; };
 		45B0D25011917923F8ED6A64 /* WalletHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E137E3670AF19824336505C /* WalletHomeView.swift */; };
 		48E71DFAC04D390AD89816AD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 453FD1EB7AAB1D4C0F35317A /* Assets.xcassets */; };
@@ -26,12 +27,14 @@
 		58790A16CB37C9BF28894E6A /* wallet_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D702762E9000A6EA8D1000 /* wallet_core.swift */; };
 		58E982432F34A3B9A13E5E4A /* ClipboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7EFBE209AD297BDC4D3A59E /* ClipboardManager.swift */; };
 		5A0E256799E01F75262F5F2C /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6847F29D89294D4C693D513D /* Color+Theme.swift */; };
+		5E0E1D9615B716BC5847BBC3 /* TransactionHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9B73CB5A2C8F571FB8C1404 /* TransactionHistoryService.swift */; };
 		617197CA1F5CC98668F41887 /* BackupMnemonicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B661A7D277B7DD37C35D5F /* BackupMnemonicView.swift */; };
 		674819B449322FD1CB59585B /* ConfirmTransactionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C38333B994CCB7D57A6555F /* ConfirmTransactionView.swift */; };
 		6DF917CAB2A1FB58E410891A /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */; };
 		755ED579F9B40C05D37A84C1 /* CertificatePinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */; };
 		76549807F785FA96A2FA975A /* BiometricService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96FF3504CC1CEA909240B51 /* BiometricService.swift */; };
 		7A4EEDC77490CCFEEC9582AB /* DAppsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309E410DC4DF83744923FE7F /* DAppsView.swift */; };
+		7CF25A9D6BFA036DDA605910 /* ChainPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9F51E5866FF46FFD9F7F02 /* ChainPickerView.swift */; };
 		834ACC25F9355047220849DF /* TokenListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7A9ED7F9380E561504066E /* TokenListView.swift */; };
 		88823B7741780DC2E6D28F1A /* NetworkSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0211E06D53277076763E8D5F /* NetworkSettingsView.swift */; };
 		8C44E6968AB775CD762D285D /* ReceiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870D01C593148616D0BE89B2 /* ReceiveView.swift */; };
@@ -93,6 +96,7 @@
 		29C117C34C14ACC9CCAAA929 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
 		2AED27DA3173028C9F091E5F /* WalletService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletService.swift; sourceTree = "<group>"; };
 		2D6C7DD9946995150918312D /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		2E9F51E5866FF46FFD9F7F02 /* ChainPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChainPickerView.swift; sourceTree = "<group>"; };
 		309E410DC4DF83744923FE7F /* DAppsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DAppsView.swift; sourceTree = "<group>"; };
 		3B7A9ED7F9380E561504066E /* TokenListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenListView.swift; sourceTree = "<group>"; };
 		3C38333B994CCB7D57A6555F /* ConfirmTransactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmTransactionView.swift; sourceTree = "<group>"; };
@@ -115,7 +119,8 @@
 		8E137E3670AF19824336505C /* WalletHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletHomeView.swift; sourceTree = "<group>"; };
 		8FB100FAD507BD2544E37B5E /* AnvilWalletApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnvilWalletApp.swift; sourceTree = "<group>"; };
 		92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionSimulator.swift; sourceTree = "<group>"; };
-		93B10227387D2AA2B1DC1817 /* AnvilWallet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnvilWallet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		93B10227387D2AA2B1DC1817 /* AnvilWallet.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AnvilWallet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A658B1CB638D24E8CE493FAC /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		ABB2E87F993440BFBB09FCE6 /* JailbreakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JailbreakDetector.swift; sourceTree = "<group>"; };
 		B96FF3504CC1CEA909240B51 /* BiometricService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricService.swift; sourceTree = "<group>"; };
@@ -125,6 +130,7 @@
 		C71F6412709C43E017CD623C /* SecureEnclaveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureEnclaveService.swift; sourceTree = "<group>"; };
 		C78EDB97134A48161614EBCD /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		C7EFBE209AD297BDC4D3A59E /* ClipboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardManager.swift; sourceTree = "<group>"; };
+		C9B73CB5A2C8F571FB8C1404 /* TransactionHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionHistoryService.swift; sourceTree = "<group>"; };
 		CC2198FE550DAC346605FC07 /* AppIntegrityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntegrityChecker.swift; sourceTree = "<group>"; };
 		CE79EF2F2800CBF93803A637 /* SignRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignRequestView.swift; sourceTree = "<group>"; };
 		D3B661A7D277B7DD37C35D5F /* BackupMnemonicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupMnemonicView.swift; sourceTree = "<group>"; };
@@ -140,6 +146,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0DCB25C20327781F753B246 /* WalletCoreFramework.xcframework in Frameworks */,
+				2E6E29B1DDC12823A49E176E /* ReownWalletKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -221,6 +228,7 @@
 			isa = PBXGroup;
 			children = (
 				A2F224A78C1ED9F110E6831E /* AnvilWallet */,
+				D3AE05A878F7C9B3577DB482 /* ios */,
 				4CC92CBF53360AC41AA1B64E /* Frameworks */,
 				EE44DEDF75CCFB1048473C53 /* Products */,
 			);
@@ -243,6 +251,7 @@
 				0EC94C6B7269D62CF64407B2 /* PriceService.swift */,
 				61D843EF46CD12F68B4CB725 /* RPCService.swift */,
 				C71F6412709C43E017CD623C /* SecureEnclaveService.swift */,
+				C9B73CB5A2C8F571FB8C1404 /* TransactionHistoryService.swift */,
 				92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */,
 				09FBA54B2133A7026944FC0E /* WalletConnectService.swift */,
 				2AED27DA3173028C9F091E5F /* WalletService.swift */,
@@ -293,12 +302,22 @@
 		D2F5900A9405B6D40CC9ECF2 /* Wallet */ = {
 			isa = PBXGroup;
 			children = (
+				2E9F51E5866FF46FFD9F7F02 /* ChainPickerView.swift */,
 				870D01C593148616D0BE89B2 /* ReceiveView.swift */,
 				1D56C315A34F049854265ADC /* TokenDetailView.swift */,
 				3B7A9ED7F9380E561504066E /* TokenListView.swift */,
 				8E137E3670AF19824336505C /* WalletHomeView.swift */,
 			);
 			path = Wallet;
+			sourceTree = "<group>";
+		};
+		D3AE05A878F7C9B3577DB482 /* ios */ = {
+			isa = PBXGroup;
+			children = (
+				A658B1CB638D24E8CE493FAC /* Secrets.xcconfig */,
+			);
+			name = ios;
+			path = .;
 			sourceTree = "<group>";
 		};
 		E20CAB53ECF36199D17F67F5 /* App */ = {
@@ -369,6 +388,7 @@
 			);
 			name = AnvilWallet;
 			packageProductDependencies = (
+				E63217C73035A0A5697A6434 /* ReownWalletKit */,
 			);
 			productName = AnvilWallet;
 			productReference = 93B10227387D2AA2B1DC1817 /* AnvilWallet.app */;
@@ -393,6 +413,10 @@
 			);
 			mainGroup = 7F65F2DE4009241CC13EA5D8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EB8A7A8B520FC7BBC276E4D5 /* XCRemoteSwiftPackageReference "reown-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -428,6 +452,7 @@
 				76549807F785FA96A2FA975A /* BiometricService.swift in Sources */,
 				755ED579F9B40C05D37A84C1 /* CertificatePinner.swift in Sources */,
 				52C09D2B64B9D56CB39A9069 /* ChainModel.swift in Sources */,
+				7CF25A9D6BFA036DDA605910 /* ChainPickerView.swift in Sources */,
 				58E982432F34A3B9A13E5E4A /* ClipboardManager.swift in Sources */,
 				5A0E256799E01F75262F5F2C /* Color+Theme.swift in Sources */,
 				674819B449322FD1CB59585B /* ConfirmTransactionView.swift in Sources */,
@@ -456,6 +481,7 @@
 				834ACC25F9355047220849DF /* TokenListView.swift in Sources */,
 				98908357BE38EA22A69965D0 /* TokenModel.swift in Sources */,
 				FCA052D8EBC7EA6C81A8A0FD /* TransactionDetailView.swift in Sources */,
+				5E0E1D9615B716BC5847BBC3 /* TransactionHistoryService.swift in Sources */,
 				E7B5F8CEA5C3ED71C81E9799 /* TransactionModel.swift in Sources */,
 				E000F0725A217D022EFE1983 /* TransactionResultView.swift in Sources */,
 				CEA9F41780C1E6B759BF7B21 /* TransactionSimulator.swift in Sources */,
@@ -479,7 +505,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N7MU2BBA93;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
@@ -492,27 +517,36 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Anvil;
 				INFOPLIST_KEY_NSCameraUsageDescription = "AnvilWallet needs camera access to scan QR codes";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "AnvilWallet uses Face ID to authenticate transactions";
+				INFOPLIST_KEY_ReownProjectID = "$(REOWN_PROJECT_ID)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+				);
 				MARKETING_VERSION = 0.1.0;
-				OTHER_LDFLAGS = "$(inherited)";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.app;
 				PRODUCT_NAME = AnvilWallet;
 				SDKROOT = iphoneos;
-				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
+				SWIFT_INCLUDE_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
 		697AC026858EFDD38322868B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A658B1CB638D24E8CE493FAC /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -581,7 +615,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N7MU2BBA93;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
@@ -594,27 +627,36 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Anvil;
 				INFOPLIST_KEY_NSCameraUsageDescription = "AnvilWallet needs camera access to scan QR codes";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "AnvilWallet uses Face ID to authenticate transactions";
+				INFOPLIST_KEY_ReownProjectID = "$(REOWN_PROJECT_ID)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+				);
 				MARKETING_VERSION = 0.1.0;
-				OTHER_LDFLAGS = "$(inherited)";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.app;
 				PRODUCT_NAME = AnvilWallet;
 				SDKROOT = iphoneos;
-				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
+				SWIFT_INCLUDE_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		B63BFE7130F68DBC8FD99D33 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A658B1CB638D24E8CE493FAC /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -692,6 +734,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EB8A7A8B520FC7BBC276E4D5 /* XCRemoteSwiftPackageReference "reown-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/reown-com/reown-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E63217C73035A0A5697A6434 /* ReownWalletKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB8A7A8B520FC7BBC276E4D5 /* XCRemoteSwiftPackageReference "reown-swift" */;
+			productName = ReownWalletKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 16DE3BCD45CDCC8B920A5CA7 /* Project object */;
 }

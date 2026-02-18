@@ -12,6 +12,9 @@ GENERATED_DIR="$IOS_DIR/AnvilWallet/Generated"
 
 echo "=== Quick simulator build ==="
 
+# Set minimum iOS deployment target to match project.yml (17.0)
+export IPHONEOS_DEPLOYMENT_TARGET=17.0
+
 # Build for simulator only
 echo ">>> Building for aarch64-apple-ios-sim..."
 cargo build --manifest-path "$CRATE_DIR/Cargo.toml" \
