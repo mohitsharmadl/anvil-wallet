@@ -211,9 +211,16 @@ cargo test -p wallet-core
 ```
 
 After building:
-1. Open `ios/AnvilWallet.xcodeproj` in Xcode
-2. Add `WalletCoreFramework.xcframework` to the project
-3. Build and run on simulator or device
+1. Copy the secrets template and fill in your keys:
+   ```bash
+   cp ios/Secrets.xcconfig.example ios/Secrets.xcconfig
+   # Edit ios/Secrets.xcconfig — set REOWN_PROJECT_ID (free from https://cloud.reown.com)
+   ```
+2. Open `ios/AnvilWallet.xcodeproj` in Xcode
+3. Add `WalletCoreFramework.xcframework` to the project
+4. Build and run on simulator or device
+
+> **Note:** `ios/Secrets.xcconfig` is gitignored. The release blocker script (`./build-scripts/verify-release-blockers.sh`) will fail if this file is missing or contains placeholder values.
 
 ### WalletConnect
 
