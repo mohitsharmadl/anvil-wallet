@@ -113,7 +113,12 @@ struct SessionApproveView: View {
                             isProcessing = true
                             errorMessage = nil
                             do {
-                                let ethAddress = walletService.addresses["ethereum"] ?? ""
+                                guard let ethAddress = walletService.addresses["ethereum"],
+                                      !ethAddress.isEmpty else {
+                                    errorMessage = "No Ethereum address available. Please create or import a wallet first."
+                                    isProcessing = false
+                                    return
+                                }
                                 try await walletConnect.approveSession(proposal, ethAddress: ethAddress)
                                 dismiss()
                             } catch {

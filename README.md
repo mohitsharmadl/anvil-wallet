@@ -56,8 +56,10 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 | Bitcoin transaction signing | Complete | P2WPKH via Rust FFI, UTXO coin selection, Blockstream API |
 | Certificate pinning | Complete | Fail-closed SPKI SHA-256 pinning, dual pins (leaf + intermediate CA) per host |
 | Binary integrity check | Complete | Build-time SHA-256 injection, fail-closed in Release |
-| WalletConnect v2 | Stub | Phase 5 — Reown SDK integration |
-| Token balance fetching | Stub | RPC methods ready, UI integration pending |
+| WalletConnect v2 | Complete | Reown SDK: pairing, session approval, personal_sign |
+| Token balance fetching | Complete | EVM (native + ERC-20), Solana, Bitcoin via public RPCs |
+| Recovery phrase backup | Complete | Encrypted mnemonic storage + biometric-gated display |
+| Transaction history | Complete | Blockstream (BTC), Solana RPC, Etherscan (ETH) |
 
 ## Architecture
 
@@ -215,7 +217,7 @@ After building:
 
 ### WalletConnect
 
-WalletConnect v2 integration is planned (Phase 5). Once available, you will be able to connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code, then approve sessions and sign transactions directly from the wallet.
+WalletConnect v2 is integrated via the [Reown SDK](https://reown.com). You can connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code or pasting a WalletConnect URI. Currently supports session approval and `personal_sign` message signing. `eth_sendTransaction` and `eth_signTypedData_v4` are planned.
 
 ## Dependencies
 

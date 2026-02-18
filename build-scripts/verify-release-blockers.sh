@@ -84,7 +84,24 @@ fi
 
 echo ""
 
-# Check 4: All Rust tests pass
+# Check 4: Reown WalletConnect project ID is not placeholder
+APP_SWIFT="$PROJECT_DIR/ios/AnvilWallet/App/AnvilWalletApp.swift"
+if [ -f "$APP_SWIFT" ]; then
+    if grep -q 'YOUR_REOWN_PROJECT_ID' "$APP_SWIFT" 2>/dev/null; then
+        echo "FAIL: Reown project ID is still placeholder in AnvilWalletApp.swift"
+        echo "  Replace YOUR_REOWN_PROJECT_ID with a real project ID from https://cloud.reown.com"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "PASS: Reown WalletConnect project ID configured"
+    fi
+else
+    echo "FAIL: AnvilWalletApp.swift not found"
+    ERRORS=$((ERRORS + 1))
+fi
+
+echo ""
+
+# Check 5: All Rust tests pass
 echo "Running Rust test suite..."
 if (cd "$PROJECT_DIR" && cargo test --workspace --quiet 2>&1); then
     echo "PASS: All Rust tests pass"
