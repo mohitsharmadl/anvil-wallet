@@ -57,6 +57,7 @@ struct SecuritySettingsView: View {
                         Text(interval.rawValue).tag(interval)
                     }
                 }
+                .pickerStyle(.menu)
                 .foregroundColor(.textPrimary)
             }
             .listRowBackground(Color.backgroundCard)
