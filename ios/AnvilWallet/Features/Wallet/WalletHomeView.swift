@@ -27,17 +27,13 @@ struct WalletHomeView: View {
                             router.navigateToTab(.send)
                         }
                         QuickActionButton(icon: "qrcode", label: "Receive") {
-                            if let ethAddress = walletService.addresses["ethereum"] {
-                                router.walletPath.append(
-                                    AppRouter.WalletDestination.receive(chain: "ethereum", address: ethAddress)
-                                )
-                            }
+                            router.walletPath.append(AppRouter.WalletDestination.chainPicker)
                         }
                         QuickActionButton(icon: "arrow.left.arrow.right", label: "Swap") {
                             // TODO: Implement swap feature
                         }
                         QuickActionButton(icon: "clock.arrow.circlepath", label: "Activity") {
-                            // TODO: Navigate to activity
+                            router.walletPath.append(AppRouter.WalletDestination.activity)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -66,8 +62,12 @@ struct WalletHomeView: View {
                 switch destination {
                 case .tokenDetail(let token):
                     TokenDetailView(token: token)
+                case .chainPicker:
+                    ChainPickerView()
                 case .receive(let chain, let address):
                     ReceiveView(chain: chain, address: address)
+                case .activity:
+                    ActivityView()
                 }
             }
         }

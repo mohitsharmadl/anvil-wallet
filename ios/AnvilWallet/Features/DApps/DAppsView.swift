@@ -16,21 +16,6 @@ struct DAppsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Coming Soon banner
-                    HStack(spacing: 10) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.accentGreen)
-                        Text("WalletConnect v2 integration is coming in a future update.")
-                            .font(.subheadline)
-                            .foregroundColor(.textSecondary)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.accentGreen.opacity(0.08))
-                    .cornerRadius(10)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-
                     // Pairing section
                     VStack(spacing: 16) {
                         Text("Connect to DApp")
@@ -64,8 +49,8 @@ struct DAppsView: View {
                         } label: {
                             Text("Connect")
                         }
-                        .buttonStyle(PrimaryButtonStyle(isEnabled: false))
-                        .disabled(true)
+                        .buttonStyle(.primary)
+                        .disabled(pairingURI.isEmpty || isPairing)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -192,20 +177,6 @@ private struct SessionRowView: View {
         .padding()
         .background(Color.backgroundCard)
         .cornerRadius(12)
-    }
-}
-
-// Make WCSessionProposal conform to Identifiable for .sheet(item:)
-extension WalletConnectService.WCSessionProposal: @retroactive Equatable {
-    static func == (lhs: WalletConnectService.WCSessionProposal, rhs: WalletConnectService.WCSessionProposal) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-// Make WCSignRequest conform to Identifiable for .sheet(item:)
-extension WalletConnectService.WCSignRequest: @retroactive Equatable {
-    static func == (lhs: WalletConnectService.WCSignRequest, rhs: WalletConnectService.WCSignRequest) -> Bool {
-        lhs.id == rhs.id
     }
 }
 

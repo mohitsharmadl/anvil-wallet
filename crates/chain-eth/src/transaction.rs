@@ -157,6 +157,37 @@ pub fn sign_transaction(
     })
 }
 
+/// Signs an arbitrary message using EIP-191 personal_sign.
+///
+/// The message is hashed as: keccak256("\x19Ethereum Signed Message:\n" + len(message) + message)
+/// Returns the 65-byte signature (r[32] + s[32] + v[1]) where v is 27 or 28.
+pub fn sign_message(
+    message: &[u8],
+    private_key: &[u8; 32],
+) -> Result<Vec<u8>, EthError> {
+    // EIP-191 prefix
+    let prefix = format!("\x19Ethereum Signed Message:\n{}", message.len());
+    let mut hasher = Keccak256::new();
+    hasher.update(prefix.as_bytes());
+    hasher.update(message);
+    let msg_hash = hasher.finalize();
+
+    let mut key_bytes = *private_key;
+    let signing_key = SigningKey::from_bytes((&key_bytes).into())
+        .map_err(|e| EthError::InvalidPrivateKey(e.to_string()))?;
+    key_bytes.zeroize();
+
+    let (signature, recovery_id): (Signature, RecoveryId) = signing_key
+        .sign_prehash(msg_hash.as_slice())
+        .map_err(|e| EthError::SigningError(e.to_string()))?;
+
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(&signature.r().to_bytes());
+    sig.extend_from_slice(&signature.s().to_bytes());
+    sig.push(recovery_id.is_y_odd() as u8 + 27); // v = 27 or 28
+    Ok(sig)
+}
+
 /// Encodes the unsigned EIP-1559 transaction as `0x02 || rlp(fields)`.
 ///
 /// The RLP-encoded fields are:

@@ -39,7 +39,8 @@ enum SecurityBootstrap {
     static func performChecks() {
         logger.info("Starting security checks...")
 
-        // 1. Anti-debugger: call ptrace(PT_DENY_ATTACH) immediately
+        // 1. Anti-debugger: only in Release builds (Xcode attaches a debugger during dev)
+        #if !DEBUG
         AntiDebugger.denyDebuggerAttachment()
 
         let debugResult = AntiDebugger.check()
@@ -49,6 +50,9 @@ enum SecurityBootstrap {
         } else {
             logger.info("Anti-debugger check passed")
         }
+        #else
+        logger.info("Anti-debugger check skipped (DEBUG build)")
+        #endif
 
         // 2. Jailbreak detection
         let jailbreakResult = JailbreakDetector.check()

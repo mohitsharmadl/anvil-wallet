@@ -1,0 +1,4 @@
+module wallet_coreFFI {
+    header "wallet_coreFFI.h"
+    export *
+}

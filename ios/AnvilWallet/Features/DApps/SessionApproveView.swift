@@ -8,11 +8,13 @@ import SwiftUI
 ///   - Approve/Reject buttons
 struct SessionApproveView: View {
     @StateObject private var walletConnect = WalletConnectService.shared
+    @EnvironmentObject var walletService: WalletService
     @Environment(\.dismiss) private var dismiss
 
     let proposal: WalletConnectService.WCSessionProposal
 
     @State private var isProcessing = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -100,12 +102,24 @@ struct SessionApproveView: View {
 
                 // Buttons
                 VStack(spacing: 12) {
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.error)
+                    }
+
                     Button {
                         Task {
                             isProcessing = true
-                            try? await walletConnect.approveSession(proposal)
+                            errorMessage = nil
+                            do {
+                                let ethAddress = walletService.addresses["ethereum"] ?? ""
+                                try await walletConnect.approveSession(proposal, ethAddress: ethAddress)
+                                dismiss()
+                            } catch {
+                                errorMessage = error.localizedDescription
+                            }
                             isProcessing = false
-                            dismiss()
                         }
                     } label: {
                         Text("Approve")

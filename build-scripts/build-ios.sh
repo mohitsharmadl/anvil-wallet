@@ -68,11 +68,11 @@ echo ">>> Generating Swift bindings..."
 UDL_FILE="$CRATE_DIR/src/wallet_core.udl"
 DEVICE_DYLIB="$DEVICE_LIB"  # uniffi-bindgen works with static libs too
 
-uniffi-bindgen generate "$UDL_FILE" \
+cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "$UDL_FILE" \
     --language swift \
     --out-dir "$GENERATED_DIR" \
     --library "$DEVICE_LIB" 2>/dev/null || \
-uniffi-bindgen generate "$UDL_FILE" \
+cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "$UDL_FILE" \
     --language swift \
     --out-dir "$GENERATED_DIR"
 

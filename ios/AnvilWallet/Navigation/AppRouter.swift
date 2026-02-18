@@ -24,7 +24,9 @@ final class AppRouter: ObservableObject {
 
     enum WalletDestination: Hashable {
         case tokenDetail(token: TokenModel)
+        case chainPicker
         case receive(chain: String, address: String)
+        case activity
     }
 
     enum SendDestination: Hashable {

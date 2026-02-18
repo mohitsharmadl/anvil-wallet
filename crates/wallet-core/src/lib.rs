@@ -110,6 +110,21 @@ pub fn validate_address(addr: String, chain: Chain) -> Result<bool, WalletError>
     address::validate_address(&addr, chain)
 }
 
+/// Sign an arbitrary message with EIP-191 personal_sign.
+/// Returns 65-byte signature (r + s + v).
+pub fn sign_eth_message(
+    mut seed: Vec<u8>,
+    account: u32,
+    index: u32,
+    message: Vec<u8>,
+) -> Result<Vec<u8>, WalletError> {
+    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
+    let sig = chain_eth::transaction::sign_message(&message, &key.private_key)
+        .map_err(|e| WalletError::TransactionFailed(e.to_string()))?;
+    seed.zeroize();
+    Ok(sig)
+}
+
 /// Sign an Ethereum EIP-1559 transaction
 pub fn sign_eth_transaction(
     mut seed: Vec<u8>,

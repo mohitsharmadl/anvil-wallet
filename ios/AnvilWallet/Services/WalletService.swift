@@ -62,6 +62,7 @@ final class WalletService: ObservableObject {
 
     // Keychain storage keys
     private let encryptedSeedKey = "com.anvilwallet.encryptedSeed"
+    private let encryptedMnemonicKey = "com.anvilwallet.encryptedMnemonic"
     private let walletMetadataKey = "com.anvilwallet.walletMetadata"
     private let passwordSaltKey = "com.anvilwallet.passwordSalt"
 
@@ -99,7 +100,7 @@ final class WalletService: ObservableObject {
     func setSessionPassword(_ password: String) async throws {
         // Validate by loading the encrypted seed and attempting decryption
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
-            throw WalletError.seedNotFound
+            throw AppWalletError.seedNotFound
         }
 
         let packed = try secureEnclave.decrypt(data: doubleEncrypted)
@@ -107,8 +108,8 @@ final class WalletService: ObservableObject {
 
         // This will throw if the password is wrong
         var seedBytes = try decryptSeedWithPassword(
-            ciphertext: [UInt8](ciphertext),
-            salt: [UInt8](salt),
+            ciphertext: ciphertext,
+            salt: salt,
             password: password
         )
 
@@ -132,7 +133,7 @@ final class WalletService: ObservableObject {
 
     private func unpackSaltAndCiphertext(from data: Data) throws -> (salt: Data, ciphertext: Data) {
         guard data.count > 4 else {
-            throw WalletError.decryptionFailed
+            throw AppWalletError.decryptionFailed
         }
         // Parse 4-byte big-endian length manually to avoid unaligned memory access
         let b0 = UInt32(data[data.startIndex])
@@ -143,7 +144,7 @@ final class WalletService: ObservableObject {
         let saltStart = data.startIndex + 4
         let saltEnd = saltStart + saltLen
         guard data.endIndex >= saltEnd else {
-            throw WalletError.decryptionFailed
+            throw AppWalletError.decryptionFailed
         }
         let salt = data[saltStart..<saltEnd]
         let ciphertext = data[saltEnd...]
@@ -171,8 +172,8 @@ final class WalletService: ObservableObject {
         let words = mnemonicString.split(separator: " ").map(String.init)
 
         // Step 2: Derive seed and encrypt with password via Rust (Argon2id + AES-256-GCM)
-        let seedBytes = try mnemonicToSeed(mnemonicPhrase: mnemonicString, passphrase: "")
-        let encrypted = try encryptSeedWithPassword(seed: [UInt8](seedBytes), password: password)
+        let seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: "")
+        let encrypted = try encryptSeedWithPassword(seed: seedBytes, password: password)
         let packed = packSaltAndCiphertext(
             salt: Data(encrypted.salt),
             ciphertext: Data(encrypted.ciphertext)
@@ -184,6 +185,9 @@ final class WalletService: ObservableObject {
 
         // Step 4: Store in Keychain with biometric protection
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
+
+        // Step 4b: Also encrypt and store the mnemonic for recovery phrase backup
+        try encryptAndStoreMnemonic(mnemonicString, password: password, seKey: seKey)
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
@@ -220,12 +224,12 @@ final class WalletService: ObservableObject {
         // Step 1: Validate mnemonic via Rust
         let isValid = try validateMnemonic(phrase: mnemonic)
         guard isValid else {
-            throw WalletError.invalidMnemonic
+            throw AppWalletError.invalidMnemonic
         }
 
         // Step 2: Derive seed and encrypt with password via Rust
-        let seedBytes = try mnemonicToSeed(mnemonicPhrase: mnemonic, passphrase: "")
-        let encrypted = try encryptSeedWithPassword(seed: [UInt8](seedBytes), password: password)
+        let seedBytes = try mnemonicToSeed(mnemonic: mnemonic, passphrase: "")
+        let encrypted = try encryptSeedWithPassword(seed: seedBytes, password: password)
         let packed = packSaltAndCiphertext(
             salt: Data(encrypted.salt),
             ciphertext: Data(encrypted.ciphertext)
@@ -237,6 +241,9 @@ final class WalletService: ObservableObject {
 
         // Step 4: Store in Keychain
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
+
+        // Step 4b: Also encrypt and store the mnemonic for recovery phrase backup
+        try encryptAndStoreMnemonic(mnemonic, password: password, seKey: seKey)
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
@@ -274,7 +281,7 @@ final class WalletService: ObservableObject {
     func deriveAddresses(mnemonic: String) throws -> [String: String] {
         // Call Rust to derive BTC, ETH, SOL addresses in one shot
         let rustAddresses = try deriveAllAddressesFromMnemonic(
-            mnemonicPhrase: mnemonic,
+            mnemonic: mnemonic,
             passphrase: "",
             account: 0
         )
@@ -321,7 +328,7 @@ final class WalletService: ObservableObject {
         // Convert from zeroizable bytes to String for the Rust FFI call.
         // This creates a short-lived String copy — unavoidable since UniFFI accepts String.
         guard let pwBytes = sessionPasswordBytes else {
-            throw WalletError.passwordRequired // Caller should show password re-entry UI
+            throw AppWalletError.passwordRequired // Caller should show password re-entry UI
         }
         let password = String(decoding: pwBytes, as: UTF8.self)
 
@@ -330,12 +337,12 @@ final class WalletService: ObservableObject {
             reason: "Authenticate to sign transaction"
         )
         guard authenticated else {
-            throw WalletError.authenticationFailed
+            throw AppWalletError.authenticationFailed
         }
 
         // Step 3: Load encrypted seed from Keychain
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
-            throw WalletError.seedNotFound
+            throw AppWalletError.seedNotFound
         }
 
         // Step 4: Decrypt with Secure Enclave
@@ -344,8 +351,8 @@ final class WalletService: ObservableObject {
         // Step 5: Unpack salt + ciphertext and decrypt with password via Rust
         let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
         var seedBytes = try decryptSeedWithPassword(
-            ciphertext: [UInt8](ciphertext),
-            salt: [UInt8](salt),
+            ciphertext: ciphertext,
+            salt: salt,
             password: password
         )
 
@@ -367,7 +374,7 @@ final class WalletService: ObservableObject {
                 nonce: ethReq.nonce,
                 toAddress: ethReq.to,
                 valueWeiHex: ethReq.valueWeiHex,
-                data: [UInt8](ethReq.data),
+                data: ethReq.data,
                 maxPriorityFeeHex: ethReq.maxPriorityFeeHex,
                 maxFeeHex: ethReq.maxFeeHex,
                 gasLimit: ethReq.gasLimit
@@ -380,7 +387,7 @@ final class WalletService: ObservableObject {
                 account: 0,
                 toAddress: solReq.to,
                 lamports: solReq.lamports,
-                recentBlockhash: [UInt8](solReq.recentBlockhash)
+                recentBlockhash: solReq.recentBlockhash
             )
             signedTx = Data(result)
 
@@ -406,11 +413,72 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token balances for all chains.
     func refreshBalances() async throws {
-        // TODO: Integrate RPCService to fetch balances for each chain/token
-        // For each token, call the appropriate RPC endpoint:
-        //   EVM: eth_getBalance, eth_call (for ERC-20 balanceOf)
-        //   Solana: getBalance, getTokenAccountsByOwner
-        //   Bitcoin: address/utxo endpoint
+        let rpc = RPCService.shared
+
+        // Snapshot token list to iterate
+        let currentTokens = await MainActor.run { tokens }
+        var updatedBalances: [Int: Double] = [:]
+
+        for (index, token) in currentTokens.enumerated() {
+            guard let chain = ChainModel.defaults.first(where: { $0.id == token.chain }),
+                  let address = addresses[token.chain] else {
+                continue
+            }
+
+            do {
+                let balance: Double
+
+                switch chain.chainType {
+                case .evm:
+                    if token.isNativeToken {
+                        // eth_getBalance returns hex wei string
+                        let hexBalance: String = try await rpc.getBalance(rpcUrl: chain.rpcUrl, address: address)
+                        balance = Self.hexToDouble(hexBalance) / pow(10.0, Double(token.decimals))
+                    } else {
+                        // ERC-20 balanceOf(address) — selector 0x70a08231 + zero-padded address
+                        guard let contractAddress = token.contractAddress else { continue }
+                        let stripped = String(address.dropFirst(2)).lowercased()
+                        let paddedAddress = String(repeating: "0", count: max(0, 64 - stripped.count)) + stripped
+                        let callData = "0x70a08231" + paddedAddress
+                        let hexBalance: String = try await rpc.ethCall(rpcUrl: chain.rpcUrl, to: contractAddress, data: callData)
+                        balance = Self.hexToDouble(hexBalance) / pow(10.0, Double(token.decimals))
+                    }
+
+                case .solana:
+                    let lamports = try await rpc.getSolanaBalance(rpcUrl: chain.rpcUrl, address: address)
+                    balance = Double(lamports) / pow(10.0, Double(token.decimals))
+
+                case .bitcoin:
+                    let satoshis = try await rpc.getBitcoinBalance(apiUrl: chain.rpcUrl, address: address)
+                    balance = Double(satoshis) / pow(10.0, Double(token.decimals))
+                }
+
+                updatedBalances[index] = balance
+            } catch {
+                // Skip failures for individual tokens — don't crash the whole refresh
+                continue
+            }
+        }
+
+        await MainActor.run {
+            for (index, balance) in updatedBalances {
+                if index < tokens.count {
+                    tokens[index].balance = balance
+                }
+            }
+        }
+    }
+
+    /// Parses a hex string (with or without 0x prefix) to Double.
+    /// Uses Double arithmetic to avoid UInt64 overflow for large token balances.
+    static func hexToDouble(_ hex: String) -> Double {
+        let cleaned = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+        var result: Double = 0
+        for char in cleaned {
+            guard let digit = Int(String(char), radix: 16) else { return 0 }
+            result = result * 16.0 + Double(digit)
+        }
+        return result
     }
 
     /// Refreshes token prices from price service.
@@ -435,6 +503,7 @@ final class WalletService: ObservableObject {
     /// This is irreversible -- the user must have their mnemonic backup.
     func deleteWallet() throws {
         try keychain.delete(key: encryptedSeedKey)
+        try? keychain.delete(key: encryptedMnemonicKey)
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
 
@@ -448,6 +517,158 @@ final class WalletService: ObservableObject {
         tokens = []
         transactions = []
         isWalletCreated = false
+    }
+
+    // MARK: - Message Signing (EIP-191)
+
+    /// Signs an arbitrary message using EIP-191 personal_sign.
+    /// Used by WalletConnect for personal_sign requests.
+    ///
+    /// - Parameter message: The raw message bytes to sign
+    /// - Returns: 65-byte signature (r + s + v)
+    func signMessage(_ message: [UInt8]) async throws -> [UInt8] {
+        guard let pwBytes = sessionPasswordBytes else {
+            throw AppWalletError.passwordRequired
+        }
+        let password = String(decoding: pwBytes, as: UTF8.self)
+
+        let authenticated = try await biometric.authenticate(
+            reason: "Authenticate to sign message"
+        )
+        guard authenticated else {
+            throw AppWalletError.authenticationFailed
+        }
+
+        guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
+            throw AppWalletError.seedNotFound
+        }
+
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+        var seedBytes = try decryptSeedWithPassword(
+            ciphertext: ciphertext,
+            salt: salt,
+            password: password
+        )
+        defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
+
+        let signature = try signEthMessage(
+            seed: seedBytes,
+            account: 0,
+            index: 0,
+            message: message
+        )
+
+        return [UInt8](signature)
+    }
+
+    // MARK: - Mnemonic Encryption
+
+    /// Encrypts and stores the mnemonic string using the same double-encryption pipeline as the seed.
+    private func encryptAndStoreMnemonic(_ mnemonic: String, password: String, seKey: SecKey) throws {
+        let mnemonicData = Data(mnemonic.utf8)
+        let encrypted = try encryptSeedWithPassword(seed: [UInt8](mnemonicData), password: password)
+        let packed = packSaltAndCiphertext(
+            salt: Data(encrypted.salt),
+            ciphertext: Data(encrypted.ciphertext)
+        )
+        let doubleEncrypted = try secureEnclave.encrypt(data: packed, using: seKey)
+        try keychain.save(key: encryptedMnemonicKey, data: doubleEncrypted)
+    }
+
+    /// Decrypts the stored mnemonic and returns the individual words.
+    /// Returns nil if mnemonic was not stored (wallet created before this feature).
+    func decryptMnemonic() async throws -> [String]? {
+        guard let pwBytes = sessionPasswordBytes else {
+            throw AppWalletError.passwordRequired
+        }
+        let password = String(decoding: pwBytes, as: UTF8.self)
+
+        guard let doubleEncrypted = try keychain.load(key: encryptedMnemonicKey) else {
+            return nil // Mnemonic not stored — wallet created before this feature
+        }
+
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+
+        var mnemonicBytes = try decryptSeedWithPassword(
+            ciphertext: ciphertext,
+            salt: salt,
+            password: password
+        )
+        defer {
+            for i in mnemonicBytes.indices { mnemonicBytes[i] = 0 }
+        }
+
+        guard let mnemonicString = String(bytes: mnemonicBytes, encoding: .utf8) else {
+            throw AppWalletError.decryptionFailed
+        }
+
+        return mnemonicString.split(separator: " ").map(String.init)
+    }
+
+    // MARK: - Change Password
+
+    /// Changes the wallet password by re-encrypting the seed (and mnemonic if stored).
+    func changePassword(current: String, new newPassword: String) async throws {
+        // Step 1: Load and decrypt the seed with current password
+        guard let doubleEncryptedSeed = try keychain.load(key: encryptedSeedKey) else {
+            throw AppWalletError.seedNotFound
+        }
+
+        let packedSeed = try secureEnclave.decrypt(data: doubleEncryptedSeed)
+        let (seedSalt, seedCiphertext) = try unpackSaltAndCiphertext(from: packedSeed)
+        var seedBytes = try decryptSeedWithPassword(
+            ciphertext: seedCiphertext,
+            salt: seedSalt,
+            password: current
+        )
+        defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
+
+        // Step 2: Re-encrypt seed with new password
+        let newEncrypted = try encryptSeedWithPassword(seed: seedBytes, password: newPassword)
+        let newPacked = packSaltAndCiphertext(
+            salt: Data(newEncrypted.salt),
+            ciphertext: Data(newEncrypted.ciphertext)
+        )
+        let seKey = try secureEnclave.getKey()
+        let newDoubleEncrypted = try secureEnclave.encrypt(data: newPacked, using: seKey)
+        try keychain.save(key: encryptedSeedKey, data: newDoubleEncrypted)
+
+        // Step 3: Re-encrypt mnemonic if stored
+        if let doubleEncryptedMnemonic = try keychain.load(key: encryptedMnemonicKey) {
+            let packedMnemonic = try secureEnclave.decrypt(data: doubleEncryptedMnemonic)
+            let (mSalt, mCiphertext) = try unpackSaltAndCiphertext(from: packedMnemonic)
+            var mnemonicBytes = try decryptSeedWithPassword(
+                ciphertext: mCiphertext,
+                salt: mSalt,
+                password: current
+            )
+            defer { for i in mnemonicBytes.indices { mnemonicBytes[i] = 0 } }
+
+            let newMEncrypted = try encryptSeedWithPassword(seed: mnemonicBytes, password: newPassword)
+            let newMPacked = packSaltAndCiphertext(
+                salt: Data(newMEncrypted.salt),
+                ciphertext: Data(newMEncrypted.ciphertext)
+            )
+            let newMDoubleEncrypted = try secureEnclave.encrypt(data: newMPacked, using: seKey)
+            try keychain.save(key: encryptedMnemonicKey, data: newMDoubleEncrypted)
+        }
+
+        // Step 4: Update session password
+        clearSessionPassword()
+        sessionPasswordBytes = ContiguousArray(newPassword.utf8)
+    }
+
+    // MARK: - Transaction History
+
+    /// Refreshes transaction history from blockchain explorers.
+    func refreshTransactions() async throws {
+        let txService = TransactionHistoryService.shared
+        let newTransactions = try await txService.fetchAllTransactions(addresses: addresses)
+        await MainActor.run {
+            self.transactions = newTransactions
+        }
     }
 
     // MARK: - Private Helpers
@@ -470,7 +691,7 @@ final class WalletService: ObservableObject {
 
 // MARK: - Wallet Errors
 
-enum WalletError: LocalizedError {
+enum AppWalletError: LocalizedError {
     case invalidMnemonic
     case seedNotFound
     case encryptionFailed

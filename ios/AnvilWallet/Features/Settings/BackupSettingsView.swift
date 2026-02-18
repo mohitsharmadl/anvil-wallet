@@ -10,8 +10,13 @@ struct BackupSettingsView: View {
     @State private var isAuthenticating = false
     @State private var authError: String?
     @State private var showMnemonic = false
+    @State private var mnemonicWords: [String] = []
+    @State private var decryptError: String?
+    @State private var isLoadingMnemonic = false
 
     private let biometricService = BiometricService()
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
@@ -80,7 +85,6 @@ struct BackupSettingsView: View {
                         .background(Color.backgroundCard)
                         .cornerRadius(16)
                     } else {
-                        // Show placeholder mnemonic (actual would come from Rust FFI decryption)
                         VStack(spacing: 8) {
                             HStack(spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -93,16 +97,58 @@ struct BackupSettingsView: View {
                             .background(Color.warning.opacity(0.1))
                             .cornerRadius(8)
 
-                            Text("Recovery phrase viewing will be available in a future update. Please ensure you have your written backup stored safely.")
-                                .font(.body)
-                                .foregroundColor(.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .padding()
+                            if isLoadingMnemonic {
+                                ProgressView()
+                                    .padding()
+                            } else if let decryptError {
+                                Text(decryptError)
+                                    .font(.body)
+                                    .foregroundColor(.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding()
+                            } else if mnemonicWords.isEmpty {
+                                Text("Recovery phrase not available. This wallet was created before backup support was added. Please re-import your wallet to enable recovery phrase viewing.")
+                                    .font(.body)
+                                    .foregroundColor(.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding()
+                            } else {
+                                let columns = [
+                                    GridItem(.flexible()),
+                                    GridItem(.flexible()),
+                                    GridItem(.flexible()),
+                                ]
+                                LazyVGrid(columns: columns, spacing: 10) {
+                                    ForEach(Array(mnemonicWords.enumerated()), id: \.offset) { index, word in
+                                        HStack(spacing: 4) {
+                                            Text("\(index + 1).")
+                                                .font(.caption)
+                                                .foregroundColor(.textTertiary)
+                                                .frame(width: 24, alignment: .trailing)
+                                            Text(word)
+                                                .font(.body.monospaced())
+                                                .foregroundColor(.textPrimary)
+                                        }
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 4)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(Color.backgroundElevated)
+                                        .cornerRadius(8)
+                                    }
+                                }
+                                .padding(.top, 8)
+                            }
                         }
                         .padding()
                         .background(Color.backgroundCard)
                         .cornerRadius(16)
                         .screenshotProtected()
+                        .task {
+                            await loadMnemonic()
+                        }
+                        .onDisappear {
+                            mnemonicWords = []
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -138,6 +184,34 @@ struct BackupSettingsView: View {
         .navigationTitle("Backup & Recovery")
         .navigationBarTitleDisplayMode(.inline)
         .blurOnBackground()
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background || newPhase == .inactive {
+                mnemonicWords = []
+                isAuthenticated = false
+            }
+        }
+    }
+
+    private func loadMnemonic() async {
+        isLoadingMnemonic = true
+        decryptError = nil
+
+        do {
+            if let words = try await walletService.decryptMnemonic() {
+                await MainActor.run {
+                    mnemonicWords = words
+                }
+            }
+            // If nil, mnemonicWords stays empty — shows fallback message
+        } catch {
+            await MainActor.run {
+                decryptError = error.localizedDescription
+            }
+        }
+
+        await MainActor.run {
+            isLoadingMnemonic = false
+        }
     }
 
     private func authenticate() async {

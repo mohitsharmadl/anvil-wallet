@@ -76,6 +76,18 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
             "m7T5//RX6RgF6JZOP4Y9iZbLl9HjFX5IIzqQjoGEQxk=",
             "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
         ],
+        "api.etherscan.io": [
+            "kjWU9H91qtu39iBXltykNck8+xWT425ShPW+wFF2WTg=",  // leaf
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA
+        ],
+        "api.coingecko.com": [
+            "KeYcPtry8XJxY6pKt44Heq+zSIVxuSBcrqAlWDzNIAE=",  // leaf
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
+        ],
+        "rpc.ankr.com": [
+            "LzqRFppp98SE8LNv5ZlVeUHkujEaaEglSYIhEduyZ4A=",  // leaf
+            "yDu9og255NN5GEf+Bwa9rTrqFQ0EydZ0r1FCh9TdAW4=",  // intermediate CA
+        ],
     ]
 
     func urlSession(

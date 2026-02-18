@@ -1,0 +1,697 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78EDB97134A48161614EBCD /* QRScannerView.swift */; };
+		0960920730A37C2E3801CB90 /* JailbreakDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB2E87F993440BFBB09FCE6 /* JailbreakDetector.swift */; };
+		117A14C55C89E29D646982F9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0079E88284024F5987051DED /* ContentView.swift */; };
+		1746DB767479E7E994F3A4FE /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E95CA13963288BB627DCE4 /* KeychainService.swift */; };
+		176D55803EEB494C3130629F /* SecurityBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AAF1543C4AD2CE81FEF447 /* SecurityBootstrap.swift */; };
+		179618C293B0C1078720DFED /* WalletService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AED27DA3173028C9F091E5F /* WalletService.swift */; };
+		189BB7346C1852EE39E77715 /* AppIntegrityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2198FE550DAC346605FC07 /* AppIntegrityChecker.swift */; };
+		1B623386B94064263EBCD32C /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A83FAB612E5C33A4A1AA7C5 /* AppRouter.swift */; };
+		261F508DC246530978564B9C /* RPCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D843EF46CD12F68B4CB725 /* RPCService.swift */; };
+		2B9B0D5FE362705F39AD0E38 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */; };
+		2BF38250A34E6EB5F68E254E /* WalletConnectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FBA54B2133A7026944FC0E /* WalletConnectService.swift */; };
+		3837CE208C95482FC8E7CFF3 /* TokenDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D56C315A34F049854265ADC /* TokenDetailView.swift */; };
+		45B0D25011917923F8ED6A64 /* WalletHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E137E3670AF19824336505C /* WalletHomeView.swift */; };
+		48E71DFAC04D390AD89816AD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 453FD1EB7AAB1D4C0F35317A /* Assets.xcassets */; };
+		52C09D2B64B9D56CB39A9069 /* ChainModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658CA0A71B5D222A59C693F4 /* ChainModel.swift */; };
+		55739C6806CC35C8068FC2BF /* WalletModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267C5F07D51E8455CA12C849 /* WalletModel.swift */; };
+		58790A16CB37C9BF28894E6A /* wallet_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D702762E9000A6EA8D1000 /* wallet_core.swift */; };
+		58E982432F34A3B9A13E5E4A /* ClipboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7EFBE209AD297BDC4D3A59E /* ClipboardManager.swift */; };
+		5A0E256799E01F75262F5F2C /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6847F29D89294D4C693D513D /* Color+Theme.swift */; };
+		617197CA1F5CC98668F41887 /* BackupMnemonicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B661A7D277B7DD37C35D5F /* BackupMnemonicView.swift */; };
+		674819B449322FD1CB59585B /* ConfirmTransactionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C38333B994CCB7D57A6555F /* ConfirmTransactionView.swift */; };
+		6DF917CAB2A1FB58E410891A /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */; };
+		755ED579F9B40C05D37A84C1 /* CertificatePinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */; };
+		76549807F785FA96A2FA975A /* BiometricService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96FF3504CC1CEA909240B51 /* BiometricService.swift */; };
+		7A4EEDC77490CCFEEC9582AB /* DAppsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309E410DC4DF83744923FE7F /* DAppsView.swift */; };
+		834ACC25F9355047220849DF /* TokenListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7A9ED7F9380E561504066E /* TokenListView.swift */; };
+		88823B7741780DC2E6D28F1A /* NetworkSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0211E06D53277076763E8D5F /* NetworkSettingsView.swift */; };
+		8C44E6968AB775CD762D285D /* ReceiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870D01C593148616D0BE89B2 /* ReceiveView.swift */; };
+		97D03AB2A5566FBAF3C06F44 /* PriceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC94C6B7269D62CF64407B2 /* PriceService.swift */; };
+		98908357BE38EA22A69965D0 /* TokenModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61FC7C4A3F825FEC127C18C /* TokenModel.swift */; };
+		A0DCB25C20327781F753B246 /* WalletCoreFramework.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */; };
+		A2EAC5421922565ECBFC7FC5 /* ScreenshotProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F34027253E86794244F5441 /* ScreenshotProtection.swift */; };
+		A84C8ED8C76136468EE21FC6 /* SendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC308EC0F3396DDAC8A038AE /* SendView.swift */; };
+		AE4A7B2341291F7BF9E58AFC /* ImportWalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8971407C6CB376E4DC40D257 /* ImportWalletView.swift */; };
+		B3FA9A793D510421AACED3C1 /* CreateWalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868983E706EB64A22E077F8F /* CreateWalletView.swift */; };
+		B50AE955E0201C5390A58677 /* SecureEnclaveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C71F6412709C43E017CD623C /* SecureEnclaveService.swift */; };
+		BA81E6F1B4FCE2D73C8AF9B4 /* VerifyMnemonicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFB27E386F923302FC61C94 /* VerifyMnemonicView.swift */; };
+		BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB100FAD507BD2544E37B5E /* AnvilWalletApp.swift */; };
+		C0676203BBE51E352C463925 /* BinaryHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437238B7B37EE05127BE7047 /* BinaryHash.swift */; };
+		C4769A3CB5FF7D8F4C579E5E /* SignRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE79EF2F2800CBF93803A637 /* SignRequestView.swift */; };
+		CD4E83622139DF5E38E3DB10 /* WalletCoreFramework.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CEA9F41780C1E6B759BF7B21 /* TransactionSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */; };
+		DBE88BF61BAC5E27872F15D5 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F84C764CA78A1E0F0836B25 /* SettingsView.swift */; };
+		E000F0725A217D022EFE1983 /* TransactionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28339F8B631830F6157C457F /* TransactionResultView.swift */; };
+		E37BEBB406FB24CB98AAD2C9 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887C7E41160BE130FBDF2E17 /* WelcomeView.swift */; };
+		E686345D556878C78A617223 /* SessionApproveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C45081E0DA480C49E0B0FB4C /* SessionApproveView.swift */; };
+		E7B5F8CEA5C3ED71C81E9799 /* TransactionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EBACF2913C82A01C79871CD /* TransactionModel.swift */; };
+		EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6C7DD9946995150918312D /* ActivityView.swift */; };
+		EF7C77FA6D055B84CF42AFF1 /* BackupSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */; };
+		F6BFF7D0F193A42B186A056F /* TabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C117C34C14ACC9CCAAA929 /* TabBarView.swift */; };
+		FCA052D8EBC7EA6C81A8A0FD /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D66C8D99A967DC1F5B5CF36 /* TransactionDetailView.swift */; };
+		FEDC3360EB218A16D15DA83D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1C12ECCBEA7864116F065 /* SetPasswordView.swift */; };
+		FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1503B5B796CC0E77739FE776 /* AntiDebugger.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		24E5CEF59937616325BB71CF /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CD4E83622139DF5E38E3DB10 /* WalletCoreFramework.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0079E88284024F5987051DED /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		0211E06D53277076763E8D5F /* NetworkSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSettingsView.swift; sourceTree = "<group>"; };
+		09FBA54B2133A7026944FC0E /* WalletConnectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletConnectService.swift; sourceTree = "<group>"; };
+		0EC94C6B7269D62CF64407B2 /* PriceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceService.swift; sourceTree = "<group>"; };
+		0F84C764CA78A1E0F0836B25 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		10B1C12ECCBEA7864116F065 /* SetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPasswordView.swift; sourceTree = "<group>"; };
+		1503B5B796CC0E77739FE776 /* AntiDebugger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiDebugger.swift; sourceTree = "<group>"; };
+		165D718D5E67FBEF7259F60C /* wallet_coreFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wallet_coreFFI.h; sourceTree = "<group>"; };
+		16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = WalletCoreFramework.xcframework; sourceTree = "<group>"; };
+		1A83FAB612E5C33A4A1AA7C5 /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
+		1D56C315A34F049854265ADC /* TokenDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDetailView.swift; sourceTree = "<group>"; };
+		267C5F07D51E8455CA12C849 /* WalletModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletModel.swift; sourceTree = "<group>"; };
+		28339F8B631830F6157C457F /* TransactionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionResultView.swift; sourceTree = "<group>"; };
+		29C117C34C14ACC9CCAAA929 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
+		2AED27DA3173028C9F091E5F /* WalletService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletService.swift; sourceTree = "<group>"; };
+		2D6C7DD9946995150918312D /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		309E410DC4DF83744923FE7F /* DAppsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DAppsView.swift; sourceTree = "<group>"; };
+		3B7A9ED7F9380E561504066E /* TokenListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenListView.swift; sourceTree = "<group>"; };
+		3C38333B994CCB7D57A6555F /* ConfirmTransactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmTransactionView.swift; sourceTree = "<group>"; };
+		3EBACF2913C82A01C79871CD /* TransactionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionModel.swift; sourceTree = "<group>"; };
+		3F34027253E86794244F5441 /* ScreenshotProtection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotProtection.swift; sourceTree = "<group>"; };
+		437238B7B37EE05127BE7047 /* BinaryHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryHash.swift; sourceTree = "<group>"; };
+		453FD1EB7AAB1D4C0F35317A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4DFB27E386F923302FC61C94 /* VerifyMnemonicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyMnemonicView.swift; sourceTree = "<group>"; };
+		61D843EF46CD12F68B4CB725 /* RPCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPCService.swift; sourceTree = "<group>"; };
+		658CA0A71B5D222A59C693F4 /* ChainModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChainModel.swift; sourceTree = "<group>"; };
+		6847F29D89294D4C693D513D /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
+		6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
+		6D66C8D99A967DC1F5B5CF36 /* TransactionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionDetailView.swift; sourceTree = "<group>"; };
+		82E95CA13963288BB627DCE4 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		85AAF1543C4AD2CE81FEF447 /* SecurityBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityBootstrap.swift; sourceTree = "<group>"; };
+		868983E706EB64A22E077F8F /* CreateWalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateWalletView.swift; sourceTree = "<group>"; };
+		870D01C593148616D0BE89B2 /* ReceiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiveView.swift; sourceTree = "<group>"; };
+		887C7E41160BE130FBDF2E17 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		8971407C6CB376E4DC40D257 /* ImportWalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportWalletView.swift; sourceTree = "<group>"; };
+		8E137E3670AF19824336505C /* WalletHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletHomeView.swift; sourceTree = "<group>"; };
+		8FB100FAD507BD2544E37B5E /* AnvilWalletApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnvilWalletApp.swift; sourceTree = "<group>"; };
+		92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionSimulator.swift; sourceTree = "<group>"; };
+		93B10227387D2AA2B1DC1817 /* AnvilWallet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnvilWallet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
+		ABB2E87F993440BFBB09FCE6 /* JailbreakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JailbreakDetector.swift; sourceTree = "<group>"; };
+		B96FF3504CC1CEA909240B51 /* BiometricService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricService.swift; sourceTree = "<group>"; };
+		C3D702762E9000A6EA8D1000 /* wallet_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = wallet_core.swift; sourceTree = "<group>"; };
+		C45081E0DA480C49E0B0FB4C /* SessionApproveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionApproveView.swift; sourceTree = "<group>"; };
+		C61FC7C4A3F825FEC127C18C /* TokenModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenModel.swift; sourceTree = "<group>"; };
+		C71F6412709C43E017CD623C /* SecureEnclaveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureEnclaveService.swift; sourceTree = "<group>"; };
+		C78EDB97134A48161614EBCD /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		C7EFBE209AD297BDC4D3A59E /* ClipboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardManager.swift; sourceTree = "<group>"; };
+		CC2198FE550DAC346605FC07 /* AppIntegrityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntegrityChecker.swift; sourceTree = "<group>"; };
+		CE79EF2F2800CBF93803A637 /* SignRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignRequestView.swift; sourceTree = "<group>"; };
+		D3B661A7D277B7DD37C35D5F /* BackupMnemonicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupMnemonicView.swift; sourceTree = "<group>"; };
+		DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificatePinner.swift; sourceTree = "<group>"; };
+		EC308EC0F3396DDAC8A038AE /* SendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendView.swift; sourceTree = "<group>"; };
+		F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettingsView.swift; sourceTree = "<group>"; };
+		F4EF78E4EFE088FCC53CE85D /* wallet_coreFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = wallet_coreFFI.modulemap; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3007DE10F7BE4AAE9D3092E2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0DCB25C20327781F753B246 /* WalletCoreFramework.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1D83212F059A956B835EF5F2 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				1A83FAB612E5C33A4A1AA7C5 /* AppRouter.swift */,
+				29C117C34C14ACC9CCAAA929 /* TabBarView.swift */,
+			);
+			path = Navigation;
+			sourceTree = "<group>";
+		};
+		21F28E278E14546D3F9E74F0 /* Activity */ = {
+			isa = PBXGroup;
+			children = (
+				2D6C7DD9946995150918312D /* ActivityView.swift */,
+				6D66C8D99A967DC1F5B5CF36 /* TransactionDetailView.swift */,
+			);
+			path = Activity;
+			sourceTree = "<group>";
+		};
+		2F34BB48F0072693BCDAF7E0 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				437238B7B37EE05127BE7047 /* BinaryHash.swift */,
+				C3D702762E9000A6EA8D1000 /* wallet_core.swift */,
+				165D718D5E67FBEF7259F60C /* wallet_coreFFI.h */,
+				F4EF78E4EFE088FCC53CE85D /* wallet_coreFFI.modulemap */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		4CC92CBF53360AC41AA1B64E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				16989FA5F96246EAEB36447C /* WalletCoreFramework.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		54F8AAA61C8FFE32EE9E55AC /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				1503B5B796CC0E77739FE776 /* AntiDebugger.swift */,
+				CC2198FE550DAC346605FC07 /* AppIntegrityChecker.swift */,
+				C7EFBE209AD297BDC4D3A59E /* ClipboardManager.swift */,
+				ABB2E87F993440BFBB09FCE6 /* JailbreakDetector.swift */,
+				3F34027253E86794244F5441 /* ScreenshotProtection.swift */,
+				85AAF1543C4AD2CE81FEF447 /* SecurityBootstrap.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
+		574D312D6527BB0C97599D48 /* Send */ = {
+			isa = PBXGroup;
+			children = (
+				3C38333B994CCB7D57A6555F /* ConfirmTransactionView.swift */,
+				C78EDB97134A48161614EBCD /* QRScannerView.swift */,
+				EC308EC0F3396DDAC8A038AE /* SendView.swift */,
+				28339F8B631830F6157C457F /* TransactionResultView.swift */,
+			);
+			path = Send;
+			sourceTree = "<group>";
+		};
+		63FB3DAC54868680D64C4ACD /* DApps */ = {
+			isa = PBXGroup;
+			children = (
+				309E410DC4DF83744923FE7F /* DAppsView.swift */,
+				C45081E0DA480C49E0B0FB4C /* SessionApproveView.swift */,
+				CE79EF2F2800CBF93803A637 /* SignRequestView.swift */,
+			);
+			path = DApps;
+			sourceTree = "<group>";
+		};
+		7F65F2DE4009241CC13EA5D8 = {
+			isa = PBXGroup;
+			children = (
+				A2F224A78C1ED9F110E6831E /* AnvilWallet */,
+				4CC92CBF53360AC41AA1B64E /* Frameworks */,
+				EE44DEDF75CCFB1048473C53 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		92E3B4C7F02F53704E890C8D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				453FD1EB7AAB1D4C0F35317A /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		99E7B637C915AAF2DB3BE8B4 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B96FF3504CC1CEA909240B51 /* BiometricService.swift */,
+				DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */,
+				82E95CA13963288BB627DCE4 /* KeychainService.swift */,
+				0EC94C6B7269D62CF64407B2 /* PriceService.swift */,
+				61D843EF46CD12F68B4CB725 /* RPCService.swift */,
+				C71F6412709C43E017CD623C /* SecureEnclaveService.swift */,
+				92F1A34526C04684DDFA0C0B /* TransactionSimulator.swift */,
+				09FBA54B2133A7026944FC0E /* WalletConnectService.swift */,
+				2AED27DA3173028C9F091E5F /* WalletService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		9ABC1CDA74E6B87570CB3F7D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				658CA0A71B5D222A59C693F4 /* ChainModel.swift */,
+				C61FC7C4A3F825FEC127C18C /* TokenModel.swift */,
+				3EBACF2913C82A01C79871CD /* TransactionModel.swift */,
+				267C5F07D51E8455CA12C849 /* WalletModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A2F224A78C1ED9F110E6831E /* AnvilWallet */ = {
+			isa = PBXGroup;
+			children = (
+				E20CAB53ECF36199D17F67F5 /* App */,
+				F639C36373E5D87EB7CF32F1 /* Extensions */,
+				E6FAD91C64BD5D27D7340C21 /* Features */,
+				2F34BB48F0072693BCDAF7E0 /* Generated */,
+				9ABC1CDA74E6B87570CB3F7D /* Models */,
+				1D83212F059A956B835EF5F2 /* Navigation */,
+				92E3B4C7F02F53704E890C8D /* Resources */,
+				54F8AAA61C8FFE32EE9E55AC /* Security */,
+				99E7B637C915AAF2DB3BE8B4 /* Services */,
+			);
+			path = AnvilWallet;
+			sourceTree = "<group>";
+		};
+		D04194508266BED54F119A6C /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				D3B661A7D277B7DD37C35D5F /* BackupMnemonicView.swift */,
+				868983E706EB64A22E077F8F /* CreateWalletView.swift */,
+				8971407C6CB376E4DC40D257 /* ImportWalletView.swift */,
+				10B1C12ECCBEA7864116F065 /* SetPasswordView.swift */,
+				4DFB27E386F923302FC61C94 /* VerifyMnemonicView.swift */,
+				887C7E41160BE130FBDF2E17 /* WelcomeView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		D2F5900A9405B6D40CC9ECF2 /* Wallet */ = {
+			isa = PBXGroup;
+			children = (
+				870D01C593148616D0BE89B2 /* ReceiveView.swift */,
+				1D56C315A34F049854265ADC /* TokenDetailView.swift */,
+				3B7A9ED7F9380E561504066E /* TokenListView.swift */,
+				8E137E3670AF19824336505C /* WalletHomeView.swift */,
+			);
+			path = Wallet;
+			sourceTree = "<group>";
+		};
+		E20CAB53ECF36199D17F67F5 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8FB100FAD507BD2544E37B5E /* AnvilWalletApp.swift */,
+				0079E88284024F5987051DED /* ContentView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E36045F00381652B371BC921 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */,
+				0211E06D53277076763E8D5F /* NetworkSettingsView.swift */,
+				A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */,
+				0F84C764CA78A1E0F0836B25 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		E6FAD91C64BD5D27D7340C21 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				21F28E278E14546D3F9E74F0 /* Activity */,
+				63FB3DAC54868680D64C4ACD /* DApps */,
+				D04194508266BED54F119A6C /* Onboarding */,
+				574D312D6527BB0C97599D48 /* Send */,
+				E36045F00381652B371BC921 /* Settings */,
+				D2F5900A9405B6D40CC9ECF2 /* Wallet */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		EE44DEDF75CCFB1048473C53 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				93B10227387D2AA2B1DC1817 /* AnvilWallet.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F639C36373E5D87EB7CF32F1 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				6847F29D89294D4C693D513D /* Color+Theme.swift */,
+				6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E74F9B294421CBEB9AC96E64 /* AnvilWallet */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 890D0B1F9478E1077CA8FC60 /* Build configuration list for PBXNativeTarget "AnvilWallet" */;
+			buildPhases = (
+				ED0053BEB7CABD99747D0851 /* Sources */,
+				E8EDA91335BF7EAEC4B165C1 /* Resources */,
+				3007DE10F7BE4AAE9D3092E2 /* Frameworks */,
+				24E5CEF59937616325BB71CF /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AnvilWallet;
+			packageProductDependencies = (
+			);
+			productName = AnvilWallet;
+			productReference = 93B10227387D2AA2B1DC1817 /* AnvilWallet.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		16DE3BCD45CDCC8B920A5CA7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1620;
+			};
+			buildConfigurationList = FF1B3B18CB3E640304F4D44E /* Build configuration list for PBXProject "AnvilWallet" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7F65F2DE4009241CC13EA5D8;
+			minimizedProjectReferenceProxies = 1;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E74F9B294421CBEB9AC96E64 /* AnvilWallet */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E8EDA91335BF7EAEC4B165C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				48E71DFAC04D390AD89816AD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		ED0053BEB7CABD99747D0851 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */,
+				FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */,
+				BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */,
+				189BB7346C1852EE39E77715 /* AppIntegrityChecker.swift in Sources */,
+				1B623386B94064263EBCD32C /* AppRouter.swift in Sources */,
+				617197CA1F5CC98668F41887 /* BackupMnemonicView.swift in Sources */,
+				EF7C77FA6D055B84CF42AFF1 /* BackupSettingsView.swift in Sources */,
+				C0676203BBE51E352C463925 /* BinaryHash.swift in Sources */,
+				76549807F785FA96A2FA975A /* BiometricService.swift in Sources */,
+				755ED579F9B40C05D37A84C1 /* CertificatePinner.swift in Sources */,
+				52C09D2B64B9D56CB39A9069 /* ChainModel.swift in Sources */,
+				58E982432F34A3B9A13E5E4A /* ClipboardManager.swift in Sources */,
+				5A0E256799E01F75262F5F2C /* Color+Theme.swift in Sources */,
+				674819B449322FD1CB59585B /* ConfirmTransactionView.swift in Sources */,
+				117A14C55C89E29D646982F9 /* ContentView.swift in Sources */,
+				B3FA9A793D510421AACED3C1 /* CreateWalletView.swift in Sources */,
+				7A4EEDC77490CCFEEC9582AB /* DAppsView.swift in Sources */,
+				AE4A7B2341291F7BF9E58AFC /* ImportWalletView.swift in Sources */,
+				0960920730A37C2E3801CB90 /* JailbreakDetector.swift in Sources */,
+				1746DB767479E7E994F3A4FE /* KeychainService.swift in Sources */,
+				88823B7741780DC2E6D28F1A /* NetworkSettingsView.swift in Sources */,
+				97D03AB2A5566FBAF3C06F44 /* PriceService.swift in Sources */,
+				01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */,
+				261F508DC246530978564B9C /* RPCService.swift in Sources */,
+				8C44E6968AB775CD762D285D /* ReceiveView.swift in Sources */,
+				A2EAC5421922565ECBFC7FC5 /* ScreenshotProtection.swift in Sources */,
+				B50AE955E0201C5390A58677 /* SecureEnclaveService.swift in Sources */,
+				176D55803EEB494C3130629F /* SecurityBootstrap.swift in Sources */,
+				6DF917CAB2A1FB58E410891A /* SecuritySettingsView.swift in Sources */,
+				A84C8ED8C76136468EE21FC6 /* SendView.swift in Sources */,
+				E686345D556878C78A617223 /* SessionApproveView.swift in Sources */,
+				FEDC3360EB218A16D15DA83D /* SetPasswordView.swift in Sources */,
+				DBE88BF61BAC5E27872F15D5 /* SettingsView.swift in Sources */,
+				C4769A3CB5FF7D8F4C579E5E /* SignRequestView.swift in Sources */,
+				F6BFF7D0F193A42B186A056F /* TabBarView.swift in Sources */,
+				3837CE208C95482FC8E7CFF3 /* TokenDetailView.swift in Sources */,
+				834ACC25F9355047220849DF /* TokenListView.swift in Sources */,
+				98908357BE38EA22A69965D0 /* TokenModel.swift in Sources */,
+				FCA052D8EBC7EA6C81A8A0FD /* TransactionDetailView.swift in Sources */,
+				E7B5F8CEA5C3ED71C81E9799 /* TransactionModel.swift in Sources */,
+				E000F0725A217D022EFE1983 /* TransactionResultView.swift in Sources */,
+				CEA9F41780C1E6B759BF7B21 /* TransactionSimulator.swift in Sources */,
+				BA81E6F1B4FCE2D73C8AF9B4 /* VerifyMnemonicView.swift in Sources */,
+				2B9B0D5FE362705F39AD0E38 /* View+Extensions.swift in Sources */,
+				2BF38250A34E6EB5F68E254E /* WalletConnectService.swift in Sources */,
+				45B0D25011917923F8ED6A64 /* WalletHomeView.swift in Sources */,
+				55739C6806CC35C8068FC2BF /* WalletModel.swift in Sources */,
+				179618C293B0C1078720DFED /* WalletService.swift in Sources */,
+				E37BEBB406FB24CB98AAD2C9 /* WelcomeView.swift in Sources */,
+				58790A16CB37C9BF28894E6A /* wallet_core.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2B3B4CA967B1238B8A551F94 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N7MU2BBA93;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
+				INFOPLIST_KEY_CFBundleDisplayName = Anvil;
+				INFOPLIST_KEY_NSCameraUsageDescription = "AnvilWallet needs camera access to scan QR codes";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "AnvilWallet uses Face ID to authenticate transactions";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.app;
+				PRODUCT_NAME = AnvilWallet;
+				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		697AC026858EFDD38322868B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		A4CD8AB81AAE391740167DBC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N7MU2BBA93;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
+				INFOPLIST_KEY_CFBundleDisplayName = Anvil;
+				INFOPLIST_KEY_NSCameraUsageDescription = "AnvilWallet needs camera access to scan QR codes";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "AnvilWallet uses Face ID to authenticate transactions";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.app;
+				PRODUCT_NAME = AnvilWallet;
+				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B63BFE7130F68DBC8FD99D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		890D0B1F9478E1077CA8FC60 /* Build configuration list for PBXNativeTarget "AnvilWallet" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4CD8AB81AAE391740167DBC /* Debug */,
+				2B3B4CA967B1238B8A551F94 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FF1B3B18CB3E640304F4D44E /* Build configuration list for PBXProject "AnvilWallet" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				697AC026858EFDD38322868B /* Debug */,
+				B63BFE7130F68DBC8FD99D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 16DE3BCD45CDCC8B920A5CA7 /* Project object */;
+}

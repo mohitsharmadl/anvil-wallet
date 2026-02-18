@@ -81,6 +81,30 @@ struct ReceiveView: View {
             }
             .padding(.horizontal, 24)
 
+            // Share button
+            Button {
+                let activityVC = UIActivityViewController(
+                    activityItems: [address],
+                    applicationActivities: nil
+                )
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let rootVC = windowScene.windows.first?.rootViewController {
+                    rootVC.present(activityVC, animated: true)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share Address")
+                }
+                .font(.headline)
+                .foregroundColor(.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.backgroundCard)
+                .cornerRadius(12)
+            }
+            .padding(.horizontal, 24)
+
             // Warning
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")

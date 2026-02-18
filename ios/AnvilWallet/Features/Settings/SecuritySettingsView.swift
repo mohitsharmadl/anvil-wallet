@@ -1,20 +1,35 @@
 import SwiftUI
 
+// MARK: - Auto-Lock Interval
+
+/// Configurable auto-lock timeout intervals. Persisted via @AppStorage.
+enum AutoLockInterval: String, CaseIterable {
+    case immediately = "Immediately"
+    case oneMinute = "1 minute"
+    case fiveMinutes = "5 minutes"
+    case fifteenMinutes = "15 minutes"
+    case never = "Never"
+
+    var seconds: TimeInterval {
+        switch self {
+        case .immediately: return 0
+        case .oneMinute: return 60
+        case .fiveMinutes: return 300
+        case .fifteenMinutes: return 900
+        case .never: return -1 // negative means never lock
+        }
+    }
+}
+
 /// SecuritySettingsView allows users to manage wallet security settings.
 struct SecuritySettingsView: View {
+    @EnvironmentObject var walletService: WalletService
+
     @State private var isBiometricEnabled = true
-    @State private var autoLockInterval = AutoLockInterval.fiveMinutes
+    @AppStorage("autoLockInterval") private var autoLockInterval = AutoLockInterval.fiveMinutes
     @State private var showChangePassword = false
 
     private let biometricService = BiometricService()
-
-    enum AutoLockInterval: String, CaseIterable {
-        case immediately = "Immediately"
-        case oneMinute = "1 minute"
-        case fiveMinutes = "5 minutes"
-        case fifteenMinutes = "15 minutes"
-        case never = "Never"
-    }
 
     var body: some View {
         List {
@@ -43,23 +58,15 @@ struct SecuritySettingsView: View {
                     }
                 }
                 .foregroundColor(.textPrimary)
-                .disabled(true)
             }
             .listRowBackground(Color.backgroundCard)
 
             // Password
             Section("Password") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Button {
-                        showChangePassword = true
-                    } label: {
-                        SettingsRow(icon: "key.fill", title: "Change Password", color: .warning)
-                    }
-                    .disabled(true)
-
-                    Text("Coming soon")
-                        .font(.caption)
-                        .foregroundColor(.textTertiary)
+                Button {
+                    showChangePassword = true
+                } label: {
+                    SettingsRow(icon: "key.fill", title: "Change Password", color: .warning)
                 }
             }
             .listRowBackground(Color.backgroundCard)
@@ -110,6 +117,7 @@ struct SecuritySettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
+                .environmentObject(walletService)
         }
     }
 }
@@ -147,11 +155,18 @@ private struct SecurityStatusRow: View {
 // MARK: - Change Password Sheet
 
 private struct ChangePasswordSheet: View {
+    @EnvironmentObject var walletService: WalletService
     @Environment(\.dismiss) private var dismiss
 
     @State private var currentPassword = ""
     @State private var newPassword = ""
     @State private var confirmPassword = ""
+    @State private var errorMessage: String?
+    @State private var isProcessing = false
+
+    private var isValid: Bool {
+        !currentPassword.isEmpty && !newPassword.isEmpty && newPassword == confirmPassword
+    }
 
     var body: some View {
         NavigationStack {
@@ -171,18 +186,37 @@ private struct ChangePasswordSheet: View {
                     .background(Color.backgroundCard)
                     .cornerRadius(10)
 
+                if newPassword != confirmPassword && !confirmPassword.isEmpty {
+                    Text("Passwords do not match")
+                        .font(.caption)
+                        .foregroundColor(.error)
+                }
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.error)
+                }
+
                 Spacer()
 
                 Button {
-                    // TODO: Implement password change via Rust FFI
-                    // 1. Decrypt seed with current password
-                    // 2. Re-encrypt seed with new password
-                    // 3. Re-encrypt with SE and store in Keychain
-                    dismiss()
+                    Task {
+                        isProcessing = true
+                        errorMessage = nil
+                        do {
+                            try await walletService.changePassword(current: currentPassword, new: newPassword)
+                            dismiss()
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
+                        isProcessing = false
+                    }
                 } label: {
                     Text("Change Password")
                 }
                 .buttonStyle(.primary)
+                .disabled(!isValid || isProcessing)
             }
             .padding(20)
             .background(Color.backgroundPrimary)

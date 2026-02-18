@@ -30,7 +30,7 @@ echo ">>> Generating Swift bindings..."
 mkdir -p "$GENERATED_DIR"
 
 UDL_FILE="$CRATE_DIR/src/wallet_core.udl"
-uniffi-bindgen generate "$UDL_FILE" \
+cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "$UDL_FILE" \
     --language swift \
     --out-dir "$GENERATED_DIR" 2>/dev/null || true
 

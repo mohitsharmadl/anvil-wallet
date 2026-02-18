@@ -5,6 +5,7 @@ members = [
     "crates/chain-btc",
     "crates/chain-eth",
     "crates/chain-sol",
+    "tools/uniffi-bindgen",
 ]
 resolver = "2"
 

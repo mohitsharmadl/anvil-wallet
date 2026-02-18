@@ -40,10 +40,14 @@ final class PriceService {
         "arb": "arbitrum",
     ]
 
-    init() {
+    private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
-        session = URLSession(configuration: config)
+        session = URLSession(
+            configuration: config,
+            delegate: CertificatePinner(),
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Fetch Prices

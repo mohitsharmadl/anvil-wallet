@@ -100,6 +100,15 @@ namespace wallet_core {
     [Throws=WalletError]
     boolean validate_address(string address, Chain chain);
 
+    /// Sign an arbitrary message with EIP-191 personal_sign (returns 65-byte signature)
+    [Throws=WalletError]
+    bytes sign_eth_message(
+        bytes seed,
+        u32 account,
+        u32 index,
+        bytes message
+    );
+
     /// Sign an Ethereum transaction (returns raw signed tx bytes)
     [Throws=WalletError]
     bytes sign_eth_transaction(

@@ -422,7 +422,7 @@ struct ConfirmTransactionView: View {
                 if let contractAddress = transaction.contractAddress {
                     let tokenAmountHex = amountToHex(transaction.amount, decimals: transaction.tokenDecimals)
                     guard let calldata = encodeERC20Transfer(to: transaction.to, amountHex: tokenAmountHex) else {
-                        throw WalletError.signingFailed
+                        throw AppWalletError.signingFailed
                     }
                     txTo = contractAddress
                     txValueHex = "0x0"
@@ -494,7 +494,7 @@ struct ConfirmTransactionView: View {
                     AppRouter.SendDestination.transactionResult(txHash: txHash, success: true)
                 )
             }
-        } catch let error as WalletError where error == .passwordRequired {
+        } catch let error as AppWalletError where error == .passwordRequired {
             // Session password was cleared (app was backgrounded) — prompt re-entry
             await MainActor.run {
                 isSigning = false
@@ -593,10 +593,10 @@ private struct PasswordReentrySheet: View {
     }
 }
 
-// MARK: - WalletError Equatable for pattern matching
+// MARK: - AppWalletError Equatable for pattern matching
 
-extension WalletError: Equatable {
-    static func == (lhs: WalletError, rhs: WalletError) -> Bool {
+extension AppWalletError: Equatable {
+    static func == (lhs: AppWalletError, rhs: AppWalletError) -> Bool {
         switch (lhs, rhs) {
         case (.invalidMnemonic, .invalidMnemonic),
              (.seedNotFound, .seedNotFound),

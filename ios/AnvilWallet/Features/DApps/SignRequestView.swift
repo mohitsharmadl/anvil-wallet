@@ -8,11 +8,13 @@ import SwiftUI
 ///   - eth_sendTransaction (transaction signing)
 struct SignRequestView: View {
     @StateObject private var walletConnect = WalletConnectService.shared
+    @EnvironmentObject var walletService: WalletService
     @Environment(\.dismiss) private var dismiss
 
     let request: WalletConnectService.WCSignRequest
 
     @State private var isProcessing = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -86,14 +88,26 @@ struct SignRequestView: View {
 
                 Spacer()
 
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.error)
+                        .padding(.horizontal, 20)
+                }
+
                 // Buttons
                 VStack(spacing: 12) {
                     Button {
                         Task {
                             isProcessing = true
-                            try? await walletConnect.approveRequest(request)
+                            errorMessage = nil
+                            do {
+                                try await walletConnect.approveRequest(request, walletService: walletService)
+                                dismiss()
+                            } catch {
+                                errorMessage = error.localizedDescription
+                            }
                             isProcessing = false
-                            dismiss()
                         }
                     } label: {
                         Text("Sign")

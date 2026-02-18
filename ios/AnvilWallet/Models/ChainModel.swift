@@ -51,7 +51,7 @@ struct ChainModel: Identifiable, Codable, Hashable {
         name: "Ethereum",
         symbol: "ETH",
         iconName: "ethereum_icon",
-        rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
+        rpcUrl: "https://rpc.ankr.com/eth",
         explorerUrl: "https://etherscan.io",
         chainType: .evm
     )

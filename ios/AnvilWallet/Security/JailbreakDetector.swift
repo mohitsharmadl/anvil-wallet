@@ -192,32 +192,34 @@ enum JailbreakDetector {
         return false
     }
 
-    // MARK: - Layer 5: Fork Behavior
+    // MARK: - Layer 5: Process Spawn Behavior
 
-    /// Attempts to call fork(). On a non-jailbroken device, fork() should fail
+    /// Attempts to spawn a process. On a non-jailbroken device, this should fail
     /// because the app sandbox restricts process creation.
     private static func checkForkBehavior() -> Bool {
-        let pid = fork()
-        if pid >= 0 {
-            // fork() succeeded -- device is likely jailbroken
-            if pid > 0 {
-                // We're in the parent; kill the child process
-                kill(pid, SIGTERM)
-            }
+        var pid: pid_t = 0
+        let result = posix_spawn(&pid, "/bin/ls", nil, nil, nil, nil)
+        if result == 0 {
+            // Spawn succeeded — device is likely jailbroken
+            kill(pid, SIGTERM)
             return true
         }
-        // fork() failed (expected on non-jailbroken)
+        // posix_spawn failed (expected on non-jailbroken)
         return false
     }
 
     // MARK: - Layer 6: Cydia URL Scheme
 
     /// Checks if the Cydia URL scheme is registered, indicating Cydia is installed.
-    @MainActor
     private static func checkCydiaURLScheme() -> Bool {
         guard let url = URL(string: "cydia://package/com.example.package") else {
             return false
         }
-        return UIApplication.shared.canOpenURL(url)
+        // If already on main thread (called from @MainActor context), call directly
+        // to avoid deadlocking on DispatchQueue.main.sync
+        if Thread.isMainThread {
+            return UIApplication.shared.canOpenURL(url)
+        }
+        return DispatchQueue.main.sync { UIApplication.shared.canOpenURL(url) }
     }
 }

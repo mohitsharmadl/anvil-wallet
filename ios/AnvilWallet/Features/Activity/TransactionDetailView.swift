@@ -58,11 +58,10 @@ struct TransactionDetailView: View {
 
                 // View on explorer button
                 Button {
-                    // TODO: Open block explorer
-                    // let chain = ChainModel.allChains.first { $0.id == transaction.chain }
-                    // if let url = chain?.explorerTransactionUrl(hash: transaction.hash) {
-                    //     UIApplication.shared.open(url)
-                    // }
+                    let chain = ChainModel.allChains.first { $0.id == transaction.chain }
+                    if let url = chain?.explorerTransactionUrl(hash: transaction.hash) {
+                        UIApplication.shared.open(url)
+                    }
                 } label: {
                     Label("View on Block Explorer", systemImage: "arrow.up.right.square")
                         .font(.headline)

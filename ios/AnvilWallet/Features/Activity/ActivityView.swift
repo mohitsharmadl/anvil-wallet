@@ -95,10 +95,14 @@ struct ActivityView: View {
             .background(Color.backgroundPrimary)
             .navigationTitle("Activity")
             .navigationBarTitleDisplayMode(.large)
-            .refreshable {
-                // TODO: Fetch transaction history from chain
+            .task {
                 isLoading = true
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await walletService.refreshTransactions()
+                isLoading = false
+            }
+            .refreshable {
+                isLoading = true
+                try? await walletService.refreshTransactions()
                 isLoading = false
             }
         }
