@@ -35,3 +35,6 @@ ios/WalletCoreFramework.xcframework/
 # Environment
 .env
 .env.*
+
+# Build-time secrets (user-specific, not committed)
+ios/Secrets.xcconfig

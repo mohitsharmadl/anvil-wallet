@@ -84,19 +84,23 @@ fi
 
 echo ""
 
-# Check 4: Reown WalletConnect project ID is not placeholder
-APP_SWIFT="$PROJECT_DIR/ios/AnvilWallet/App/AnvilWalletApp.swift"
-if [ -f "$APP_SWIFT" ]; then
-    if grep -q 'YOUR_REOWN_PROJECT_ID' "$APP_SWIFT" 2>/dev/null; then
-        echo "FAIL: Reown project ID is still placeholder in AnvilWalletApp.swift"
-        echo "  Replace YOUR_REOWN_PROJECT_ID with a real project ID from https://cloud.reown.com"
-        ERRORS=$((ERRORS + 1))
-    else
-        echo "PASS: Reown WalletConnect project ID configured"
-    fi
-else
-    echo "FAIL: AnvilWalletApp.swift not found"
+# Check 4: Reown WalletConnect project ID is configured via Secrets.xcconfig
+SECRETS_FILE="$PROJECT_DIR/ios/Secrets.xcconfig"
+SECRETS_EXAMPLE="$PROJECT_DIR/ios/Secrets.xcconfig.example"
+if [ ! -f "$SECRETS_EXAMPLE" ]; then
+    echo "FAIL: Secrets.xcconfig.example not found"
     ERRORS=$((ERRORS + 1))
+elif [ ! -f "$SECRETS_FILE" ]; then
+    echo "FAIL: ios/Secrets.xcconfig not found"
+    echo "  Copy Secrets.xcconfig.example to Secrets.xcconfig and set REOWN_PROJECT_ID"
+    ERRORS=$((ERRORS + 1))
+elif grep -qE 'REOWN_PROJECT_ID\s*=\s*YOUR_REOWN_PROJECT_ID' "$SECRETS_FILE" 2>/dev/null || \
+     grep -qE 'REOWN_PROJECT_ID\s*=\s*$' "$SECRETS_FILE" 2>/dev/null; then
+    echo "FAIL: REOWN_PROJECT_ID is placeholder or empty in ios/Secrets.xcconfig"
+    echo "  Set a real project ID from https://cloud.reown.com"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "PASS: Reown WalletConnect project ID configured in Secrets.xcconfig"
 fi
 
 echo ""

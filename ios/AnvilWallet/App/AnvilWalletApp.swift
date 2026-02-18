@@ -6,19 +6,19 @@ struct AnvilWalletApp: App {
     @StateObject private var walletService = WalletService.shared
     @Environment(\.scenePhase) private var scenePhase
 
-    private static let reownProjectId = "YOUR_REOWN_PROJECT_ID"
-
     init() {
         SecurityBootstrap.performChecks()
 
         // Initialize WalletConnect (Reown SDK)
-        // Replace with your Reown project ID from https://cloud.reown.com
+        // Project ID is injected via Secrets.xcconfig → Info.plist at build time.
+        // See ios/Secrets.xcconfig.example for setup instructions.
+        let projectId = Bundle.main.object(forInfoDictionaryKey: "ReownProjectID") as? String ?? ""
         #if !DEBUG
-        if Self.reownProjectId == "YOUR_REOWN_PROJECT_ID" {
-            fatalError("Ship blocker: replace YOUR_REOWN_PROJECT_ID with a real Reown project ID")
+        if projectId.isEmpty || projectId == "YOUR_REOWN_PROJECT_ID" {
+            fatalError("Ship blocker: set REOWN_PROJECT_ID in ios/Secrets.xcconfig (see Secrets.xcconfig.example)")
         }
         #endif
-        WalletConnectService.shared.configure(projectId: Self.reownProjectId)
+        WalletConnectService.shared.configure(projectId: projectId)
     }
 
     @State private var backgroundedAt: Date?
