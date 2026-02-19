@@ -185,25 +185,14 @@ final class SwapService {
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let swapTxBase64 = json["swapTransaction"] as? String,
-              let txBytes = Data(base64Encoded: swapTxBase64) else {
+              let _ = Data(base64Encoded: swapTxBase64) else {
             throw SwapServiceError.invalidResponse
         }
 
-        // Sign the transaction via WalletService
-        let signedTx = try await WalletService.shared.signTransaction(
-            request: TransactionRequest(
-                chain: solanaChain.id,
-                rawTransaction: txBytes
-            )
-        )
-
-        // Broadcast via RPC
-        let txHash = try await RPCService.shared.sendSolanaTransaction(
-            rpcUrl: solanaChain.rpcUrl,
-            signedTx: signedTx
-        )
-
-        return Data(txHash.utf8)
+        // TODO: Jupiter returns a versioned transaction that needs raw signing support.
+        // The current signTransaction API only supports building SOL transfers from scratch.
+        // Implement raw Solana transaction signing (sign pre-built tx bytes) to enable this.
+        throw SwapServiceError.transactionBuildFailed
     }
 
     // MARK: - 0x (EVM)
@@ -273,48 +262,72 @@ final class SwapService {
               let to = json["to"] as? String,
               let txData = json["data"] as? String,
               let value = json["value"] as? String,
-              let gas = json["gas"] as? String else {
+              let gas = json["gas"] as? String,
+              let gasLimit = UInt64(gas) else {
             throw SwapServiceError.transactionBuildFailed
         }
 
         // Determine which EVM chain this quote is for
-        let chainId = (json["chainId"] as? Int).flatMap(String.init) ?? "ethereum"
+        let chainIdNum = json["chainId"] as? Int ?? 1
         let chain = ChainModel.allChains.first { chain in
-            chain.evmChainId.map(String.init) == chainId
+            chain.evmChainId == UInt64(chainIdNum)
         } ?? ChainModel.ethereum
+
+        guard let evmChainId = chain.evmChainId else {
+            throw SwapServiceError.unsupportedChain(chain.id)
+        }
 
         guard let fromAddress = WalletService.shared.addresses[chain.id] else {
             throw SwapServiceError.transactionBuildFailed
         }
 
-        // Build the EVM transaction from the 0x quote response fields
-        let tx = TransactionModel(
-            hash: "",
-            chain: chain.id,
-            from: fromAddress,
+        // Fetch nonce and fee params from network
+        let rpc = RPCService.shared
+        let nonceHex = try await rpc.getTransactionCount(rpcUrl: chain.rpcUrl, address: fromAddress)
+        guard let nonce = UInt64(nonceHex.hasPrefix("0x") ? String(nonceHex.dropFirst(2)) : nonceHex, radix: 16) else {
+            throw SwapServiceError.networkError("Invalid nonce: \(nonceHex)")
+        }
+
+        let fees = try await rpc.feeHistory(rpcUrl: chain.rpcUrl)
+        let maxPriorityFeeHex = fees.priorityFeeHex
+        let maxFeeHex: String
+        if let baseFee = UInt64(fees.baseFeeHex.hasPrefix("0x") ? String(fees.baseFeeHex.dropFirst(2)) : fees.baseFeeHex, radix: 16),
+           let priority = UInt64(fees.priorityFeeHex.hasPrefix("0x") ? String(fees.priorityFeeHex.dropFirst(2)) : fees.priorityFeeHex, radix: 16) {
+            maxFeeHex = "0x" + String(baseFee * 2 + priority, radix: 16)
+        } else {
+            maxFeeHex = fees.baseFeeHex
+        }
+
+        // Decode calldata hex to bytes
+        let calldataCleaned = txData.hasPrefix("0x") ? String(txData.dropFirst(2)) : txData
+        var calldataBytes = Data()
+        var idx = calldataCleaned.startIndex
+        while idx < calldataCleaned.endIndex {
+            let next = calldataCleaned.index(idx, offsetBy: 2)
+            if let byte = UInt8(String(calldataCleaned[idx..<next]), radix: 16) {
+                calldataBytes.append(byte)
+            }
+            idx = next
+        }
+
+        // Build typed EVM transaction request
+        let ethReq = EthTransactionRequest(
+            chainId: evmChainId,
+            nonce: nonce,
             to: to,
-            amount: value,
-            fee: gas,
-            status: .pending,
-            timestamp: Date(),
-            tokenSymbol: chain.symbol,
-            tokenDecimals: 18,
-            data: txData
+            valueWeiHex: value.hasPrefix("0x") ? value : "0x\(value)",
+            data: calldataBytes,
+            maxPriorityFeeHex: maxPriorityFeeHex,
+            maxFeeHex: maxFeeHex,
+            gasLimit: gasLimit + gasLimit / 5  // 20% buffer
         )
 
-        let signedTx = try await WalletService.shared.signTransaction(
-            request: TransactionRequest(
-                chain: chain.id,
-                to: to,
-                value: value,
-                data: txData,
-                gasLimit: gas
-            )
-        )
+        let signedTx = try await WalletService.shared.signTransaction(request: .eth(ethReq))
+        let signedTxHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
 
-        let txHash = try await RPCService.shared.sendRawTransaction(
+        let txHash = try await rpc.sendRawTransaction(
             rpcUrl: chain.rpcUrl,
-            signedTx: signedTx
+            signedTx: signedTxHex
         )
 
         return Data(txHash.utf8)

@@ -381,10 +381,11 @@ final class RPCService {
         private static let charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
         /// Decodes a bech32/bech32m address and returns the witness program bytes.
-        /// Returns nil on invalid input.
+        /// Returns nil on invalid input or checksum failure.
         static func decode(_ addr: String) -> Data? {
             let lower = addr.lowercased()
             guard let sepIndex = lower.lastIndex(of: "1") else { return nil }
+            let hrp = String(lower[lower.startIndex..<sepIndex])
             let dataPart = lower[lower.index(after: sepIndex)...]
             guard dataPart.count >= 7 else { return nil } // 1 witness version + 6 checksum
 
@@ -394,6 +395,9 @@ final class RPCService {
                 guard let idx = charset.firstIndex(of: char) else { return nil }
                 values.append(UInt8(charset.distance(from: charset.startIndex, to: idx)))
             }
+
+            // Verify checksum before stripping — bech32 polymod must equal 1
+            guard verifyChecksum(hrp: hrp, values: values) else { return nil }
 
             // Strip checksum (last 6 values) and witness version (first value)
             guard values.count > 7 else { return nil }
@@ -406,6 +410,41 @@ final class RPCService {
                 return nil
             }
             return Data(bytes)
+        }
+
+        /// Verifies the bech32 checksum using the BIP-173 polymod algorithm.
+        private static func verifyChecksum(hrp: String, values: [UInt8]) -> Bool {
+            let expanded = hrpExpand(hrp) + values
+            return polymod(expanded) == 1 // bech32 constant
+        }
+
+        /// Expands the HRP for checksum computation per BIP-173.
+        private static func hrpExpand(_ hrp: String) -> [UInt8] {
+            var result: [UInt8] = []
+            for c in hrp.unicodeScalars {
+                result.append(UInt8(c.value >> 5))
+            }
+            result.append(0)
+            for c in hrp.unicodeScalars {
+                result.append(UInt8(c.value & 31))
+            }
+            return result
+        }
+
+        /// BIP-173 polymod function for bech32 checksum verification.
+        private static func polymod(_ values: [UInt8]) -> UInt32 {
+            let gen: [UInt32] = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+            var chk: UInt32 = 1
+            for v in values {
+                let top = chk >> 25
+                chk = ((chk & 0x1ffffff) << 5) ^ UInt32(v)
+                for i in 0..<5 {
+                    if (top >> i) & 1 != 0 {
+                        chk ^= gen[i]
+                    }
+                }
+            }
+            return chk
         }
 
         /// Converts between bit groupings (e.g., 5-bit to 8-bit for bech32).

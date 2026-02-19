@@ -174,7 +174,11 @@ final class WalletService: ObservableObject {
         // Step 2: Derive seed and encrypt with password via Rust (Argon2id + AES-256-GCM)
         // Note: Empty passphrase is intentional — matches MetaMask/Trust Wallet behavior.
         // BIP-39 passphrase support (for plausible deniability) is a planned future feature.
-        let seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: "")
+        var seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: "")
+        defer {
+            // Zeroize seed bytes after all operations complete
+            for i in seedBytes.indices { seedBytes[i] = 0 }
+        }
         let encrypted = try encryptSeedWithPassword(seed: seedBytes, password: password)
         let packed = packSaltAndCiphertext(
             salt: Data(encrypted.salt),
@@ -230,7 +234,11 @@ final class WalletService: ObservableObject {
         }
 
         // Step 2: Derive seed and encrypt with password via Rust
-        let seedBytes = try mnemonicToSeed(mnemonic: mnemonic, passphrase: "")
+        var seedBytes = try mnemonicToSeed(mnemonic: mnemonic, passphrase: "")
+        defer {
+            // Zeroize seed bytes after all operations complete
+            for i in seedBytes.indices { seedBytes[i] = 0 }
+        }
         let encrypted = try encryptSeedWithPassword(seed: seedBytes, password: password)
         let packed = packSaltAndCiphertext(
             salt: Data(encrypted.salt),
