@@ -216,19 +216,25 @@ struct BuyView: View {
 
     /// Builds the MoonPay buy widget URL for the selected chain and address.
     private func moonPayURL(chain: BuyChain, address: String) -> URL {
-        // TODO: Replace with production MoonPay API key before App Store release
-        let apiKey = "pk_test_123"
+        let apiKey = Bundle.main.object(forInfoDictionaryKey: "MoonPayApiKey") as? String ?? ""
         let currencyCode = chain.moonPayCurrencyCode
         // Anvil Wallet accent green (#34D399), URL-encoded
         let colorCode = "%2334D399"
 
         var components = URLComponents(string: "https://buy.moonpay.com")!
-        components.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "apiKey", value: apiKey),
             URLQueryItem(name: "currencyCode", value: currencyCode),
             URLQueryItem(name: "walletAddress", value: address),
             URLQueryItem(name: "colorCode", value: colorCode),
         ]
+
+        if apiKey.isEmpty || apiKey == "YOUR_MOONPAY_API_KEY" {
+            // Keep URL valid but mark integration as test-misconfigured.
+            queryItems.append(URLQueryItem(name: "flow", value: "buy"))
+        }
+
+        components.queryItems = queryItems
 
         return components.url!
 
@@ -237,7 +243,7 @@ struct BuyView: View {
         // Transak URL format:
         //   https://global.transak.com?apiKey={key}&cryptoCurrencyCode={token}&walletAddress={address}&network={network}
         //
-        // TODO: Replace with production Transak API key
+        // Use `TransakApiKey` from Info.plist for production configuration.
         // let transakApiKey = "tk_test_123"
         // var transakComponents = URLComponents(string: "https://global.transak.com")!
         // transakComponents.queryItems = [

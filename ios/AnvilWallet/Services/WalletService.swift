@@ -80,6 +80,7 @@ final class WalletService: ObservableObject {
     // Keychain storage keys
     private let encryptedSeedKey = "com.anvilwallet.encryptedSeed"
     private let encryptedMnemonicKey = "com.anvilwallet.encryptedMnemonic"
+    private let encryptedPassphraseKey = "com.anvilwallet.encryptedPassphrase"
     private let walletMetadataKey = "com.anvilwallet.walletMetadata"
     private let passwordSaltKey = "com.anvilwallet.passwordSalt"
     private let accountsMetadataKey = "com.anvilwallet.accountsMetadata"
@@ -182,17 +183,17 @@ final class WalletService: ObservableObject {
     ///   6. Derive addresses for all supported chains from mnemonic
     ///   7. Return mnemonic words so the user can write them down for backup
     ///
-    /// - Parameter password: User-chosen password for seed encryption
+    /// - Parameters:
+    ///   - password: User-chosen password for seed encryption
+    ///   - passphrase: Optional BIP-39 passphrase (25th word)
     /// - Returns: Array of 24 mnemonic words for user backup
-    func createWallet(password: String) async throws -> [String] {
+    func createWallet(password: String, passphrase: String = "") async throws -> [String] {
         // Step 1: Generate mnemonic via Rust
         let mnemonicString = try generateMnemonic()
         let words = mnemonicString.split(separator: " ").map(String.init)
 
         // Step 2: Derive seed and encrypt with password via Rust (Argon2id + AES-256-GCM)
-        // Note: Empty passphrase is intentional — matches MetaMask/Trust Wallet behavior.
-        // BIP-39 passphrase support (for plausible deniability) is a planned future feature.
-        var seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: "")
+        var seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: passphrase)
         defer {
             // Zeroize seed bytes after all operations complete
             for i in seedBytes.indices { seedBytes[i] = 0 }
@@ -210,14 +211,15 @@ final class WalletService: ObservableObject {
         // Step 4: Store in Keychain with biometric protection
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 4b: Also encrypt and store the mnemonic for recovery phrase backup
+        // Step 4b: Also encrypt and store mnemonic + BIP-39 passphrase
         try encryptAndStoreMnemonic(mnemonicString, password: password, seKey: seKey)
+        try encryptAndStorePassphrase(passphrase, password: password, seKey: seKey)
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
 
         // Step 6: Derive addresses from mnemonic (not raw seed)
-        let derivedAddresses = try deriveAddresses(mnemonic: mnemonicString, account: 0)
+        let derivedAddresses = try deriveAddresses(mnemonic: mnemonicString, passphrase: passphrase, account: 0)
         self.addresses = derivedAddresses
 
         // Step 7: Create and save wallet metadata
@@ -252,7 +254,8 @@ final class WalletService: ObservableObject {
     /// - Parameters:
     ///   - mnemonic: Space-separated mnemonic phrase (12 or 24 words)
     ///   - password: User-chosen password for seed encryption
-    func importWallet(mnemonic: String, password: String) async throws {
+    ///   - passphrase: Optional BIP-39 passphrase (25th word)
+    func importWallet(mnemonic: String, password: String, passphrase: String = "") async throws {
         // Step 1: Validate mnemonic via Rust
         let isValid = try validateMnemonic(phrase: mnemonic)
         guard isValid else {
@@ -260,7 +263,7 @@ final class WalletService: ObservableObject {
         }
 
         // Step 2: Derive seed and encrypt with password via Rust
-        var seedBytes = try mnemonicToSeed(mnemonic: mnemonic, passphrase: "")
+        var seedBytes = try mnemonicToSeed(mnemonic: mnemonic, passphrase: passphrase)
         defer {
             // Zeroize seed bytes after all operations complete
             for i in seedBytes.indices { seedBytes[i] = 0 }
@@ -278,14 +281,15 @@ final class WalletService: ObservableObject {
         // Step 4: Store in Keychain
         try keychain.save(key: encryptedSeedKey, data: doubleEncrypted)
 
-        // Step 4b: Also encrypt and store the mnemonic for recovery phrase backup
+        // Step 4b: Also encrypt and store mnemonic + BIP-39 passphrase
         try encryptAndStoreMnemonic(mnemonic, password: password, seKey: seKey)
+        try encryptAndStorePassphrase(passphrase, password: password, seKey: seKey)
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
 
         // Step 6: Derive addresses from mnemonic
-        let derivedAddresses = try deriveAddresses(mnemonic: mnemonic, account: 0)
+        let derivedAddresses = try deriveAddresses(mnemonic: mnemonic, passphrase: passphrase, account: 0)
         self.addresses = derivedAddresses
 
         // Step 7: Save metadata
@@ -322,13 +326,14 @@ final class WalletService: ObservableObject {
     ///
     /// - Parameters:
     ///   - mnemonic: The BIP-39 mnemonic phrase
+    ///   - passphrase: Optional BIP-39 passphrase (25th word)
     ///   - account: The HD account index (default 0)
     /// - Returns: Dictionary mapping chain IDs to derived addresses
-    func deriveAddresses(mnemonic: String, account: UInt32 = 0) throws -> [String: String] {
+    func deriveAddresses(mnemonic: String, passphrase: String = "", account: UInt32 = 0) throws -> [String: String] {
         // Call Rust to derive BTC, ETH, SOL addresses in one shot
         let rustAddresses = try deriveAllAddressesFromMnemonic(
             mnemonic: mnemonic,
-            passphrase: "",
+            passphrase: passphrase,
             account: account
         )
 
@@ -501,7 +506,7 @@ final class WalletService: ObservableObject {
         }
     }
 
-    /// Runs token discovery for Ethereum mainnet and merges results.
+    /// Runs token discovery across supported EVM chains and merges results.
     func runTokenDiscovery() async {
         guard let ethAddress = addresses["ethereum"] else { return }
         do {
@@ -619,6 +624,7 @@ final class WalletService: ObservableObject {
     func deleteWallet() throws {
         try keychain.delete(key: encryptedSeedKey)
         try? keychain.delete(key: encryptedMnemonicKey)
+        try? keychain.delete(key: encryptedPassphraseKey)
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
         try? keychain.delete(key: accountsMetadataKey)
@@ -839,6 +845,18 @@ final class WalletService: ObservableObject {
         try keychain.save(key: encryptedMnemonicKey, data: doubleEncrypted)
     }
 
+    /// Encrypts and stores the optional BIP-39 passphrase using the same pipeline as mnemonic/seed.
+    private func encryptAndStorePassphrase(_ passphrase: String, password: String, seKey: SecKey) throws {
+        let passphraseData = Data(passphrase.utf8)
+        let encrypted = try encryptSeedWithPassword(seed: passphraseData, password: password)
+        let packed = packSaltAndCiphertext(
+            salt: Data(encrypted.salt),
+            ciphertext: Data(encrypted.ciphertext)
+        )
+        let doubleEncrypted = try secureEnclave.encrypt(data: packed, using: seKey)
+        try keychain.save(key: encryptedPassphraseKey, data: doubleEncrypted)
+    }
+
     /// Decrypts the stored mnemonic and returns the individual words.
     /// Returns nil if mnemonic was not stored (wallet created before this feature).
     func decryptMnemonic() async throws -> [String]? {
@@ -868,6 +886,35 @@ final class WalletService: ObservableObject {
         }
 
         return mnemonicString.split(separator: " ").map(String.init)
+    }
+
+    /// Decrypts the stored BIP-39 passphrase.
+    /// Returns empty string when no passphrase exists (backward compatible wallets).
+    func decryptPassphrase() async throws -> String {
+        guard let pwBytes = sessionPasswordBytes else {
+            throw AppWalletError.passwordRequired
+        }
+        let password = String(decoding: pwBytes, as: UTF8.self)
+
+        guard let doubleEncrypted = try keychain.load(key: encryptedPassphraseKey) else {
+            return ""
+        }
+
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+        var passphraseBytes = try decryptSeedWithPassword(
+            ciphertext: ciphertext,
+            salt: salt,
+            password: password
+        )
+        defer {
+            for i in passphraseBytes.indices { passphraseBytes[i] = 0 }
+        }
+
+        guard let passphrase = String(bytes: passphraseBytes, encoding: .utf8) else {
+            throw AppWalletError.decryptionFailed
+        }
+        return passphrase
     }
 
     // MARK: - Change Password
@@ -918,7 +965,27 @@ final class WalletService: ObservableObject {
             try keychain.save(key: encryptedMnemonicKey, data: newMDoubleEncrypted)
         }
 
-        // Step 4: Update session password
+        // Step 4: Re-encrypt passphrase if stored
+        if let doubleEncryptedPassphrase = try keychain.load(key: encryptedPassphraseKey) {
+            let packedPassphrase = try secureEnclave.decrypt(data: doubleEncryptedPassphrase)
+            let (pSalt, pCiphertext) = try unpackSaltAndCiphertext(from: packedPassphrase)
+            var passphraseBytes = try decryptSeedWithPassword(
+                ciphertext: pCiphertext,
+                salt: pSalt,
+                password: current
+            )
+            defer { for i in passphraseBytes.indices { passphraseBytes[i] = 0 } }
+
+            let newEncryptedPassphrase = try encryptSeedWithPassword(seed: passphraseBytes, password: newPassword)
+            let newPackedPassphrase = packSaltAndCiphertext(
+                salt: Data(newEncryptedPassphrase.salt),
+                ciphertext: Data(newEncryptedPassphrase.ciphertext)
+            )
+            let newDoubleEncryptedPassphrase = try secureEnclave.encrypt(data: newPackedPassphrase, using: seKey)
+            try keychain.save(key: encryptedPassphraseKey, data: newDoubleEncryptedPassphrase)
+        }
+
+        // Step 5: Update session password
         clearSessionPassword()
         sessionPasswordBytes = ContiguousArray(newPassword.utf8)
     }
@@ -930,7 +997,7 @@ final class WalletService: ObservableObject {
     /// Flow:
     ///   1. Verify session password is available
     ///   2. Load and decrypt the stored mnemonic via SE + app password
-    ///   3. Re-encrypt the mnemonic with the backup password via Rust FFI (Argon2id + AES-256-GCM)
+    ///   3. Re-encrypt mnemonic + optional passphrase with backup password via Rust FFI (Argon2id + AES-256-GCM)
     ///   4. Package into Anvil backup format: "ANVL" magic + version byte + salt length + salt + ciphertext
     ///   5. Zeroize all plaintext mnemonic material
     ///
@@ -956,8 +1023,17 @@ final class WalletService: ObservableObject {
         )
         defer { for i in mnemonicBytes.indices { mnemonicBytes[i] = 0 } }
 
-        // Re-encrypt the mnemonic with the backup password
-        let backupEncrypted = try encryptSeedWithPassword(seed: mnemonicBytes, password: backupPassword)
+        // Re-encrypt mnemonic + optional passphrase as a JSON payload.
+        let passphrase = (try? await decryptPassphrase()) ?? ""
+        struct BackupPayload: Codable {
+            let mnemonic: String
+            let passphrase: String
+        }
+        let mnemonicString = String(bytes: mnemonicBytes, encoding: .utf8) ?? ""
+        let payloadBytes = try JSONEncoder().encode(
+            BackupPayload(mnemonic: mnemonicString, passphrase: passphrase)
+        )
+        let backupEncrypted = try encryptSeedWithPassword(seed: payloadBytes, password: backupPassword)
 
         // Build the backup file:
         //   [4 bytes] magic "ANVL"
@@ -1036,8 +1112,23 @@ final class WalletService: ObservableObject {
         }
         defer { for i in mnemonicBytes.indices { mnemonicBytes[i] = 0 } }
 
-        // Convert bytes to mnemonic string
-        guard let mnemonic = String(bytes: mnemonicBytes, encoding: .utf8) else {
+        struct BackupPayload: Codable {
+            let mnemonic: String
+            let passphrase: String
+        }
+
+        // Support both payload formats:
+        // - Current: JSON payload (mnemonic + passphrase)
+        // - Legacy: raw mnemonic string
+        let mnemonic: String
+        let passphrase: String
+        if let payload = try? JSONDecoder().decode(BackupPayload.self, from: mnemonicBytes) {
+            mnemonic = payload.mnemonic
+            passphrase = payload.passphrase
+        } else if let legacyMnemonic = String(bytes: mnemonicBytes, encoding: .utf8) {
+            mnemonic = legacyMnemonic
+            passphrase = ""
+        } else {
             throw BackupError.corruptedData
         }
 
@@ -1052,7 +1143,7 @@ final class WalletService: ObservableObject {
         // This avoids destroying existing wallet state if importWallet throws.
         let oldEthAddr = addresses["ethereum"]
 
-        try await importWallet(mnemonic: mnemonic, password: appPassword)
+        try await importWallet(mnemonic: mnemonic, password: appPassword, passphrase: passphrase)
 
         // Import succeeded — now safe to clear old wallet's caches
         if let oldEthAddr, oldEthAddr.lowercased() != (addresses["ethereum"] ?? "").lowercased() {
@@ -1169,7 +1260,7 @@ final class WalletService: ObservableObject {
         currentWallet = wallet
         activeAccountIndex = wallet.accountIndex
         addresses = wallet.addresses
-        tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
+        tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
 
         // Load accounts list (backward compatible: if none stored, use current wallet as sole account)
         if let accountsData = try? keychain.load(key: accountsMetadataKey),
@@ -1240,8 +1331,10 @@ final class WalletService: ObservableObject {
         let nextIndex = (accounts.map { $0.accountIndex }.max() ?? -1) + 1
         let accountName = name ?? "Account \(nextIndex)"
 
+        let passphrase = try await decryptPassphrase()
         let derivedAddresses = try deriveAddresses(
             mnemonic: mnemonic,
+            passphrase: passphrase,
             account: UInt32(nextIndex)
         )
 

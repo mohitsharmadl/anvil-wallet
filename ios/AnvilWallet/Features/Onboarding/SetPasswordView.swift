@@ -18,6 +18,8 @@ struct SetPasswordView: View {
 
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var passphrase = ""
+    @State private var isPassphraseVisible = false
     @State private var isPasswordVisible = false
     @State private var isConfirmVisible = false
     @State private var isCreating = false
@@ -137,6 +139,44 @@ struct SetPasswordView: View {
                 }
                 .padding(.horizontal, 24)
 
+                // Optional BIP-39 passphrase (25th word)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Recovery Passphrase (Optional)")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.textSecondary)
+
+                    HStack {
+                        Group {
+                            if isPassphraseVisible {
+                                TextField("Optional 25th word", text: $passphrase)
+                            } else {
+                                SecureField("Optional 25th word", text: $passphrase)
+                            }
+                        }
+                        .font(.body)
+                        .foregroundColor(.textPrimary)
+
+                        Button {
+                            isPassphraseVisible.toggle()
+                        } label: {
+                            Image(systemName: isPassphraseVisible ? "eye.slash.fill" : "eye.fill")
+                                .foregroundColor(.textTertiary)
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.backgroundCard)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.border, lineWidth: 1)
+                    )
+
+                    Text("If set, this creates a different wallet from the same recovery phrase. Losing it means losing access.")
+                        .font(.caption)
+                        .foregroundColor(.warning)
+                }
+                .padding(.horizontal, 24)
+
                 // Error
                 if let errorMessage {
                     Text(errorMessage)
@@ -173,8 +213,12 @@ struct SetPasswordView: View {
         errorMessage = nil
 
         do {
+            let normalizedPassphrase = passphrase.trimmingCharacters(in: .whitespacesAndNewlines)
             if isNewWallet {
-                let words = try await walletService.createWallet(password: password)
+                let words = try await walletService.createWallet(
+                    password: password,
+                    passphrase: normalizedPassphrase
+                )
                 await MainActor.run {
                     isCreating = false
                     router.onboardingPath.append(
@@ -182,7 +226,11 @@ struct SetPasswordView: View {
                     )
                 }
             } else {
-                try await walletService.importWallet(mnemonic: mnemonic, password: password)
+                try await walletService.importWallet(
+                    mnemonic: mnemonic,
+                    password: password,
+                    passphrase: normalizedPassphrase
+                )
                 await MainActor.run {
                     isCreating = false
                     router.completeOnboarding()

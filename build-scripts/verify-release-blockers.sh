@@ -105,6 +105,41 @@ fi
 
 echo ""
 
+# Check 4b: Required API keys and URLs are configured
+if [ -f "$SECRETS_FILE" ]; then
+    EXTRA_ERRORS=0
+
+    check_placeholder () {
+        local key="$1"
+        local placeholder="$2"
+        if grep -qE "${key}\s*=\s*${placeholder}" "$SECRETS_FILE" 2>/dev/null || \
+           grep -qE "${key}\s*=\s*$" "$SECRETS_FILE" 2>/dev/null; then
+            echo "FAIL: ${key} is placeholder or empty in ios/Secrets.xcconfig"
+            EXTRA_ERRORS=$((EXTRA_ERRORS + 1))
+        fi
+    }
+
+    check_placeholder "SOCKET_API_KEY" "YOUR_SOCKET_API_KEY"
+    check_placeholder "ZERO_EX_API_KEY" "YOUR_ZERO_EX_API_KEY"
+    check_placeholder "MOONPAY_API_KEY" "YOUR_MOONPAY_API_KEY"
+    if grep -qE 'SUPPORT_URL\s*=\s*$' "$SECRETS_FILE" 2>/dev/null; then
+        echo "FAIL: SUPPORT_URL is empty in ios/Secrets.xcconfig"
+        EXTRA_ERRORS=$((EXTRA_ERRORS + 1))
+    fi
+    if grep -qE 'PRIVACY_POLICY_URL\s*=\s*$' "$SECRETS_FILE" 2>/dev/null; then
+        echo "FAIL: PRIVACY_POLICY_URL is empty in ios/Secrets.xcconfig"
+        EXTRA_ERRORS=$((EXTRA_ERRORS + 1))
+    fi
+
+    if [ "$EXTRA_ERRORS" -eq 0 ]; then
+        echo "PASS: API keys and URLs configured in Secrets.xcconfig"
+    else
+        ERRORS=$((ERRORS + EXTRA_ERRORS))
+    fi
+fi
+
+echo ""
+
 # Check 5: All Rust tests pass
 echo "Running Rust test suite..."
 if (cd "$PROJECT_DIR" && cargo test --workspace --quiet 2>&1); then

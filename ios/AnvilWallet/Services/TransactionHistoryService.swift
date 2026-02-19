@@ -7,6 +7,7 @@ import Foundation
 ///   - Bitcoin: Blockstream/Mempool REST API (no auth)
 ///   - Solana: getSignaturesForAddress + getTransaction RPC (no auth)
 ///   - EVM (all 7 chains): Etherscan-family APIs via `chain.explorerApiUrl`
+///   - Zcash: Blockchair address + transaction dashboards
 final class TransactionHistoryService {
     static let shared = TransactionHistoryService()
 
@@ -100,8 +101,11 @@ final class TransactionHistoryService {
                     }
 
                 case .zcash:
-                    // Zcash transaction history not yet supported — skip silently
-                    continue
+                    group.addTask { [self] in
+                        await self.fetchWithCache(chainId: chainId) {
+                            try await self.fetchZcashTransactions(address: address)
+                        }
+                    }
                 }
             }
 
@@ -420,6 +424,125 @@ final class TransactionHistoryService {
                 tokenDecimals: 9
             )
         }
+    }
+
+    // MARK: - EVM (Etherscan-family APIs)
+
+    // MARK: - Zcash (Blockchair API)
+
+    private func fetchZcashTransactions(address: String) async throws -> [TransactionModel] {
+        guard let encodedAddress = address.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "https://api.blockchair.com/zcash/dashboards/address/\(encodedAddress)?limit=30") else {
+            return []
+        }
+
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            return []
+        }
+
+        struct AddressResponse: Decodable {
+            struct AddressData: Decodable {
+                let transactions: [String]
+            }
+            let data: [String: AddressData]
+        }
+
+        let parsed = try JSONDecoder().decode(AddressResponse.self, from: data)
+        guard let txHashes = parsed.data.values.first?.transactions else {
+            return []
+        }
+
+        var transactions: [TransactionModel] = []
+        for hash in txHashes.prefix(30) {
+            if let tx = try await fetchZcashTransactionDetail(hash: hash, userAddress: address) {
+                transactions.append(tx)
+            }
+        }
+
+        return transactions.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private func fetchZcashTransactionDetail(hash: String, userAddress: String) async throws -> TransactionModel? {
+        guard let url = URL(string: "https://api.blockchair.com/zcash/dashboards/transaction/\(hash)") else {
+            return nil
+        }
+
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            return nil
+        }
+
+        struct TxDetailResponse: Decodable {
+            struct TxContainer: Decodable {
+                struct TxCore: Decodable {
+                    let hash: String
+                    let time: String?
+                    let fee: UInt64?
+                }
+                struct TxInput: Decodable {
+                    let recipient: String?
+                    let value: UInt64?
+                }
+                struct TxOutput: Decodable {
+                    let recipient: String?
+                    let value: UInt64?
+                }
+
+                let transaction: TxCore
+                let inputs: [TxInput]
+                let outputs: [TxOutput]
+            }
+            let data: [String: TxContainer]
+        }
+
+        let detail = try JSONDecoder().decode(TxDetailResponse.self, from: data)
+        guard let tx = detail.data.values.first else { return nil }
+
+        let lowerAddress = userAddress.lowercased()
+        let isSent = tx.inputs.contains { $0.recipient?.lowercased() == lowerAddress }
+
+        let totalReceived = tx.outputs
+            .filter { $0.recipient?.lowercased() == lowerAddress }
+            .compactMap { $0.value }
+            .reduce(0, +)
+        let totalSent = tx.inputs
+            .filter { $0.recipient?.lowercased() == lowerAddress }
+            .compactMap { $0.value }
+            .reduce(0, +)
+
+        let amountZat = isSent ? max(0, Int64(totalSent) - Int64(totalReceived)) : Int64(totalReceived)
+        let amountZec = Double(amountZat) / 100_000_000.0
+        let feeZec = Double(tx.transaction.fee ?? 0) / 100_000_000.0
+
+        let fromAddr = tx.inputs.first?.recipient ?? "unknown"
+        let toAddr = tx.outputs.first(where: { $0.recipient?.lowercased() != lowerAddress })?.recipient
+            ?? tx.outputs.first?.recipient
+            ?? "unknown"
+
+        let timestamp: Date = {
+            guard let timeStr = tx.transaction.time else { return Date() }
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            return formatter.date(from: timeStr) ?? Date()
+        }()
+
+        return TransactionModel(
+            hash: tx.transaction.hash,
+            chain: "zcash",
+            from: fromAddr,
+            to: toAddr,
+            amount: String(format: "%.8f", amountZec),
+            fee: String(format: "%.8f", feeZec),
+            status: .confirmed,
+            timestamp: timestamp,
+            tokenSymbol: "ZEC",
+            tokenDecimals: 8
+        )
     }
 
     // MARK: - EVM (Etherscan-family APIs)

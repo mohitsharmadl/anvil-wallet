@@ -26,57 +26,67 @@ actor TokenDiscoveryService {
         let chain: String
     }
 
-    /// Discovers ERC-20 tokens for an Ethereum address.
-    /// Fetches token transfer history from Etherscan, checks balanceOf for each,
-    /// returns tokens with non-zero balances.
+    /// Discovers ERC-20 tokens across all supported EVM chains for the wallet's EVM address.
+    /// Fetches token transfer history from each chain explorer, checks on-chain `balanceOf`,
+    /// and returns contracts with non-zero balances.
     func discoverTokens(for address: String) async throws -> [DiscoveredToken] {
-        let transfers = try await EtherscanService.shared.fetchTokenTransfers(address: address)
         var discovered: [DiscoveredToken] = []
+        let evmChains = ChainModel.defaults.filter { $0.chainType == .evm && $0.explorerApiUrl != nil }
 
-        // Get the Ethereum mainnet RPC URL
-        guard let ethChain = ChainModel.allChains.first(where: { $0.id == "ethereum" }) else {
-            return []
+        for chain in evmChains {
+            guard let explorerApiUrl = chain.explorerApiUrl else { continue }
+            let transfers = try await EtherscanService.shared.fetchTokenTransfers(
+                address: address,
+                explorerApiUrl: explorerApiUrl
+            )
+
+            for transfer in transfers {
+                guard let decimals = Int(transfer.tokenDecimal), decimals >= 0 && decimals <= 18 else {
+                    continue
+                }
+
+                // Check on-chain balance via balanceOf(address)
+                let cleanAddr = address.hasPrefix("0x") ? String(address.dropFirst(2)) : address
+                let paddedAddr = String(repeating: "0", count: max(0, 64 - cleanAddr.count)) + cleanAddr.lowercased()
+                let callData = "0x70a08231" + paddedAddr // balanceOf(address)
+
+                do {
+                    let hexBalance: String = try await RPCService.shared.ethCall(
+                        rpcUrl: chain.activeRpcUrl,
+                        to: transfer.contractAddress,
+                        data: callData
+                    )
+
+                    // Skip zero balances
+                    let cleanHex = hexBalance.hasPrefix("0x") ? String(hexBalance.dropFirst(2)) : hexBalance
+                    let isZero = cleanHex.isEmpty || cleanHex.allSatisfy { $0 == "0" }
+                    if isZero { continue }
+
+                    discovered.append(DiscoveredToken(
+                        contractAddress: transfer.contractAddress,
+                        symbol: transfer.tokenSymbol,
+                        name: transfer.tokenName,
+                        decimals: decimals,
+                        chain: chain.id
+                    ))
+                } catch {
+                    // Skip tokens where balanceOf fails (e.g. proxy contracts, non-standard tokens)
+                    continue
+                }
+            }
         }
 
-        for transfer in transfers {
-            guard let decimals = Int(transfer.tokenDecimal), decimals >= 0 && decimals <= 18 else {
-                continue
-            }
-
-            // Check on-chain balance via balanceOf(address)
-            let cleanAddr = address.hasPrefix("0x") ? String(address.dropFirst(2)) : address
-            let paddedAddr = String(repeating: "0", count: max(0, 64 - cleanAddr.count)) + cleanAddr.lowercased()
-            let callData = "0x70a08231" + paddedAddr // balanceOf(address)
-
-            do {
-                let hexBalance: String = try await RPCService.shared.ethCall(
-                    rpcUrl: ethChain.activeRpcUrl,
-                    to: transfer.contractAddress,
-                    data: callData
-                )
-
-                // Skip zero balances
-                let cleanHex = hexBalance.hasPrefix("0x") ? String(hexBalance.dropFirst(2)) : hexBalance
-                let isZero = cleanHex.isEmpty || cleanHex.allSatisfy { $0 == "0" }
-                if isZero { continue }
-
-                discovered.append(DiscoveredToken(
-                    contractAddress: transfer.contractAddress,
-                    symbol: transfer.tokenSymbol,
-                    name: transfer.tokenName,
-                    decimals: decimals,
-                    chain: "ethereum"
-                ))
-            } catch {
-                // Skip tokens where balanceOf fails (e.g. proxy contracts, non-standard tokens)
-                continue
-            }
+        // Deduplicate by (chain, contract)
+        var seen = Set<String>()
+        let unique = discovered.filter { token in
+            let key = "\(token.chain.lowercased())_\(token.contractAddress.lowercased())"
+            return seen.insert(key).inserted
         }
 
         // Persist for next launch (scoped to this address)
-        persist(discovered, for: address)
+        persist(unique, for: address)
 
-        return discovered
+        return unique
     }
 
     // MARK: - Persistence

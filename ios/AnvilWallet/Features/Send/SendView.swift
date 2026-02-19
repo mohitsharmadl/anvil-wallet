@@ -39,7 +39,7 @@ struct SendView: View {
     }
 
     /// Chains that don't yet support sending from the UI.
-    private static let unsendableChains: Set<String> = ["zcash", "zcash_testnet"]
+    private static let unsendableChains: Set<String> = []
 
     var body: some View {
         NavigationStack(path: $router.sendPath) {

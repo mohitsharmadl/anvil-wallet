@@ -9,7 +9,7 @@ import Foundation
 ///   - Bitcoin (REST API via Blockstream/Mempool)
 ///
 /// Security:
-///   - Certificate pinning via TrustKit (placeholder for Phase 3)
+///   - Certificate pinning via native URLSession delegate
 ///   - All connections over HTTPS
 ///   - Request timeout of 30 seconds
 final class RPCService {
@@ -18,6 +18,19 @@ final class RPCService {
 
     private let session: URLSession
     private let requestTimeout: TimeInterval = 30
+    private let maxRetryAttempts = 2
+    /// RPC endpoint fallbacks by primary URL.
+    /// These are only used when the primary endpoint fails.
+    private let rpcFallbacks: [String: [String]] = [
+        "https://rpc.ankr.com/eth": ["https://ethereum.publicnode.com"],
+        "https://polygon-rpc.com": ["https://polygon-bor-rpc.publicnode.com"],
+        "https://arb1.arbitrum.io/rpc": ["https://arbitrum-one-rpc.publicnode.com"],
+        "https://mainnet.base.org": ["https://base-rpc.publicnode.com"],
+        "https://mainnet.optimism.io": ["https://optimism-rpc.publicnode.com"],
+        "https://bsc-dataseed.binance.org": ["https://bsc-rpc.publicnode.com"],
+        "https://api.avax.network/ext/bc/C/rpc": ["https://avalanche-c-chain-rpc.publicnode.com"],
+        "https://api.mainnet-beta.solana.com": ["https://solana-rpc.publicnode.com"]
+    ]
 
     struct RPCRequest: Encodable {
         let jsonrpc: String = "2.0"
@@ -120,43 +133,90 @@ final class RPCService {
         method: String,
         params: [RPCRequest.RPCParam]
     ) async throws -> T {
-        guard let endpoint = URL(string: url) else {
-            throw RPCServiceError.invalidURL
+        let candidates = [url] + (rpcFallbacks[url] ?? [])
+        var lastError: Error?
+
+        for candidateUrl in candidates {
+            do {
+                guard let endpoint = URL(string: candidateUrl), endpoint.scheme == "https" else {
+                    continue
+                }
+
+                var request = URLRequest(url: endpoint)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+                let rpcRequest = RPCRequest(method: method, params: params, id: 1)
+                request.httpBody = try JSONEncoder().encode(rpcRequest)
+
+                return try await withRetry { [self] in
+                    let (data, response) = try await session.data(for: request)
+
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw RPCServiceError.invalidResponse
+                    }
+
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        throw RPCServiceError.httpError(httpResponse.statusCode)
+                    }
+
+                    let rpcResponse = try JSONDecoder().decode(RPCResponse<T>.self, from: data)
+
+                    if let error = rpcResponse.error {
+                        throw RPCServiceError.rpcError(error)
+                    }
+
+                    guard let result = rpcResponse.result else {
+                        throw RPCServiceError.invalidResponse
+                    }
+
+                    return result
+                }
+            } catch {
+                lastError = error
+                continue
+            }
         }
 
-        // Reject non-HTTPS endpoints — all RPC calls must be encrypted
-        guard endpoint.scheme == "https" else {
-            throw RPCServiceError.invalidURL
+        throw lastError ?? RPCServiceError.invalidURL
+    }
+
+    /// Retries transient networking failures with small exponential backoff.
+    private func withRetry<T>(_ operation: @escaping () async throws -> T) async throws -> T {
+        var attempt = 0
+        var lastError: Error?
+
+        while attempt <= maxRetryAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+                if !isRetryable(error) || attempt == maxRetryAttempts {
+                    throw error
+                }
+                let backoffMs = UInt64(250 * (1 << attempt))
+                try? await Task.sleep(nanoseconds: backoffMs * 1_000_000)
+                attempt += 1
+            }
         }
 
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        throw lastError ?? RPCServiceError.invalidResponse
+    }
 
-        let rpcRequest = RPCRequest(method: method, params: params, id: 1)
-        request.httpBody = try JSONEncoder().encode(rpcRequest)
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw RPCServiceError.invalidResponse
+    private func isRetryable(_ error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut, .cannotConnectToHost, .networkConnectionLost, .dnsLookupFailed, .notConnectedToInternet:
+                return true
+            default:
+                return false
+            }
         }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw RPCServiceError.httpError(httpResponse.statusCode)
+        if let rpcError = error as? RPCServiceError,
+           case .httpError(let statusCode) = rpcError {
+            return statusCode >= 500
         }
-
-        let rpcResponse = try JSONDecoder().decode(RPCResponse<T>.self, from: data)
-
-        if let error = rpcResponse.error {
-            throw RPCServiceError.rpcError(error)
-        }
-
-        guard let result = rpcResponse.result else {
-            throw RPCServiceError.invalidResponse
-        }
-
-        return result
+        return false
     }
 
     // MARK: - EVM-specific Methods
@@ -580,7 +640,7 @@ final class RPCService {
     func getZcashBalance(address: String) async throws -> Int {
         let url = try httpsURL("https://api.blockchair.com/zcash/dashboards/address/\(address)")
 
-        let (data, response) = try await session.data(from: url)
+        let (data, response) = try await withRetry { [self] in try await session.data(from: url) }
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
@@ -611,7 +671,7 @@ final class RPCService {
     func getZcashUtxos(address: String) async throws -> [ZecUtxoData] {
         let url = try httpsURL("https://api.blockchair.com/zcash/dashboards/address/\(address)?limit=100")
 
-        let (data, response) = try await session.data(from: url)
+        let (data, response) = try await withRetry { [self] in try await session.data(from: url) }
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
@@ -665,7 +725,7 @@ final class RPCService {
         let body = ["data": txHex]
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await withRetry { [self] in try await session.data(for: request) }
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
@@ -682,6 +742,28 @@ final class RPCService {
 
         let pushResult = try JSONDecoder().decode(PushResponse.self, from: data)
         return pushResult.data.transaction_hash
+    }
+
+    /// Fetches latest Zcash tip height from Blockchair stats endpoint.
+    func getZcashBestBlockHeight() async throws -> UInt32 {
+        let url = try httpsURL("https://api.blockchair.com/zcash/stats")
+        let (data, response) = try await withRetry { [self] in try await session.data(from: url) }
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        struct StatsResponse: Decodable {
+            struct StatsData: Decodable {
+                let best_block_height: UInt32?
+                let blocks: UInt32?
+            }
+            let data: StatsData
+        }
+
+        let parsed = try JSONDecoder().decode(StatsResponse.self, from: data)
+        return parsed.data.best_block_height ?? parsed.data.blocks ?? 0
     }
 
     /// Converts a hex string to Data.

@@ -42,6 +42,10 @@ struct ConfirmTransactionView: View {
     @State private var fetchedBtcFeeRates: RPCService.BitcoinFeeRates?
     @State private var selectedBtcFeeSpeed: BtcFeeSpeed = .medium
     @State private var btcFeeSat: UInt64 = 0
+    @State private var fetchedZecUtxos: [ZecUtxoData] = []
+    @State private var fetchedZecAmountZat: UInt64 = 0
+    @State private var fetchedZecFeeRateZatByte: UInt64 = 10
+    @State private var fetchedZecExpiryHeight: UInt32 = 0
 
     enum BtcFeeSpeed: String, CaseIterable, Identifiable {
         case fast, medium, slow
@@ -534,10 +538,47 @@ struct ConfirmTransactionView: View {
                 fetchedBtcAmountSat = amountSat
 
             case .zcash:
-                // Zcash send not yet supported from this view
-                simulationError = "Zcash send coming soon"
-                isSimulating = false
-                return
+                // Fetch UTXOs and estimate fee using a conservative transparent-tx size model.
+                let allUtxos = try await RPCService.shared.getZcashUtxos(address: transaction.from)
+                let amountZat = amountToSmallestUnit(transaction.amount, decimals: 8)
+                let feeRateZatByte: UInt64 = 10 // conservative default in zatoshi/byte
+
+                let sorted = allUtxos.sorted { $0.amountZatoshi > $1.amountZatoshi }
+                var selected: [ZecUtxoData] = []
+                var totalSelected: UInt64 = 0
+                var feeZat: UInt64 = 0
+
+                for utxo in sorted {
+                    selected.append(utxo)
+                    totalSelected += utxo.amountZatoshi
+
+                    // Approximate transparent tx bytes:
+                    // header + inputs*148 + outputs*34 (recipient + change)
+                    let estimatedBytes = UInt64(46 + selected.count * 148 + 2 * 34)
+                    feeZat = estimatedBytes * feeRateZatByte
+
+                    if totalSelected >= amountZat + feeZat {
+                        break
+                    }
+                }
+
+                guard totalSelected >= amountZat + feeZat else {
+                    let available = allUtxos.reduce(UInt64(0)) { $0 + $1.amountZatoshi }
+                    let availableZec = String(format: "%.8f", Double(available) / 1e8)
+                    let neededZec = String(format: "%.8f", Double(amountZat + feeZat) / 1e8)
+                    simulationError = "Insufficient funds. Available: \(availableZec) ZEC, needed: \(neededZec) ZEC (including fee)"
+                    isSimulating = false
+                    return
+                }
+
+                let tipHeight = try await RPCService.shared.getZcashBestBlockHeight()
+                let expiry = tipHeight &+ 20
+
+                estimatedFee = String(format: "%.8g", Double(feeZat) / 1e8)
+                fetchedZecUtxos = selected
+                fetchedZecAmountZat = amountZat
+                fetchedZecFeeRateZatByte = feeRateZatByte
+                fetchedZecExpiryHeight = expiry
             }
 
             isSimulating = false
@@ -701,7 +742,22 @@ struct ConfirmTransactionView: View {
                 )
 
             case .zcash:
-                throw AppWalletError.signingFailed
+                let changeAddr = walletService.addresses["zcash"] ?? transaction.from
+                let isTestnet = chain.isTestnet
+
+                let zecReq = ZecTransactionRequest(
+                    utxos: fetchedZecUtxos,
+                    recipientAddress: transaction.to,
+                    amountZatoshi: fetchedZecAmountZat,
+                    changeAddress: changeAddr,
+                    feeRateZatByte: fetchedZecFeeRateZatByte,
+                    expiryHeight: fetchedZecExpiryHeight,
+                    isTestnet: isTestnet
+                )
+
+                signedTx = try await walletService.signTransaction(request: .zec(zecReq))
+                let txHexStr = signedTx.map { String(format: "%02x", $0) }.joined()
+                txHash = try await RPCService.shared.broadcastZcashTransaction(txHex: txHexStr)
             }
 
             // Record the transaction locally so it appears immediately in ActivityView

@@ -48,6 +48,12 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_EtherscanApiKey: "$(ETHERSCAN_API_KEY)"
         INFOPLIST_KEY_ReownProjectID: "$(REOWN_PROJECT_ID)"
+        INFOPLIST_KEY_SocketApiKey: "$(SOCKET_API_KEY)"
+        INFOPLIST_KEY_ZeroExApiKey: "$(ZERO_EX_API_KEY)"
+        INFOPLIST_KEY_MoonPayApiKey: "$(MOONPAY_API_KEY)"
+        INFOPLIST_KEY_TransakApiKey: "$(TRANSAK_API_KEY)"
+        INFOPLIST_KEY_SupportURL: "$(SUPPORT_URL)"
+        INFOPLIST_KEY_PrivacyPolicyURL: "$(PRIVACY_POLICY_URL)"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true

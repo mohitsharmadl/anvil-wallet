@@ -135,6 +135,44 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
             "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
             "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
         ],
+        // Blockchair API (Zcash balance/UTXO/broadcast)
+        "api.blockchair.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
+        ],
+        // PublicNode RPC fallbacks (used when primary RPC endpoints fail)
+        "ethereum.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "polygon-bor-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "arbitrum-one-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "base-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "optimism-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "bsc-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "avalanche-c-chain-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
+        "solana-rpc.publicnode.com": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        ],
     ]
 
     func urlSession(

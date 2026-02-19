@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var router: AppRouter
+    @Environment(\.openURL) private var openURL
     @AppStorage("appTheme") private var appTheme = AppTheme.system
 
     @State private var showDeleteConfirmation = false
@@ -99,13 +100,17 @@ struct SettingsView: View {
                     }
 
                     Button {
-                        // TODO: Open support URL
+                        if let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "SupportURL") as? String ?? "") {
+                            openURL(url)
+                        }
                     } label: {
                         SettingsRow(icon: "questionmark.circle.fill", title: "Help & Support", color: .warning)
                     }
 
                     Button {
-                        // TODO: Open privacy policy
+                        if let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "PrivacyPolicyURL") as? String ?? "") {
+                            openURL(url)
+                        }
                     } label: {
                         SettingsRow(icon: "hand.raised.fill", title: "Privacy Policy", color: .textSecondary)
                     }
