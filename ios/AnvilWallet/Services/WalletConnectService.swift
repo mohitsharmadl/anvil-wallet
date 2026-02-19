@@ -306,7 +306,7 @@ final class WalletConnectService: ObservableObject {
         solAddress: String? = nil
     ) async throws {
         // Separate chains by namespace
-        var allChains = proposal.requiredChains + proposal.optionalChains
+        let allChains = proposal.requiredChains + proposal.optionalChains
 
         let evmChains = allChains.filter { $0.hasPrefix("eip155:") }
         let solanaChains = allChains.filter { $0.hasPrefix("solana:") }

@@ -451,20 +451,20 @@ final class WalletService: ObservableObject {
     func mergeDiscoveredTokens(_ discovered: [TokenDiscoveryService.DiscoveredToken]) async {
         let existingContracts = Set(tokens.compactMap { $0.contractAddress?.lowercased() })
 
-        var newTokens: [TokenModel] = []
-        for dt in discovered {
-            if existingContracts.contains(dt.contractAddress.lowercased()) { continue }
-            newTokens.append(TokenModel(
-                id: UUID(),
-                symbol: dt.symbol,
-                name: dt.name,
-                chain: dt.chain,
-                contractAddress: dt.contractAddress,
-                decimals: dt.decimals,
-                balance: 0,
-                priceUsd: 0
-            ))
-        }
+        let newTokens: [TokenModel] = discovered
+            .filter { !existingContracts.contains($0.contractAddress.lowercased()) }
+            .map { dt in
+                TokenModel(
+                    id: UUID(),
+                    symbol: dt.symbol,
+                    name: dt.name,
+                    chain: dt.chain,
+                    contractAddress: dt.contractAddress,
+                    decimals: dt.decimals,
+                    balance: 0,
+                    priceUsd: 0
+                )
+            }
 
         if !newTokens.isEmpty {
             await MainActor.run {
@@ -1203,8 +1203,7 @@ final class WalletService: ObservableObject {
             accountName: accountName
         )
 
-        var updatedAccounts = accounts
-        updatedAccounts.append(newAccount)
+        let updatedAccounts = accounts + [newAccount]
         try saveAccountsMetadata(updatedAccounts)
 
         await MainActor.run {
@@ -1318,7 +1317,7 @@ final class WalletService: ObservableObject {
             ManualTokenService.shared.clearPersistedTokens(for: ethAddr)
         }
 
-        var updatedAccounts = accounts.filter { $0.accountIndex != index }
+        let updatedAccounts = accounts.filter { $0.accountIndex != index }
         try saveAccountsMetadata(updatedAccounts)
 
         await MainActor.run {

@@ -210,7 +210,7 @@ private struct EditRPCSheet: View {
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                        .onChange(of: customUrl) { _ in
+                        .onChange(of: customUrl) {
                             validationError = nil
                             testResult = nil
                         }

@@ -151,10 +151,10 @@ struct SwapView: View {
                     viewModel.fromToken = walletService.tokens.first
                 }
             }
-            .onChange(of: viewModel.fromToken) { _ in
+            .onChange(of: viewModel.fromToken) {
                 viewModel.quote = nil
             }
-            .onChange(of: viewModel.toToken) { _ in
+            .onChange(of: viewModel.toToken) {
                 viewModel.quote = nil
             }
         }
