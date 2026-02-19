@@ -16,6 +16,7 @@ struct DAppBrowserView: View {
 
     @State private var urlText: String = ""
     @State private var currentURL: URL?
+    @State private var isSecure: Bool = true
     @State private var pageTitle: String = ""
     @State private var isLoading = false
     @State private var loadProgress: Double = 0
@@ -37,9 +38,9 @@ struct DAppBrowserView: View {
 
             // URL bar
             HStack(spacing: 8) {
-                Image(systemName: "lock.fill")
+                Image(systemName: isSecure ? "lock.fill" : "exclamationmark.triangle.fill")
                     .font(.caption)
-                    .foregroundColor(.accentGreen)
+                    .foregroundColor(isSecure ? .accentGreen : .warning)
 
                 TextField("Search or enter URL", text: $urlText)
                     .font(.subheadline)
@@ -77,6 +78,7 @@ struct DAppBrowserView: View {
                 onURLChanged: { url in
                     currentURL = url
                     urlText = url.host ?? url.absoluteString
+                    isSecure = url.scheme?.lowercased() == "https"
                 },
                 onTitleChanged: { title in
                     pageTitle = title

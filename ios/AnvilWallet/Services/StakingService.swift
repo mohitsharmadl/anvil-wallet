@@ -18,7 +18,11 @@ final class StakingService: ObservableObject {
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
-        self.session = URLSession(configuration: config)
+        self.session = URLSession(
+            configuration: config,
+            delegate: CertificatePinner(),
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Models

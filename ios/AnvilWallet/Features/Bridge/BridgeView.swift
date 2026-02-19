@@ -14,6 +14,9 @@ struct BridgeView: View {
     @State private var amount = ""
     @State private var selectedRoute: BridgeService.BridgeRoute?
     @State private var showConfirmation = false
+    @State private var isBridging = false
+    @State private var bridgeResult: String?
+    @State private var bridgeError: String?
 
     private var fromChainName: String {
         BridgeService.supportedChains.first { $0.chainId == fromChainId }?.name ?? "Unknown"
@@ -78,8 +81,7 @@ struct BridgeView: View {
             }
             .alert("Confirm Bridge", isPresented: $showConfirmation) {
                 Button("Bridge", role: .none) {
-                    // In production, this would build + sign + broadcast the bridge tx
-                    dismiss()
+                    Task { await executeBridge() }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -87,7 +89,91 @@ struct BridgeView: View {
                     Text("Bridge via \(route.bridgeName)\nEstimated output: \(route.estimatedOutputFormatted)\nGas: ~$\(String(format: "%.2f", route.estimatedGasUsd))\nTime: ~\(route.estimatedTimeMinutes) min")
                 }
             }
+            .alert("Bridge Submitted", isPresented: .init(
+                get: { bridgeResult != nil },
+                set: { if !$0 { bridgeResult = nil; dismiss() } }
+            )) {
+                Button("OK") { dismiss() }
+            } message: {
+                if let txHash = bridgeResult {
+                    Text("Transaction: \(txHash.prefix(10))...\(txHash.suffix(6))")
+                }
+            }
+            .alert("Bridge Failed", isPresented: .init(
+                get: { bridgeError != nil },
+                set: { if !$0 { bridgeError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(bridgeError ?? "Unknown error")
+            }
+            .loadingOverlay(isLoading: isBridging, message: "Bridging...")
         }
+    }
+
+    private func executeBridge() async {
+        guard let route = selectedRoute else { return }
+        isBridging = true
+        do {
+            // 1. Get tx params from Socket build-tx API
+            let txParams = try await bridgeService.buildBridgeTxParams(route: route)
+
+            // 2. Resolve the chain's RPC URL
+            guard let chain = ChainModel.allChains.first(where: { $0.evmChainId == Int(txParams.chainId) }),
+                  let fromAddress = walletService.addresses["ethereum"] else {
+                throw BridgeError.unsupportedChain
+            }
+
+            // 3. Fetch nonce, gas, fees
+            let nonce = try await RPCService.shared.getTransactionCount(
+                address: fromAddress, rpcUrl: chain.activeRpcUrl
+            )
+            let gasLimit = try await RPCService.shared.estimateGas(
+                from: fromAddress, to: txParams.to,
+                value: txParams.valueWeiHex,
+                data: "0x" + txParams.data.map { String(format: "%02x", $0) }.joined(),
+                rpcUrl: chain.activeRpcUrl
+            )
+            let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
+            let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
+            let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
+            let maxFee = baseFee * 2 + priorityFee
+            let maxFeeHex = "0x" + String(maxFee, radix: 16)
+
+            // 4. Sign via WalletService (handles biometric + seed decryption)
+            let ethReq = EthTransactionRequest(
+                chainId: txParams.chainId,
+                nonce: nonce,
+                to: txParams.to,
+                valueWeiHex: txParams.valueWeiHex,
+                data: txParams.data,
+                maxPriorityFeeHex: feeData.priorityFeeHex,
+                maxFeeHex: maxFeeHex,
+                gasLimit: UInt64(Double(gasLimit) * 1.2)
+            )
+            let signedTx = try await walletService.signTransaction(request: .eth(ethReq))
+            let signedHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
+
+            // 5. Broadcast
+            let txHash = try await RPCService.shared.sendRawTransaction(
+                rpcUrl: chain.activeRpcUrl, signedTx: signedHex
+            )
+
+            await MainActor.run {
+                isBridging = false
+                bridgeResult = txHash
+            }
+        } catch {
+            await MainActor.run {
+                isBridging = false
+                bridgeError = error.localizedDescription
+            }
+        }
+    }
+
+    private enum BridgeError: LocalizedError {
+        case unsupportedChain
+        var errorDescription: String? { "Unsupported bridge chain or missing wallet address" }
     }
 
     // MARK: - Chain Selectors

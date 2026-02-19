@@ -115,6 +115,16 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
             "LzqRFppp98SE8LNv5ZlVeUHkujEaaEglSYIhEduyZ4A=",  // leaf
             "yDu9og255NN5GEf+Bwa9rTrqFQ0EydZ0r1FCh9TdAW4=",  // intermediate CA
         ],
+        // Bridge aggregator (Socket/Bungee)
+        "api.socket.tech": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA (Amazon)
+            "yDu9og255NN5GEf+Bwa9rTrqFQ0EydZ0r1FCh9TdAW4=",  // backup CA
+        ],
+        // Lido staking APY API
+        "eth-api.lido.fi": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
+        ],
     ]
 
     func urlSession(
