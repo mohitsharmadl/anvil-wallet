@@ -75,6 +75,8 @@
 		FCA052D8EBC7EA6C81A8A0FD /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D66C8D99A967DC1F5B5CF36 /* TransactionDetailView.swift */; };
 		FEDC3360EB218A16D15DA83D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1C12ECCBEA7864116F065 /* SetPasswordView.swift */; };
 		FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1503B5B796CC0E77739FE776 /* AntiDebugger.swift */; };
+		AA01BB02CC03DD04EE05FF06 /* TransactionRiskEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */; };
+		AA01BB02CC03DD04EE05FF08 /* BalanceChangeSimulatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -149,6 +151,9 @@
 		EC308EC0F3396DDAC8A038AE /* SendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendView.swift; sourceTree = "<group>"; };
 		F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSettingsView.swift; sourceTree = "<group>"; };
 		F4469386B3A6F7F7566490A6 /* TokenIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenIconView.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionRiskEngineTests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceChangeSimulatorTests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF10 /* AnvilWalletTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnvilWalletTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,6 +163,13 @@
 			files = (
 				A0DCB25C20327781F753B246 /* WalletCoreFramework.xcframework in Frameworks */,
 				2E6E29B1DDC12823A49E176E /* ReownWalletKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB01CC02DD03EE04FF050607 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				A2F224A78C1ED9F110E6831E /* AnvilWallet */,
+				CC01DD02EE03FF04001105AA /* AnvilWalletTests */,
 				D3AE05A878F7C9B3577DB482 /* ios */,
 				4CC92CBF53360AC41AA1B64E /* Frameworks */,
 				EE44DEDF75CCFB1048473C53 /* Products */,
@@ -397,6 +410,7 @@
 			isa = PBXGroup;
 			children = (
 				93B10227387D2AA2B1DC1817 /* AnvilWallet.app */,
+				AA11BB22CC33DD44EE55FF10 /* AnvilWalletTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -408,6 +422,15 @@
 				6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */,
 			);
 			path = Extensions;
+			sourceTree = "<group>";
+		};
+		CC01DD02EE03FF04001105AA /* AnvilWalletTests */ = {
+			isa = PBXGroup;
+			children = (
+				AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */,
+				AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */,
+			);
+			path = AnvilWalletTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -433,7 +456,42 @@
 			productReference = 93B10227387D2AA2B1DC1817 /* AnvilWallet.app */;
 			productType = "com.apple.product-type.application";
 		};
+		DD01EE02FF03001104220533 /* AnvilWalletTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EE01FF02001103221104AA55 /* Build configuration list for PBXNativeTarget "AnvilWalletTests" */;
+			buildPhases = (
+				EE01FF02001103221104AA56 /* Sources */,
+				BB01CC02DD03EE04FF050607 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FF01002203330444055506AA /* PBXTargetDependency */,
+			);
+			name = AnvilWalletTests;
+			productName = AnvilWalletTests;
+			productReference = AA11BB22CC33DD44EE55FF10 /* AnvilWalletTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		FF01002203330444055506BB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 16DE3BCD45CDCC8B920A5CA7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E74F9B294421CBEB9AC96E64;
+			remoteInfo = AnvilWallet;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		FF01002203330444055506AA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E74F9B294421CBEB9AC96E64 /* AnvilWallet */;
+			targetProxy = FF01002203330444055506BB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		16DE3BCD45CDCC8B920A5CA7 /* Project object */ = {
@@ -459,6 +517,7 @@
 			projectRoot = "";
 			targets = (
 				E74F9B294421CBEB9AC96E64 /* AnvilWallet */,
+				DD01EE02FF03001104220533 /* AnvilWalletTests */,
 			);
 		};
 /* End PBXProject section */
@@ -544,6 +603,15 @@
 				179618C293B0C1078720DFED /* WalletService.swift in Sources */,
 				E37BEBB406FB24CB98AAD2C9 /* WelcomeView.swift in Sources */,
 				58790A16CB37C9BF28894E6A /* wallet_core.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE01FF02001103221104AA56 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA01BB02CC03DD04EE05FF08 /* BalanceChangeSimulatorTests.swift in Sources */,
+				AA01BB02CC03DD04EE05FF06 /* TransactionRiskEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -753,6 +821,44 @@
 			};
 			name = Release;
 		};
+		EE01FF02001103221104AA57 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N7MU2BBA93;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.tests;
+				PRODUCT_NAME = AnvilWalletTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnvilWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnvilWallet";
+			};
+			name = Debug;
+		};
+		EE01FF02001103221104AA58 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N7MU2BBA93;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.tests;
+				PRODUCT_NAME = AnvilWalletTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnvilWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnvilWallet";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -770,6 +876,15 @@
 			buildConfigurations = (
 				697AC026858EFDD38322868B /* Debug */,
 				B63BFE7130F68DBC8FD99D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EE01FF02001103221104AA55 /* Build configuration list for PBXNativeTarget "AnvilWalletTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE01FF02001103221104AA57 /* Debug */,
+				EE01FF02001103221104AA58 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
