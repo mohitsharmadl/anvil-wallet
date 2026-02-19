@@ -1,16 +1,34 @@
 import SwiftUI
 
+// MARK: - App Theme
+
+/// User-selectable appearance theme. Persisted via @AppStorage.
+enum AppTheme: String, CaseIterable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil      // Follow device setting
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 @main
 struct AnvilWalletApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var walletService = WalletService.shared
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("appTheme") private var appTheme = AppTheme.system
 
     init() {
         SecurityBootstrap.performChecks()
 
         // Initialize WalletConnect (Reown SDK)
-        // Project ID is injected via Secrets.xcconfig → Info.plist at build time.
+        // Project ID is injected via Secrets.xcconfig -> Info.plist at build time.
         // See ios/Secrets.xcconfig.example for setup instructions.
         let projectId = Bundle.main.object(forInfoDictionaryKey: "ReownProjectID") as? String ?? ""
         #if !DEBUG
@@ -30,7 +48,7 @@ struct AnvilWalletApp: App {
             ContentView()
                 .environmentObject(router)
                 .environmentObject(walletService)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(appTheme.colorScheme)
                 .onAppear {
                     router.isOnboarded = walletService.isWalletCreated
                     // Show security warning sheet if any checks failed
@@ -64,7 +82,7 @@ struct AnvilWalletApp: App {
                     if interval >= 0, elapsed >= interval {
                         walletService.clearSessionPassword()
                     }
-                    // interval < 0 means "never" — don't clear
+                    // interval < 0 means "never" -- don't clear
                 }
                 self.backgroundedAt = nil
             default:

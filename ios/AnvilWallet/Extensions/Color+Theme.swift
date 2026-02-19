@@ -1,27 +1,49 @@
 import SwiftUI
+import UIKit
 
 /// Theme color definitions for the CryptoWallet app.
 ///
 /// Design system:
-///   - Dark navy backgrounds for the primary canvas
+///   - Adaptive backgrounds that respond to light/dark mode
 ///   - Emerald green accent for CTAs and highlights
-///   - White/light gray for text
+///   - Adaptive text colors for readability in both modes
 ///   - Semantic colors for success, warning, error states
 extension Color {
 
+    // MARK: - Adaptive Color Helper
+
+    /// Creates a color that adapts between light and dark mode.
+    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+
     // MARK: - Background Colors
 
-    /// Primary background - dark navy (#0D1117)
-    static let backgroundPrimary = Color(red: 0.051, green: 0.067, blue: 0.090)
+    /// Primary background
+    static let backgroundPrimary = adaptive(
+        light: UIColor(red: 0.969, green: 0.969, blue: 0.980, alpha: 1),
+        dark: UIColor(red: 0.051, green: 0.067, blue: 0.090, alpha: 1)
+    )
 
-    /// Secondary background - slightly lighter navy (#161B22)
-    static let backgroundSecondary = Color(red: 0.086, green: 0.106, blue: 0.133)
+    /// Secondary background
+    static let backgroundSecondary = adaptive(
+        light: UIColor(red: 0.949, green: 0.949, blue: 0.969, alpha: 1),
+        dark: UIColor(red: 0.086, green: 0.106, blue: 0.133, alpha: 1)
+    )
 
-    /// Card/surface background (#1C2128)
-    static let backgroundCard = Color(red: 0.110, green: 0.129, blue: 0.157)
+    /// Card/surface background
+    static let backgroundCard = adaptive(
+        light: UIColor.white,
+        dark: UIColor(red: 0.110, green: 0.129, blue: 0.157, alpha: 1)
+    )
 
-    /// Elevated surface (#21262D)
-    static let backgroundElevated = Color(red: 0.129, green: 0.149, blue: 0.176)
+    /// Elevated surface
+    static let backgroundElevated = adaptive(
+        light: UIColor(red: 0.961, green: 0.961, blue: 0.976, alpha: 1),
+        dark: UIColor(red: 0.129, green: 0.149, blue: 0.176, alpha: 1)
+    )
 
     // MARK: - Accent Colors
 
@@ -36,14 +58,23 @@ extension Color {
 
     // MARK: - Text Colors
 
-    /// Primary text - white (#F0F6FC)
-    static let textPrimary = Color(red: 0.941, green: 0.965, blue: 0.988)
+    /// Primary text
+    static let textPrimary = adaptive(
+        light: UIColor(red: 0.110, green: 0.110, blue: 0.118, alpha: 1),
+        dark: UIColor(red: 0.941, green: 0.965, blue: 0.988, alpha: 1)
+    )
 
-    /// Secondary text - light gray (#8B949E)
-    static let textSecondary = Color(red: 0.545, green: 0.580, blue: 0.620)
+    /// Secondary text
+    static let textSecondary = adaptive(
+        light: UIColor(red: 0.431, green: 0.431, blue: 0.451, alpha: 1),
+        dark: UIColor(red: 0.545, green: 0.580, blue: 0.620, alpha: 1)
+    )
 
-    /// Tertiary text - dim gray (#6E7681)
-    static let textTertiary = Color(red: 0.431, green: 0.463, blue: 0.506)
+    /// Tertiary text
+    static let textTertiary = adaptive(
+        light: UIColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1),
+        dark: UIColor(red: 0.431, green: 0.463, blue: 0.506, alpha: 1)
+    )
 
     // MARK: - Semantic Colors
 
@@ -81,9 +112,15 @@ extension Color {
 
     // MARK: - Border & Separator
 
-    /// Border color (#30363D)
-    static let border = Color(red: 0.188, green: 0.212, blue: 0.239)
+    /// Border color
+    static let border = adaptive(
+        light: UIColor(red: 0.851, green: 0.851, blue: 0.871, alpha: 1),
+        dark: UIColor(red: 0.188, green: 0.212, blue: 0.239, alpha: 1)
+    )
 
-    /// Separator color (slightly transparent white)
-    static let separator = Color.white.opacity(0.1)
+    /// Separator color
+    static let separator = adaptive(
+        light: UIColor.black.withAlphaComponent(0.1),
+        dark: UIColor.white.withAlphaComponent(0.1)
+    )
 }

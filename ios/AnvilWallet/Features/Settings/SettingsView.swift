@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var router: AppRouter
+    @AppStorage("appTheme") private var appTheme = AppTheme.system
 
     @State private var showDeleteConfirmation = false
 
@@ -50,6 +51,19 @@ struct SettingsView: View {
                     NavigationLink(destination: NetworkSettingsView()) {
                         SettingsRow(icon: "network", title: "Networks", color: .chainEthereum)
                     }
+                }
+                .listRowBackground(Color.backgroundCard)
+
+                // Appearance section
+                Section("Appearance") {
+                    Picker(selection: $appTheme) {
+                        ForEach(AppTheme.allCases, id: \.self) { theme in
+                            Text(theme.rawValue).tag(theme)
+                        }
+                    } label: {
+                        SettingsRow(icon: "paintbrush.fill", title: "Theme", color: .info)
+                    }
+                    .pickerStyle(.menu)
                 }
                 .listRowBackground(Color.backgroundCard)
 
