@@ -359,20 +359,23 @@ final class WalletConnectService: ObservableObject {
 
         let responseValue: AnyCodable
 
-        // Active wallet ETH address for account validation.
+        // Active wallet ETH address for account validation (fail-closed).
         // All EVM chains share the same address, so grab the first EVM entry.
-        let activeAddress = ChainModel.defaults
+        // If unavailable, reject all signing requests rather than signing blindly.
+        guard let activeAddress = ChainModel.defaults
             .first(where: { $0.chainType == .evm })
-            .flatMap { walletService.addresses[$0.id] }?
+            .flatMap({ walletService.addresses[$0.id] })?
             .lowercased()
+        else {
+            throw WCError.malformedParams("No active EVM wallet address available")
+        }
 
         switch request.method {
         case "personal_sign":
             // personal_sign params: [message_hex, address]
             // Validate that the requested address matches our active wallet
             if let requestedAddress = parsePersonalSignAddress(from: request.params),
-               let active = activeAddress,
-               requestedAddress.lowercased() != active {
+               requestedAddress.lowercased() != activeAddress {
                 throw WCError.accountMismatch(requested: requestedAddress)
             }
             guard let messageHex = parsePersonalSignMessage(from: request.params) else {
@@ -390,8 +393,7 @@ final class WalletConnectService: ObservableObject {
             // Validate 'from' address matches active wallet
             if let txParams = parseTransactionParams(from: request.params),
                let from = txParams.from,
-               let active = activeAddress,
-               from.lowercased() != active {
+               from.lowercased() != activeAddress {
                 throw WCError.accountMismatch(requested: from)
             }
             responseValue = try await handleSendTransaction(request, walletService: walletService)
@@ -399,8 +401,7 @@ final class WalletConnectService: ObservableObject {
         case "eth_signTypedData_v4":
             // Validate requested address matches active wallet
             if let (requestedAddr, _) = parseTypedDataParams(from: request.params),
-               let active = activeAddress,
-               requestedAddr.lowercased() != active {
+               requestedAddr.lowercased() != activeAddress {
                 throw WCError.accountMismatch(requested: requestedAddr)
             }
             responseValue = try await handleSignTypedData(request, walletService: walletService)
@@ -856,7 +857,8 @@ final class WalletConnectService: ObservableObject {
 
             // uint<N> and int<N>
             if type.hasPrefix("uint") || type.hasPrefix("int") {
-                return encodeIntValue(value)
+                let isSigned = type.hasPrefix("int") && !type.hasPrefix("uint")
+                return encodeIntValue(value, signed: isSigned)
             }
 
             // bytes<N> (fixed-size, right-padded)
@@ -872,26 +874,53 @@ final class WalletConnectService: ObservableObject {
         }
 
         /// Encodes a numeric value (uint/int) as a 32-byte left-padded value.
-        private static func encodeIntValue(_ value: EIP712Value) -> Data {
+        /// For signed int<N> types, negative values are encoded as 32-byte two's complement.
+        private static func encodeIntValue(_ value: EIP712Value, signed: Bool) -> Data {
+            let rawString: String
             switch value {
-            case .string(let s):
-                if s.hasPrefix("0x") || s.hasPrefix("0X") {
-                    return leftPad32(Data(hexToBytes(s)))
-                }
-                if let n = UInt64(s) {
-                    return leftPad32(uint64ToData(n))
-                }
-                // Large decimal — convert via successive division (handles uint256)
-                return leftPad32(decimalStringToBytes(s))
-            case .number(let s):
-                // Number is stored as its raw string representation (no precision loss)
-                if let n = UInt64(s) {
-                    return leftPad32(uint64ToData(n))
-                }
-                return leftPad32(decimalStringToBytes(s))
-            default:
-                return Data(count: 32)
+            case .string(let s): rawString = s
+            case .number(let s): rawString = s
+            default: return Data(count: 32)
             }
+
+            // Hex strings are already encoded — pass through directly
+            if rawString.hasPrefix("0x") || rawString.hasPrefix("0X") {
+                return leftPad32(Data(hexToBytes(rawString)))
+            }
+
+            // Check for negative values (signed int types)
+            if signed && rawString.hasPrefix("-") {
+                let magnitude = String(rawString.dropFirst())
+                let magBytes = decimalStringToBytes(magnitude)
+                return twosComplement32(magBytes)
+            }
+
+            // Positive value
+            if let n = UInt64(rawString) {
+                return leftPad32(uint64ToData(n))
+            }
+            return leftPad32(decimalStringToBytes(rawString))
+        }
+
+        /// Computes 32-byte two's complement of a positive magnitude (big-endian bytes).
+        /// twos_complement = (~magnitude + 1), sign-extended to 32 bytes with 0xFF.
+        private static func twosComplement32(_ magnitude: Data) -> Data {
+            // Pad magnitude to 32 bytes
+            var padded = Data(count: max(0, 32 - magnitude.count)) + magnitude
+            if padded.count > 32 { padded = Data(padded.suffix(32)) }
+
+            // Bitwise NOT
+            for i in padded.indices { padded[i] = ~padded[i] }
+
+            // Add 1 (big-endian)
+            var carry: UInt16 = 1
+            for i in stride(from: padded.count - 1, through: 0, by: -1) {
+                let sum = UInt16(padded[i]) + carry
+                padded[i] = UInt8(sum & 0xFF)
+                carry = sum >> 8
+            }
+
+            return padded
         }
 
         /// Left-pads data to 32 bytes. Truncates to rightmost 32 bytes if longer.
