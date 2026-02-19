@@ -51,13 +51,24 @@
 - Copied addresses/data cleared after 120 seconds
 - Uses UIPasteboard.general with scheduled clearing
 
-### Layer 10: Certificate Pinning
+### Layer 10: Certificate Pinning + TLS Policy
+
+**Pinned hosts (SPKI SHA-256, fail-closed):**
 - Native `URLSessionDelegate` with SPKI SHA-256 pin validation
 - Constructs proper SubjectPublicKeyInfo DER for RSA and ECDSA keys before hashing
 - 12 hosts pinned with dual SPKI hashes (leaf certificate + intermediate CA) per host
-- Covers all RPC endpoints, block explorers, and price APIs
+- Covers all RPC endpoints (Alchemy, Blockstream, Solana RPC), block explorers (Etherscan), and price APIs (CoinGecko)
 - Fail-closed: any host not in the pinning table is rejected via `.cancelAuthenticationChallenge`
 - Handles both RSA (dynamic ASN.1 header) and ECDSA (P-256/P-384) key types
+- Pin updates are operationally owned: `build-scripts/extract-spki-pins.sh` regenerates all pins
+
+**Standard TLS hosts (OS trust store validation, not pinned):**
+- WalletConnect relay (`relay.walletconnect.com`) — Reown-managed, rotates certs without notice
+- Swap aggregator APIs (`quote-api.jup.ag`, `api.0x.org`) — third-party, frequent cert rotation
+
+**Rationale:** Pinning high-churn third-party endpoints creates an availability-as-security risk — a cert rotation by the provider silently breaks the feature for all users until an app update ships. Standard TLS validation still verifies the full certificate chain against the OS trust store. The tradeoff is: pinned hosts get MITM protection even if the OS trust store is compromised; standard TLS hosts get protection against everything except a compromised CA.
+
+**Rollback plan:** If a swap or WC provider is found to be actively targeted, pins can be added to `CertificatePinner.pinnedHashes` and the session delegate swapped in — this is a code change, not an architecture change.
 
 ### Layer 11: Memory Zeroization
 - Rust: `zeroize` crate with `ZeroizeOnDrop` derive
@@ -124,7 +135,7 @@ Both the password-derived AES key AND the Secure Enclave key must be compromised
 |--------|-----------|
 | Device theft | Biometric + password + device encryption |
 | Jailbreak | 6-layer detection, exit on detection |
-| MITM on RPC | Native SPKI pinning with 12 hosts pinned (dual leaf + CA hashes), fail-closed for unlisted hosts |
+| MITM on RPC/APIs | SPKI pinning (12 RPC/explorer/price hosts, fail-closed); standard TLS for WC relay + swap aggregators (high-churn third-party infra) |
 | Memory dump | Zeroize all sensitive data on drop |
 | Screenshot/recording | Anti-screenshot overlay + blur |
 | Debugger attachment | ptrace + sysctl checks |

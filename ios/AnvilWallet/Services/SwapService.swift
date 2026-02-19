@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 // MARK: - Types
 
@@ -58,6 +59,7 @@ final class SwapService {
     let solanaFeeAccount = "PLACEHOLDER_SOLANA_FEE_ADDRESS"
     let evmFeeRecipient = "PLACEHOLDER_EVM_FEE_ADDRESS"
 
+    private static let logger = Logger(subsystem: "com.anvilwallet", category: "Swap")
     private let session: URLSession
 
     private init() {
@@ -67,6 +69,7 @@ final class SwapService {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         session = URLSession(configuration: config)
+        Self.logger.info("SwapService using standard TLS (no SPKI pinning) for third-party swap APIs")
     }
 
     // MARK: - Get Quote
