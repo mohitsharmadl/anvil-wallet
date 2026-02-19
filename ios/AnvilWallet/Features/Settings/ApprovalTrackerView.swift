@@ -228,7 +228,7 @@ struct ApprovalTrackerView: View {
             let maxFeeHex = "0x" + String(maxFee, radix: 16)
 
             let calldata = await ApprovalService.shared.buildRevokeCalldata(spender: approval.spender)
-            let calldataBytes = Data(hexString: calldata)
+            let calldataBytes = Data(hexString: calldata) ?? Data()
 
             // Estimate gas
             let gasHex = try await RPCService.shared.estimateGas(
@@ -341,23 +341,3 @@ private struct ApprovalRow: View {
     }
 }
 
-// MARK: - Data hex helper
-
-private extension Data {
-    /// Strict hex decoder -- returns empty Data if any byte pair is invalid.
-    init(hexString: String) {
-        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
-        var chars = Array(hex)
-        if chars.count % 2 != 0 { chars.insert("0", at: 0) }
-        var bytes = Data()
-        bytes.reserveCapacity(chars.count / 2)
-        for i in stride(from: 0, to: chars.count, by: 2) {
-            guard let byte = UInt8(String(chars[i...i+1]), radix: 16) else {
-                self = Data() // Fail closed on invalid hex
-                return
-            }
-            bytes.append(byte)
-        }
-        self = bytes
-    }
-}

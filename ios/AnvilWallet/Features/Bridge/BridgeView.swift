@@ -119,21 +119,23 @@ struct BridgeView: View {
             let txParams = try await bridgeService.buildBridgeTxParams(route: route)
 
             // 2. Resolve the chain's RPC URL
-            guard let chain = ChainModel.allChains.first(where: { $0.evmChainId == Int(txParams.chainId) }),
+            guard let chain = ChainModel.allChains.first(where: { $0.evmChainId == txParams.chainId }),
                   let fromAddress = walletService.addresses["ethereum"] else {
                 throw BridgeError.unsupportedChain
             }
 
             // 3. Fetch nonce, gas, fees
-            let nonce = try await RPCService.shared.getTransactionCount(
-                address: fromAddress, rpcUrl: chain.activeRpcUrl
+            let nonceHex = try await RPCService.shared.getTransactionCount(
+                rpcUrl: chain.activeRpcUrl, address: fromAddress
             )
-            let gasLimit = try await RPCService.shared.estimateGas(
-                from: fromAddress, to: txParams.to,
+            let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
+
+            let gasHex = try await RPCService.shared.estimateGas(
+                rpcUrl: chain.activeRpcUrl, from: fromAddress, to: txParams.to,
                 value: txParams.valueWeiHex,
-                data: "0x" + txParams.data.map { String(format: "%02x", $0) }.joined(),
-                rpcUrl: chain.activeRpcUrl
+                data: "0x" + txParams.data.map { String(format: "%02x", $0) }.joined()
             )
+            let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) ?? 21000
             let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
             let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
             let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000

@@ -169,18 +169,20 @@ struct StakingView: View {
             + "0000000000000000000000000000000000000000"
         let calldataBytes = Data(hexString: calldataHex) ?? Data()
 
-        let nonce = try await RPCService.shared.getTransactionCount(
-            address: fromAddress,
-            rpcUrl: chain.activeRpcUrl
+        let nonceHex = try await RPCService.shared.getTransactionCount(
+            rpcUrl: chain.activeRpcUrl,
+            address: fromAddress
         )
+        let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
 
-        let gasLimit = try await RPCService.shared.estimateGas(
+        let gasHex = try await RPCService.shared.estimateGas(
+            rpcUrl: chain.activeRpcUrl,
             from: fromAddress,
             to: StakingService.lidoContractAddress,
             value: weiHex,
-            data: "0x" + calldataHex,
-            rpcUrl: chain.activeRpcUrl
+            data: "0x" + calldataHex
         )
+        let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) ?? 21000
 
         let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
         let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0

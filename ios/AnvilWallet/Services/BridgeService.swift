@@ -160,7 +160,9 @@ final class BridgeService: ObservableObject {
             throw BridgeError.invalidTxData
         }
 
-        let calldata = Data(hexString: dataHex) ?? Data()
+        guard let calldata = Data(hexString: dataHex) else {
+            throw BridgeError.invalidTxData
+        }
 
         return BridgeTxParams(
             to: to,
