@@ -151,6 +151,52 @@ final class BalanceChangeSimulatorTests: XCTestCase {
         XCTAssertEqual(gasChanges[0].tokenSymbol, "MATIC")
     }
 
+    // MARK: - Malformed Calldata
+
+    func testWCTruncatedTransferCalldataNoERC20Change() {
+        // transfer selector but truncated — only 40 hex chars instead of 128
+        let calldata = "0xa9059cbb" + String(repeating: "0", count: 40)
+
+        let changes = BalanceChangeSimulator.simulateWC(
+            to: "0xContract",
+            value: "0x0",
+            data: calldata,
+            chainSymbol: "ETH"
+        )
+        // Should NOT produce an ERC-20 change (calldata too short)
+        let erc20 = changes.filter { $0.tokenSymbol == "ERC-20" }
+        XCTAssertTrue(erc20.isEmpty)
+        // Should still have gas
+        XCTAssertTrue(changes.contains { $0.isGasFee })
+    }
+
+    func testWCEmptyDataNoDecodeAttempt() {
+        let changes = BalanceChangeSimulator.simulateWC(
+            to: "0xContract",
+            value: "0x1",
+            data: "0x",
+            chainSymbol: "ETH"
+        )
+        // No contract interaction change — data too short to have a selector
+        let contractChanges = changes.filter { $0.tokenSymbol == "Contract Interaction" }
+        XCTAssertTrue(contractChanges.isEmpty)
+    }
+
+    func testWCSelectorOnlyNoArgs() {
+        // Just a 4-byte selector with no arguments
+        let calldata = "0xa9059cbb"
+
+        let changes = BalanceChangeSimulator.simulateWC(
+            to: "0xContract",
+            value: "0x0",
+            data: calldata,
+            chainSymbol: "ETH"
+        )
+        // transfer selector present but no arguments — should not produce ERC-20 entry
+        let erc20 = changes.filter { $0.tokenSymbol == "ERC-20" }
+        XCTAssertTrue(erc20.isEmpty)
+    }
+
     // MARK: - Decimal Precision
 
     func testLargeWeiValueDoesNotLosePrecision() {

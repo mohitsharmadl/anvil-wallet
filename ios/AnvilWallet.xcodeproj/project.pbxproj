@@ -77,6 +77,7 @@
 		FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1503B5B796CC0E77739FE776 /* AntiDebugger.swift */; };
 		AA01BB02CC03DD04EE05FF06 /* TransactionRiskEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */; };
 		AA01BB02CC03DD04EE05FF08 /* BalanceChangeSimulatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */; };
+		AA01BB02CC03DD04EE05FF0B /* TokenDiscoveryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF0C /* TokenDiscoveryServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -153,6 +154,7 @@
 		F4469386B3A6F7F7566490A6 /* TokenIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenIconView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionRiskEngineTests.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceChangeSimulatorTests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF0C /* TokenDiscoveryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDiscoveryServiceTests.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF10 /* AnvilWalletTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnvilWalletTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -428,6 +430,7 @@
 			isa = PBXGroup;
 			children = (
 				AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */,
+				AA11BB22CC33DD44EE55FF0C /* TokenDiscoveryServiceTests.swift */,
 				AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */,
 			);
 			path = AnvilWalletTests;
@@ -611,6 +614,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA01BB02CC03DD04EE05FF08 /* BalanceChangeSimulatorTests.swift in Sources */,
+				AA01BB02CC03DD04EE05FF0B /* TokenDiscoveryServiceTests.swift in Sources */,
 				AA01BB02CC03DD04EE05FF06 /* TransactionRiskEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

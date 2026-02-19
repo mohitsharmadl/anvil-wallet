@@ -178,6 +178,42 @@ final class TransactionRiskEngineTests: XCTestCase {
         XCTAssertTrue(result.findings.isEmpty)
     }
 
+    // MARK: - Precedence: Danger overrides Warning
+
+    func testDangerOverridesWarning() {
+        // Phishing address (danger) + new address (warning) + zero-value (warning)
+        let result = engine.assess(
+            to: "0x0000000000000000000000000000000000000000",
+            amount: "0",
+            tokenSymbol: "ETH",
+            tokenBalance: 10.0,
+            tokenDecimals: 18,
+            contractAddress: nil,
+            previousTransactions: []
+        )
+        // Should have findings from multiple rules
+        XCTAssertTrue(result.findings.contains { $0.title == "Known Phishing Address" })
+        XCTAssertTrue(result.findings.contains { $0.title == "New Address" })
+        // Overall must be danger, not warning
+        XCTAssertEqual(result.overallLevel, .danger)
+    }
+
+    func testMultipleWarningsStayWarning() {
+        // New address (warning) + large amount (warning) — no danger
+        let result = engine.assess(
+            to: "0xNEVERSEEN",
+            amount: "8.0",
+            tokenSymbol: "ETH",
+            tokenBalance: 10.0,
+            tokenDecimals: 18,
+            contractAddress: nil,
+            previousTransactions: []
+        )
+        XCTAssertTrue(result.findings.contains { $0.title == "New Address" })
+        XCTAssertTrue(result.findings.contains { $0.title == "Large Transfer" })
+        XCTAssertEqual(result.overallLevel, .warning)
+    }
+
     // MARK: - WC: Zero-Value + No Data
 
     func testWCZeroValueNoDataWarning() {
