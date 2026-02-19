@@ -359,9 +359,22 @@ final class WalletConnectService: ObservableObject {
 
         let responseValue: AnyCodable
 
+        // Active wallet ETH address for account validation.
+        // All EVM chains share the same address, so grab the first EVM entry.
+        let activeAddress = ChainModel.defaults
+            .first(where: { $0.chainType == .evm })
+            .flatMap { walletService.addresses[$0.id] }?
+            .lowercased()
+
         switch request.method {
         case "personal_sign":
             // personal_sign params: [message_hex, address]
+            // Validate that the requested address matches our active wallet
+            if let requestedAddress = parsePersonalSignAddress(from: request.params),
+               let active = activeAddress,
+               requestedAddress.lowercased() != active {
+                throw WCError.accountMismatch(requested: requestedAddress)
+            }
             guard let messageHex = parsePersonalSignMessage(from: request.params) else {
                 throw WCError.malformedParams("Malformed personal_sign params")
             }
@@ -374,9 +387,22 @@ final class WalletConnectService: ObservableObject {
             responseValue = AnyCodable("0x" + signature.map { String(format: "%02x", $0) }.joined())
 
         case "eth_sendTransaction":
+            // Validate 'from' address matches active wallet
+            if let txParams = parseTransactionParams(from: request.params),
+               let from = txParams.from,
+               let active = activeAddress,
+               from.lowercased() != active {
+                throw WCError.accountMismatch(requested: from)
+            }
             responseValue = try await handleSendTransaction(request, walletService: walletService)
 
         case "eth_signTypedData_v4":
+            // Validate requested address matches active wallet
+            if let (requestedAddr, _) = parseTypedDataParams(from: request.params),
+               let active = activeAddress,
+               requestedAddr.lowercased() != active {
+                throw WCError.accountMismatch(requested: requestedAddr)
+            }
             responseValue = try await handleSignTypedData(request, walletService: walletService)
 
         default:
@@ -411,6 +437,13 @@ final class WalletConnectService: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    /// Extracts the address from personal_sign params: [message, address].
+    private func parsePersonalSignAddress(from params: Data) -> String? {
+        guard let array = try? JSONDecoder().decode([String].self, from: params),
+              array.count >= 2 else { return nil }
+        return array[1]
+    }
 
     /// Parses the personal_sign message from JSON params.
     /// Returns nil if params are malformed — caller must reject the request.
@@ -538,11 +571,15 @@ final class WalletConnectService: ObservableObject {
             }
         }
 
-        // Build calldata
+        // Build calldata — reject invalid hex rather than silently dropping it,
+        // because empty calldata changes a contract call into a plain ETH transfer.
         let calldata: Data
-        if let dataHex = txParams.data {
+        if let dataHex = txParams.data, !dataHex.isEmpty, dataHex != "0x" {
             let cleaned = dataHex.hasPrefix("0x") ? String(dataHex.dropFirst(2)) : dataHex
-            calldata = Data(strictHexToBytes(cleaned) ?? [])
+            guard let bytes = strictHexToBytes(cleaned) else {
+                throw WCError.malformedParams("Invalid hex in transaction data field")
+            }
+            calldata = Data(bytes)
         } else {
             calldata = Data()
         }
@@ -647,9 +684,10 @@ final class WalletConnectService: ObservableObject {
     }
 
     /// Flexible JSON value type for decoding EIP-712 domain and message fields.
+    /// Uses String representation for numbers to avoid Double precision loss on uint256 values.
     private enum EIP712Value: Decodable {
         case string(String)
-        case number(Double)
+        case number(String) // Stored as string to preserve full precision for large integers
         case bool(Bool)
         case object([String: EIP712Value])
         case array([EIP712Value])
@@ -662,14 +700,35 @@ final class WalletConnectService: ObservableObject {
                 self = .bool(b)
             } else if let s = try? container.decode(String.self) {
                 self = .string(s)
-            } else if let n = try? container.decode(Double.self) {
-                self = .number(n)
+            } else if let n = try? container.decode(JSONNumber.self) {
+                self = .number(n.rawValue)
             } else if let o = try? container.decode([String: EIP712Value].self) {
                 self = .object(o)
             } else if let a = try? container.decode([EIP712Value].self) {
                 self = .array(a)
             } else {
                 self = .null
+            }
+        }
+    }
+
+    /// Decodes a JSON number as its raw string representation to avoid Double precision loss.
+    private struct JSONNumber: Decodable {
+        let rawValue: String
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            // Try Int64 first for exact integer representation
+            if let i = try? container.decode(Int64.self) {
+                rawValue = String(i)
+            } else if let u = try? container.decode(UInt64.self) {
+                rawValue = String(u)
+            } else if let d = try? container.decode(Decimal.self) {
+                // Decimal preserves up to 38 significant digits (enough for uint128, not uint256)
+                // For truly huge values, dApps typically send hex strings, not JSON numbers.
+                rawValue = "\(d)"
+            } else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Not a number")
             }
         }
     }
@@ -789,7 +848,7 @@ final class WalletConnectService: ObservableObject {
                 var result = Data(count: 32)
                 switch value {
                 case .bool(let b): if b { result[31] = 1 }
-                case .number(let n): if n != 0 { result[31] = 1 }
+                case .number(let s): if s != "0" { result[31] = 1 }
                 default: break
                 }
                 return result
@@ -822,13 +881,14 @@ final class WalletConnectService: ObservableObject {
                 if let n = UInt64(s) {
                     return leftPad32(uint64ToData(n))
                 }
-                // Large decimal — convert via successive division
+                // Large decimal — convert via successive division (handles uint256)
                 return leftPad32(decimalStringToBytes(s))
-            case .number(let n):
-                if n >= 0, n < Double(UInt64.max) {
-                    return leftPad32(uint64ToData(UInt64(n)))
+            case .number(let s):
+                // Number is stored as its raw string representation (no precision loss)
+                if let n = UInt64(s) {
+                    return leftPad32(uint64ToData(n))
                 }
-                return Data(count: 32)
+                return leftPad32(decimalStringToBytes(s))
             default:
                 return Data(count: 32)
             }
@@ -913,6 +973,7 @@ final class WalletConnectService: ObservableObject {
         case malformedParams(String)
         case chainNotSupported(String)
         case rpcError(String)
+        case accountMismatch(requested: String)
 
         var errorDescription: String? {
             switch self {
@@ -926,6 +987,8 @@ final class WalletConnectService: ObservableObject {
                 return "Unsupported chain: \(chain)"
             case .rpcError(let detail):
                 return "RPC error: \(detail)"
+            case .accountMismatch(let requested):
+                return "Request targets a different account (\(requested)) than the active wallet"
             }
         }
     }

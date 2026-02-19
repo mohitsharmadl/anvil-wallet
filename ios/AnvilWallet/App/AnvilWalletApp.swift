@@ -22,6 +22,8 @@ struct AnvilWalletApp: App {
     }
 
     @State private var backgroundedAt: Date?
+    @State private var showSecurityWarning = false
+    @State private var securityWarningDismissed = false
 
     var body: some Scene {
         WindowGroup {
@@ -31,6 +33,19 @@ struct AnvilWalletApp: App {
                 .preferredColorScheme(.dark)
                 .onAppear {
                     router.isOnboarded = walletService.isWalletCreated
+                    // Show security warning sheet if any checks failed
+                    if SecurityBootstrap.securityWarningMessage != nil && !securityWarningDismissed {
+                        showSecurityWarning = true
+                    }
+                }
+                .sheet(isPresented: $showSecurityWarning) {
+                    if let message = SecurityBootstrap.securityWarningMessage {
+                        SecurityWarningView(message: message) {
+                            securityWarningDismissed = true
+                            showSecurityWarning = false
+                        }
+                        .interactiveDismissDisabled() // Force user to tap "I Understand"
+                    }
                 }
                 .task {
                     guard walletService.isWalletCreated else { return }

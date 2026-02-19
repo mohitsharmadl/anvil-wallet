@@ -172,6 +172,8 @@ final class WalletService: ObservableObject {
         let words = mnemonicString.split(separator: " ").map(String.init)
 
         // Step 2: Derive seed and encrypt with password via Rust (Argon2id + AES-256-GCM)
+        // Note: Empty passphrase is intentional — matches MetaMask/Trust Wallet behavior.
+        // BIP-39 passphrase support (for plausible deniability) is a planned future feature.
         let seedBytes = try mnemonicToSeed(mnemonic: mnemonicString, passphrase: "")
         let encrypted = try encryptSeedWithPassword(seed: seedBytes, password: password)
         let packed = packSaltAndCiphertext(
