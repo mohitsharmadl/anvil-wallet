@@ -377,7 +377,9 @@ pub fn decode_compact_u16(data: &[u8]) -> Result<(u16, usize), SolError> {
             break;
         }
         if consumed >= 3 {
-            break;
+            return Err(SolError::SerializationError(
+                "compact-u16 continuation bit set on third byte".into(),
+            ));
         }
     }
 

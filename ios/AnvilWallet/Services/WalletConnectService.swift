@@ -415,6 +415,19 @@ final class WalletConnectService: ObservableObject {
                 throw WCError.unsupportedMethod(request.method)
             }
 
+            // Fail-closed address check — same pattern as EVM methods
+            guard let activeSolAddress = walletService.addresses["solana"] else {
+                throw WCError.malformedParams("No active Solana wallet address available")
+            }
+
+            // If the dApp specified a pubkey, verify it matches our active address
+            if let dict = try? JSONSerialization.jsonObject(with: request.params) as? [String: Any],
+               let requestedPubkey = dict["pubkey"] as? String,
+               !requestedPubkey.isEmpty,
+               requestedPubkey != activeSolAddress {
+                throw WCError.accountMismatch(requested: requestedPubkey)
+            }
+
             switch request.method {
             case "solana_signTransaction":
                 responseValue = try await handleSolanaSignTransaction(request, walletService: walletService)

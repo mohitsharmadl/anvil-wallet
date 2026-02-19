@@ -1009,20 +1009,19 @@ final class WalletService: ObservableObject {
             throw BackupError.corruptedData
         }
 
-        // Delete existing wallet data before restoring
-        try? keychain.delete(key: encryptedSeedKey)
-        try? keychain.delete(key: encryptedMnemonicKey)
-        try? keychain.delete(key: walletMetadataKey)
+        // Perform the import first — if it succeeds, old data is overwritten atomically
+        // by importWallet's keychain writes. Only clear non-keychain caches after success.
+        // This avoids destroying existing wallet state if importWallet throws.
+        let oldEthAddr = addresses["ethereum"]
 
-        // Clear discovered tokens and NFTs from old wallet
-        if let ethAddr = addresses["ethereum"] {
-            TokenDiscoveryService.shared.clearPersistedTokens(for: ethAddr)
-            ManualTokenService.shared.clearPersistedTokens(for: ethAddr)
-            NFTService.shared.clearPersistedNFTs(for: ethAddr)
-        }
-
-        // Use the standard import flow which handles seed derivation, encryption, and SE wrapping
         try await importWallet(mnemonic: mnemonic, password: appPassword)
+
+        // Import succeeded — now safe to clear old wallet's caches
+        if let oldEthAddr, oldEthAddr.lowercased() != (addresses["ethereum"] ?? "").lowercased() {
+            TokenDiscoveryService.shared.clearPersistedTokens(for: oldEthAddr)
+            ManualTokenService.shared.clearPersistedTokens(for: oldEthAddr)
+            NFTService.shared.clearPersistedNFTs(for: oldEthAddr)
+        }
     }
 
     // MARK: - Transaction History
