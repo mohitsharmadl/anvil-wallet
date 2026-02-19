@@ -52,8 +52,8 @@ enum Base58 {
         // Count leading zeros
         let leadingZeros = data.prefix(while: { $0 == 0 }).count
 
-        // Convert to base58 using repeated division
-        var bytes = [UInt8](data)
+        // Convert to base58 using repeated division (skip leading zeros already counted)
+        var bytes = [UInt8](data.dropFirst(leadingZeros))
         var result: [UInt8] = []
 
         while !bytes.isEmpty {
