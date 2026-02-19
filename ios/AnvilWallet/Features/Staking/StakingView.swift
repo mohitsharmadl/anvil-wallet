@@ -173,7 +173,9 @@ struct StakingView: View {
             rpcUrl: chain.activeRpcUrl,
             address: fromAddress
         )
-        let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
+        guard let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) else {
+            throw StakeError.malformedRPCResponse
+        }
 
         let gasHex = try await RPCService.shared.estimateGas(
             rpcUrl: chain.activeRpcUrl,
@@ -182,7 +184,9 @@ struct StakingView: View {
             value: weiHex,
             data: "0x" + calldataHex
         )
-        let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) ?? 21000
+        guard let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) else {
+            throw StakeError.malformedRPCResponse
+        }
 
         let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
         let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
@@ -212,10 +216,12 @@ struct StakingView: View {
 
     private enum StakeError: LocalizedError {
         case noWalletAddress
+        case malformedRPCResponse
 
         var errorDescription: String? {
             switch self {
             case .noWalletAddress: return "No Ethereum address available"
+            case .malformedRPCResponse: return "Received malformed data from RPC node"
             }
         }
     }

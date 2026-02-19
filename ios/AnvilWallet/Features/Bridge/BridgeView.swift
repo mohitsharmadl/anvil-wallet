@@ -128,14 +128,18 @@ struct BridgeView: View {
             let nonceHex = try await RPCService.shared.getTransactionCount(
                 rpcUrl: chain.activeRpcUrl, address: fromAddress
             )
-            let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
+            guard let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) else {
+                throw BridgeError.malformedRPCResponse
+            }
 
             let gasHex = try await RPCService.shared.estimateGas(
                 rpcUrl: chain.activeRpcUrl, from: fromAddress, to: txParams.to,
                 value: txParams.valueWeiHex,
                 data: "0x" + txParams.data.map { String(format: "%02x", $0) }.joined()
             )
-            let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) ?? 21000
+            guard let gasLimit = UInt64(gasHex.dropFirst(2), radix: 16) else {
+                throw BridgeError.malformedRPCResponse
+            }
             let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
             let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
             let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
@@ -175,7 +179,14 @@ struct BridgeView: View {
 
     private enum BridgeError: LocalizedError {
         case unsupportedChain
-        var errorDescription: String? { "Unsupported bridge chain or missing wallet address" }
+        case malformedRPCResponse
+
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedChain: return "Unsupported bridge chain or missing wallet address"
+            case .malformedRPCResponse: return "Received malformed data from RPC node"
+            }
+        }
     }
 
     // MARK: - Chain Selectors
