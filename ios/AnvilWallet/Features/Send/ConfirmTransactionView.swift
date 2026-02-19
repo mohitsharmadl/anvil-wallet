@@ -712,7 +712,7 @@ struct ConfirmTransactionView: View {
             await MainActor.run {
                 isSigning = false
                 router.sendPath.append(
-                    AppRouter.SendDestination.transactionResult(txHash: txHash, success: true, chain: transaction.chain)
+                    AppRouter.SendDestination.transactionResult(txHash: txHash, success: true, chain: transaction.chain, recipientAddress: transaction.to)
                 )
             }
         } catch let error as AppWalletError where error == .passwordRequired {

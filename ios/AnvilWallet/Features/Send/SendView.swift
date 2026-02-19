@@ -12,6 +12,7 @@ struct SendView: View {
     @State private var selectedToken: TokenModel?
     @State private var showTokenPicker = false
     @State private var showQRScanner = false
+    @State private var showAddressBookPicker = false
     @State private var errorMessage: String?
 
     private var isValidInput: Bool {
@@ -91,6 +92,13 @@ struct SendView: View {
                                 .autocorrectionDisabled()
 
                             Button {
+                                showAddressBookPicker = true
+                            } label: {
+                                Image(systemName: "person.crop.rectangle.stack")
+                                    .foregroundColor(.accentGreen)
+                            }
+
+                            Button {
                                 showQRScanner = true
                             } label: {
                                 Image(systemName: "qrcode.viewfinder")
@@ -109,6 +117,18 @@ struct SendView: View {
                         .padding(14)
                         .background(Color.backgroundCard)
                         .cornerRadius(12)
+
+                        // Address book suggestions (shown when address field is focused and contacts exist)
+                        if recipientAddress.isEmpty,
+                           let token = selectedToken,
+                           !AddressBookService.shared.addresses(for: token.chain).isEmpty {
+                            AddressSuggestionList(
+                                chain: token.chain,
+                                onSelect: { saved in
+                                    recipientAddress = saved.address
+                                }
+                            )
+                        }
                     }
                     .padding(.horizontal, 20)
 
@@ -221,12 +241,20 @@ struct SendView: View {
                     showQRScanner = false
                 }
             }
+            .sheet(isPresented: $showAddressBookPicker) {
+                AddressBookPickerSheet(
+                    chain: selectedToken?.chain ?? "ethereum"
+                ) { savedAddress in
+                    recipientAddress = savedAddress.address
+                    showAddressBookPicker = false
+                }
+            }
             .navigationDestination(for: AppRouter.SendDestination.self) { destination in
                 switch destination {
                 case .confirmTransaction(let tx):
                     ConfirmTransactionView(transaction: tx)
-                case .transactionResult(let hash, let success, let chain):
-                    TransactionResultView(txHash: hash, success: success, chain: chain)
+                case .transactionResult(let hash, let success, let chain, let recipientAddress):
+                    TransactionResultView(txHash: hash, success: success, chain: chain, recipientAddress: recipientAddress)
                 case .qrScanner:
                     QRScannerView { address in
                         recipientAddress = address
@@ -282,6 +310,150 @@ private struct TokenPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Address Suggestion List
+
+/// Inline compact list of saved addresses for the current chain, shown below the address field.
+private struct AddressSuggestionList: View {
+    let chain: String
+    let onSelect: (SavedAddress) -> Void
+
+    private var contacts: [SavedAddress] {
+        Array(AddressBookService.shared.addresses(for: chain).prefix(3))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(contacts) { contact in
+                Button {
+                    onSelect(contact)
+                } label: {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentGreen.opacity(0.15))
+                                .frame(width: 28, height: 28)
+                            Text(String(contact.name.prefix(1)).uppercased())
+                                .font(.caption.bold())
+                                .foregroundColor(.accentGreen)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(contact.name)
+                                .font(.subheadline)
+                                .foregroundColor(.textPrimary)
+                                .lineLimit(1)
+                            Text(contact.shortAddress)
+                                .font(.caption.monospaced())
+                                .foregroundColor(.textTertiary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                }
+            }
+        }
+        .background(Color.backgroundCard)
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - Address Book Picker Sheet
+
+/// Full-screen picker that shows all saved addresses for the selected chain.
+struct AddressBookPickerSheet: View {
+    let chain: String
+    let onSelect: (SavedAddress) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+
+    private var contacts: [SavedAddress] {
+        let all = AddressBookService.shared.addresses(for: chain)
+        if searchText.isEmpty { return all }
+        let query = searchText.lowercased()
+        return all.filter {
+            $0.name.lowercased().contains(query)
+                || $0.address.lowercased().contains(query)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if AddressBookService.shared.addresses(for: chain).isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.crop.rectangle.stack")
+                            .font(.system(size: 40))
+                            .foregroundColor(.textTertiary)
+
+                        Text("No Saved Addresses")
+                            .font(.headline)
+                            .foregroundColor(.textPrimary)
+
+                        Text("You don't have any saved addresses for this network yet.")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(contacts) { contact in
+                        Button {
+                            onSelect(contact)
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.accentGreen.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Text(String(contact.name.prefix(1)).uppercased())
+                                        .font(.headline)
+                                        .foregroundColor(.accentGreen)
+                                }
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(contact.name)
+                                        .font(.body.bold())
+                                        .foregroundColor(.textPrimary)
+                                        .lineLimit(1)
+                                    Text(contact.shortAddress)
+                                        .font(.caption.monospaced())
+                                        .foregroundColor(.textSecondary)
+                                }
+
+                                Spacer()
+
+                                if let notes = contact.notes, !notes.isEmpty {
+                                    Text(notes)
+                                        .font(.caption)
+                                        .foregroundColor(.textTertiary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(Color.backgroundCard)
+                    }
+                    .listStyle(.plain)
+                    .searchable(text: $searchText, prompt: "Search contacts")
+                }
+            }
+            .background(Color.backgroundPrimary)
+            .navigationTitle("Select Contact")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.textSecondary)
                 }
             }
         }

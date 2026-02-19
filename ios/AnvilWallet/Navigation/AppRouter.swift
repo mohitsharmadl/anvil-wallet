@@ -33,7 +33,7 @@ final class AppRouter: ObservableObject {
 
     enum SendDestination: Hashable {
         case confirmTransaction(transaction: TransactionModel)
-        case transactionResult(txHash: String, success: Bool, chain: String)
+        case transactionResult(txHash: String, success: Bool, chain: String, recipientAddress: String)
         case qrScanner
     }
 

@@ -82,6 +82,9 @@
 		AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33010405060711 /* AccountManagerView.swift */; };
 		BA01AA02BB03CC04DD05EE01 /* BuyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE01 /* BuyView.swift */; };
 		BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */; };
+		DA01AB02CD03EF04A10B2C0E /* AddressBookService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */; };
+		DA01AB02CD03EF04A10B2C0F /* AddressBookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0F /* AddressBookView.swift */; };
+		DA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift */; };
 		DA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */; };
 		DA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */; };
 		DA01AB02CD03EF04A10B2C03 /* NFTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C03 /* NFTService.swift */; };
@@ -95,6 +98,8 @@
 		DA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift */; };
 		DA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */; };
 		DA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift */; };
+		EA01FB02AC03DE04B10C3D01 /* PriceHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA11FB22AC33DE44B15C3D01 /* PriceHistoryService.swift */; };
+		EA01FB02AC03DE04B10C3D02 /* PriceChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA11FB22AC33DE44B15C3D02 /* PriceChartView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -177,6 +182,9 @@
 		AB11CD22EF33010405060711 /* AccountManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountManagerView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE01 /* BuyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuyView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonPayWebView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressBookService.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0F /* AddressBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressBookView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataProvider.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomRPCStore.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualTokenService.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C03 /* NFTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFTService.swift; sourceTree = "<group>"; };
@@ -190,6 +198,8 @@
 		CA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportBackupView.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportBackupView.swift; sourceTree = "<group>"; };
+		EA11FB22AC33DE44B15C3D01 /* PriceHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryService.swift; sourceTree = "<group>"; };
+		EA11FB22AC33DE44B15C3D02 /* PriceChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceChartView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -234,6 +244,7 @@
 			isa = PBXGroup;
 			children = (
 				58CB602FF66D665E6BFBD223 /* BalanceChangePreviewView.swift */,
+				EA11FB22AC33DE44B15C3D02 /* PriceChartView.swift */,
 				E79677F1BFDB0967F06B27C6 /* RiskBannerView.swift */,
 				F4469386B3A6F7F7566490A6 /* TokenIconView.swift */,
 			);
@@ -320,12 +331,15 @@
 				E1D5CBD640ECBEEC823F6FE0 /* BalanceChangeSimulator.swift */,
 				B96FF3504CC1CEA909240B51 /* BiometricService.swift */,
 				DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */,
+				CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */,
 				CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */,
 				97B03A5C4D68DB8DD9AA3094 /* EtherscanService.swift */,
 				82E95CA13963288BB627DCE4 /* KeychainService.swift */,
 				CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */,
 				CA01AB02CD03EF04A10B2C03 /* NFTService.swift */,
 				CA01AB02CD03EF04A10B2C04 /* NotificationService.swift */,
+				CA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift */,
+				EA11FB22AC33DE44B15C3D01 /* PriceHistoryService.swift */,
 				0EC94C6B7269D62CF64407B2 /* PriceService.swift */,
 				61D843EF46CD12F68B4CB725 /* RPCService.swift */,
 				C71F6412709C43E017CD623C /* SecureEnclaveService.swift */,
@@ -430,6 +444,7 @@
 			isa = PBXGroup;
 			children = (
 				AB11CD22EF33010405060711 /* AccountManagerView.swift */,
+				CA01AB02CD03EF04A10B2C0F /* AddressBookView.swift */,
 				830E3B8CD5D238ABF08207B9 /* ApprovalTrackerView.swift */,
 				F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */,
 				CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */,
@@ -604,6 +619,8 @@
 				AB01CD02EF03010405060708 /* AccountPickerView.swift in Sources */,
 				AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */,
 				EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0E /* AddressBookService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0F /* AddressBookView.swift in Sources */,
 				DA01AB02CD03EF04A10B2C07 /* AddTokenView.swift in Sources */,
 				FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */,
 				BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */,
@@ -645,6 +662,9 @@
 				DA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift in Sources */,
 				DA01AB02CD03EF04A10B2C04 /* NotificationService.swift in Sources */,
 				DA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift in Sources */,
+				EA01FB02AC03DE04B10C3D02 /* PriceChartView.swift in Sources */,
+				EA01FB02AC03DE04B10C3D01 /* PriceHistoryService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift in Sources */,
 				97D03AB2A5566FBAF3C06F44 /* PriceService.swift in Sources */,
 				01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */,
 				261F508DC246530978564B9C /* RPCService.swift in Sources */,

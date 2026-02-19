@@ -1,12 +1,21 @@
 import SwiftUI
 
 /// TokenDetailView shows detailed information about a specific token,
-/// including balance, price chart placeholder, and recent transactions.
+/// including balance, price chart, and recent transactions.
 struct TokenDetailView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var router: AppRouter
 
     let token: TokenModel
+
+    /// Whether CoinGecko has price history data for this token.
+    private var showPriceChart: Bool {
+        PriceHistoryService.shared.hasPriceHistory(
+            symbol: token.symbol,
+            contractAddress: token.contractAddress,
+            chain: token.chain
+        )
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -63,6 +72,11 @@ struct TokenDetailView: View {
                 }
                 .padding(.horizontal, 20)
 
+                // Price chart (only if CoinGecko data is available)
+                if showPriceChart {
+                    PriceChartView(token: token)
+                }
+
                 // Info card
                 VStack(spacing: 0) {
                     infoRow(label: "Price", value: formatPrice(token.priceUsd))
@@ -96,29 +110,6 @@ struct TokenDetailView: View {
                 }
                 .background(Color.backgroundCard)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 20)
-
-                // Chart placeholder
-                VStack(spacing: 12) {
-                    Text("Price Chart")
-                        .font(.headline)
-                        .foregroundColor(.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.backgroundCard)
-                        .frame(height: 180)
-                        .overlay(
-                            VStack(spacing: 8) {
-                                Image(systemName: "chart.xyaxis.line")
-                                    .font(.title2)
-                                    .foregroundColor(.textTertiary)
-                                Text("Coming soon")
-                                    .font(.caption)
-                                    .foregroundColor(.textTertiary)
-                            }
-                        )
-                }
                 .padding(.horizontal, 20)
 
                 // Recent transactions

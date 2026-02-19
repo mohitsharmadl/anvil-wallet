@@ -38,6 +38,7 @@ targets:
         embed: false
       - package: reown-swift
         product: ReownWalletKit
+      - target: AnvilWalletWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anvilwallet.app
@@ -64,3 +65,21 @@ targets:
           - "$(inherited)"
         OTHER_LDFLAGS:
           - "$(inherited)"
+
+  AnvilWalletWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: AnvilWalletWidget
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.anvilwallet.app.widget
+        PRODUCT_NAME: AnvilWalletWidget
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: "Anvil Portfolio"
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: "com.apple.widgetkit-extension"
+        SWIFT_VERSION: "5.9"

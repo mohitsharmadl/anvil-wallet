@@ -59,6 +59,14 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Color.backgroundCard)
 
+                // Address Book
+                Section("Contacts") {
+                    NavigationLink(destination: AddressBookView()) {
+                        SettingsRow(icon: "person.crop.rectangle.stack", title: "Address Book", color: .accentGreen)
+                    }
+                }
+                .listRowBackground(Color.backgroundCard)
+
                 // Network section
                 Section("Network") {
                     NavigationLink(destination: NetworkSettingsView()) {

@@ -542,6 +542,9 @@ final class WalletService: ObservableObject {
             }
         }
 
+        // Update widget with latest balances
+        updateWidgetData()
+
         // Re-discover tokens on each refresh (picks up newly received ERC-20s)
         await runTokenDiscovery()
     }
@@ -572,6 +575,9 @@ final class WalletService: ObservableObject {
                 }
             }
         }
+
+        // Update widget with latest prices
+        updateWidgetData()
     }
 
     // MARK: - Wallet Deletion
@@ -1102,6 +1108,18 @@ final class WalletService: ObservableObject {
     func forceRefreshTransactions() async throws {
         TransactionHistoryService.shared.invalidateCache()
         try await refreshTransactions()
+    }
+
+    // MARK: - Widget Data
+
+    /// Pushes the current portfolio snapshot to the shared App Group UserDefaults
+    /// so the home screen widget can display up-to-date balances.
+    private func updateWidgetData() {
+        let accountName = currentWallet?.displayName ?? "Account 0"
+        WidgetDataProvider.shared.updateWidgetData(
+            tokens: tokens,
+            accountName: accountName
+        )
     }
 
     // MARK: - Private Helpers

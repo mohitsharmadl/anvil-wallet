@@ -3,13 +3,23 @@ import SwiftUI
 /// TransactionResultView shows the outcome of a submitted transaction.
 ///
 /// Displays success or failure state with the transaction hash and
-/// a link to view on the block explorer.
+/// a link to view on the block explorer. On success, offers to save
+/// the recipient address to the address book if not already saved.
 struct TransactionResultView: View {
     @EnvironmentObject var router: AppRouter
 
     let txHash: String
     let success: Bool
     let chain: String
+    let recipientAddress: String
+
+    @State private var showSaveContactSheet = false
+    @State private var didSaveContact = false
+
+    /// Whether the recipient is already in the address book.
+    private var isAlreadySaved: Bool {
+        AddressBookService.shared.isSaved(address: recipientAddress, chain: chain)
+    }
 
     /// Resolves the block explorer URL for this transaction's chain.
     private var explorerUrl: URL? {
@@ -90,6 +100,32 @@ struct TransactionResultView: View {
                     }
                     .padding(.horizontal, 24)
                 }
+
+                // Save to address book (only if not already saved)
+                if !isAlreadySaved && !didSaveContact {
+                    Button {
+                        showSaveContactSheet = true
+                    } label: {
+                        Label("Save Address to Contacts", systemImage: "person.crop.rectangle.stack.fill")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.accentGreen)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.accentGreen.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 24)
+                }
+
+                if didSaveContact {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.success)
+                        Text("Address saved to contacts")
+                            .font(.caption)
+                            .foregroundColor(.success)
+                    }
+                }
             }
 
             Spacer()
@@ -119,6 +155,18 @@ struct TransactionResultView: View {
         }
         .background(Color.backgroundPrimary)
         .navigationBarBackButtonHidden()
+        .sheet(isPresented: $showSaveContactSheet) {
+            AddAddressSheet(
+                prefillAddress: recipientAddress,
+                prefillChain: chain
+            )
+            .onDisappear {
+                // Check if it was saved after the sheet closes
+                if AddressBookService.shared.isSaved(address: recipientAddress, chain: chain) {
+                    didSaveContact = true
+                }
+            }
+        }
     }
 }
 
@@ -126,7 +174,8 @@ struct TransactionResultView: View {
     TransactionResultView(
         txHash: "0xabc123def456789012345678901234567890abcdef123456",
         success: true,
-        chain: "ethereum"
+        chain: "ethereum",
+        recipientAddress: "0xabcdef1234567890abcdef1234567890abcdef12"
     )
     .environmentObject(AppRouter())
 }
