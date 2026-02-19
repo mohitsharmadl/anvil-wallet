@@ -153,8 +153,9 @@ final class WalletConnectService: ObservableObject {
 
     /// Configures the Reown WalletKit. Must be called once at app launch.
     func configure(projectId: String) {
-        // swiftlint:disable:next force_try
-        let redirect = try! AppMetadata.Redirect(native: "anvilwallet://", universal: nil)
+        guard let redirect = try? AppMetadata.Redirect(native: "anvilwallet://", universal: nil) else {
+            return // Constant input — should never fail. Fail silently rather than crash.
+        }
         let metadata = AppMetadata(
             name: "Anvil Wallet",
             description: "Self-custody crypto wallet",

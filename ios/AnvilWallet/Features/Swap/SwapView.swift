@@ -90,10 +90,10 @@ struct SwapView: View {
                         Button {
                             Task { await viewModel.executeSwap() }
                         } label: {
-                            Text("Confirm Swap")
+                            Text(viewModel.canExecuteSwap ? "Confirm Swap" : "Swap Not Yet Available")
                         }
-                        .buttonStyle(PrimaryButtonStyle(isEnabled: !viewModel.isExecutingSwap))
-                        .disabled(viewModel.isExecutingSwap)
+                        .buttonStyle(PrimaryButtonStyle(isEnabled: viewModel.canExecuteSwap && !viewModel.isExecutingSwap))
+                        .disabled(!viewModel.canExecuteSwap || viewModel.isExecutingSwap)
                         .padding(.horizontal, 20)
                     } else if viewModel.txHash == nil {
                         Button {

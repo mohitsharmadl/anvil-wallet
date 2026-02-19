@@ -61,13 +61,12 @@ final class SwapService {
     private let session: URLSession
 
     private init() {
+        // Swap API hosts (jup.ag, 0x.org) are NOT pinned — they rotate certs frequently.
+        // Same rationale as WC relay: standard TLS validation is the accepted trade-off.
+        // CertificatePinner is fail-closed, so using it here would block all swap requests.
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
-        session = URLSession(
-            configuration: config,
-            delegate: CertificatePinner(),
-            delegateQueue: nil
-        )
+        session = URLSession(configuration: config)
     }
 
     // MARK: - Get Quote
@@ -298,15 +297,21 @@ final class SwapService {
             maxFeeHex = fees.baseFeeHex
         }
 
-        // Decode calldata hex to bytes
+        // Decode calldata hex to bytes — reject invalid hex rather than silently
+        // altering the payload, which could change the contract call semantics.
         let calldataCleaned = txData.hasPrefix("0x") ? String(txData.dropFirst(2)) : txData
+        guard calldataCleaned.count % 2 == 0 else {
+            throw SwapServiceError.transactionBuildFailed
+        }
         var calldataBytes = Data()
+        calldataBytes.reserveCapacity(calldataCleaned.count / 2)
         var idx = calldataCleaned.startIndex
         while idx < calldataCleaned.endIndex {
             let next = calldataCleaned.index(idx, offsetBy: 2)
-            if let byte = UInt8(String(calldataCleaned[idx..<next]), radix: 16) {
-                calldataBytes.append(byte)
+            guard let byte = UInt8(String(calldataCleaned[idx..<next]), radix: 16) else {
+                throw SwapServiceError.transactionBuildFailed
             }
+            calldataBytes.append(byte)
             idx = next
         }
 

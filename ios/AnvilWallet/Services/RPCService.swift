@@ -381,8 +381,13 @@ final class RPCService {
         private static let charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
         /// Decodes a bech32/bech32m address and returns the witness program bytes.
-        /// Returns nil on invalid input or checksum failure.
+        /// Returns nil on invalid input, mixed case, or checksum failure.
         static func decode(_ addr: String) -> Data? {
+            // BIP-173: mixed case is invalid — must be all-lowercase or all-uppercase
+            let hasLower = addr.contains(where: { $0.isLowercase && $0.isLetter })
+            let hasUpper = addr.contains(where: { $0.isUppercase && $0.isLetter })
+            guard !(hasLower && hasUpper) else { return nil }
+
             let lower = addr.lowercased()
             guard let sepIndex = lower.lastIndex(of: "1") else { return nil }
             let hrp = String(lower[lower.startIndex..<sepIndex])
