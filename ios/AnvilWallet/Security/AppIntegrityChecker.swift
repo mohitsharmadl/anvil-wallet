@@ -36,9 +36,11 @@ enum AppIntegrityChecker {
             failures.append("Executable integrity check failed")
         }
 
+        #if !DEBUG
         if checkSuspiciousEnvironmentVariables() {
             failures.append("Suspicious environment variables detected")
         }
+        #endif
 
         if !checkBundleSignature() {
             failures.append("Bundle signature check failed")
