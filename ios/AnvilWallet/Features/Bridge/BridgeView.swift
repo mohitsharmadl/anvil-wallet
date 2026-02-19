@@ -144,8 +144,12 @@ struct BridgeView: View {
                 throw BridgeError.malformedRPCResponse
             }
             let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
-            let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
-            let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
+            guard let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) else {
+                throw BridgeError.malformedRPCResponse
+            }
+            guard let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) else {
+                throw BridgeError.malformedRPCResponse
+            }
             let maxFee = baseFee * 2 + priorityFee
             let maxFeeHex = "0x" + String(maxFee, radix: 16)
 

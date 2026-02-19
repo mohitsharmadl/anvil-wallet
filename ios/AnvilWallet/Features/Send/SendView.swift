@@ -32,9 +32,14 @@ struct SendView: View {
         case "solana": return .solana
         case "bitcoin": return .bitcoin
         case "sepolia": return .sepolia
+        case "zcash": return .zcash
+        case "zcash_testnet": return .zcashTestnet
         default: return nil
         }
     }
+
+    /// Chains that don't yet support sending from the UI.
+    private static let unsendableChains: Set<String> = ["zcash", "zcash_testnet"]
 
     var body: some View {
         NavigationStack(path: $router.sendPath) {
@@ -257,7 +262,7 @@ struct SendView: View {
             .hideKeyboard()
             .sheet(isPresented: $showTokenPicker) {
                 TokenPickerSheet(
-                    tokens: walletService.tokens,
+                    tokens: walletService.tokens.filter { !Self.unsendableChains.contains($0.chain) },
                     selectedToken: $selectedToken
                 )
             }
@@ -289,7 +294,7 @@ struct SendView: View {
             }
             .onAppear {
                 if selectedToken == nil {
-                    selectedToken = walletService.tokens.first
+                    selectedToken = walletService.tokens.first { !Self.unsendableChains.contains($0.chain) }
                 }
             }
         }

@@ -149,18 +149,12 @@ final class SwapViewModel: ObservableObject {
 
     /// Whether swap execution is supported for the current quote's provider.
     var canExecuteSwap: Bool {
-        guard let quote else { return false }
-        // Jupiter (Solana) swaps require raw tx signing support — not yet implemented.
-        return quote.provider != .jupiter
+        quote != nil
     }
 
     /// Executes the swap: signs the transaction and broadcasts it.
     func executeSwap() async {
         guard let quote else { return }
-        guard canExecuteSwap else {
-            error = "Solana swaps are not yet supported. EVM swaps are available."
-            return
-        }
 
         isExecutingSwap = true
         error = nil
