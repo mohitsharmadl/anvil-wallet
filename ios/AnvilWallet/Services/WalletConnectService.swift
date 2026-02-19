@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import os.log
 import ReownWalletKit
 
 // MARK: - WebSocket Factory (required by Reown SDK)
@@ -154,7 +155,9 @@ final class WalletConnectService: ObservableObject {
     /// Configures the Reown WalletKit. Must be called once at app launch.
     func configure(projectId: String) {
         guard let redirect = try? AppMetadata.Redirect(native: "anvilwallet://", universal: nil) else {
-            return // Constant input — should never fail. Fail silently rather than crash.
+            Logger(subsystem: "com.anvilwallet", category: "WalletConnect")
+                .error("WalletConnect redirect metadata init failed — WC will be unavailable")
+            return
         }
         let metadata = AppMetadata(
             name: "Anvil Wallet",
