@@ -427,11 +427,14 @@ final class WalletService: ObservableObject {
 
         // Snapshot token list to iterate
         let currentTokens = await MainActor.run { tokens }
-        var updatedBalances: [Int: Double] = [:]
+        let snapshotAddresses = addresses
+
+        // Collect results into a local array to avoid mutating a var across suspension points
+        var results: [(index: Int, balance: Double)] = []
 
         for (index, token) in currentTokens.enumerated() {
             guard let chain = ChainModel.defaults.first(where: { $0.id == token.chain }),
-                  let address = addresses[token.chain] else {
+                  let address = snapshotAddresses[token.chain] else {
                 continue
             }
 
@@ -441,11 +444,9 @@ final class WalletService: ObservableObject {
                 switch chain.chainType {
                 case .evm:
                     if token.isNativeToken {
-                        // eth_getBalance returns hex wei string
                         let hexBalance: String = try await rpc.getBalance(rpcUrl: chain.rpcUrl, address: address)
                         balance = Self.hexToDouble(hexBalance) / pow(10.0, Double(token.decimals))
                     } else {
-                        // ERC-20 balanceOf(address) — selector 0x70a08231 + zero-padded address
                         guard let contractAddress = token.contractAddress else { continue }
                         let stripped = String(address.dropFirst(2)).lowercased()
                         let paddedAddress = String(repeating: "0", count: max(0, 64 - stripped.count)) + stripped
@@ -463,17 +464,17 @@ final class WalletService: ObservableObject {
                     balance = Double(satoshis) / pow(10.0, Double(token.decimals))
                 }
 
-                updatedBalances[index] = balance
+                results.append((index: index, balance: balance))
             } catch {
-                // Skip failures for individual tokens — don't crash the whole refresh
                 continue
             }
         }
 
+        let balanceResults = results
         await MainActor.run {
-            for (index, balance) in updatedBalances {
-                if index < tokens.count {
-                    tokens[index].balance = balance
+            for result in balanceResults {
+                if result.index < tokens.count {
+                    tokens[result.index].balance = result.balance
                 }
             }
         }
