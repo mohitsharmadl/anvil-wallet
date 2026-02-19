@@ -7,9 +7,14 @@ actor TokenDiscoveryService {
 
     static let shared = TokenDiscoveryService()
 
-    private let persistenceKey = "com.anvilwallet.discoveredTokens"
+    private static let persistenceKeyPrefix = "com.anvilwallet.discoveredTokens."
 
     private init() {}
+
+    /// Returns the persistence key scoped to a specific wallet address.
+    private func persistenceKey(for address: String) -> String {
+        Self.persistenceKeyPrefix + address.lowercased()
+    }
 
     // MARK: - Discovery
 
@@ -68,30 +73,32 @@ actor TokenDiscoveryService {
             }
         }
 
-        // Persist for next launch
-        persist(discovered)
+        // Persist for next launch (scoped to this address)
+        persist(discovered, for: address)
 
         return discovered
     }
 
     // MARK: - Persistence
 
-    private func persist(_ tokens: [DiscoveredToken]) {
+    private func persist(_ tokens: [DiscoveredToken], for address: String) {
         guard let data = try? JSONEncoder().encode(tokens) else { return }
-        UserDefaults.standard.set(data, forKey: persistenceKey)
+        UserDefaults.standard.set(data, forKey: persistenceKey(for: address))
     }
 
-    /// Loads previously discovered tokens from UserDefaults.
-    nonisolated func loadPersistedTokens() -> [DiscoveredToken] {
-        guard let data = UserDefaults.standard.data(forKey: persistenceKey),
+    /// Loads previously discovered tokens from UserDefaults for a specific wallet address.
+    nonisolated func loadPersistedTokens(for address: String) -> [DiscoveredToken] {
+        let key = Self.persistenceKeyPrefix + address.lowercased()
+        guard let data = UserDefaults.standard.data(forKey: key),
               let tokens = try? JSONDecoder().decode([DiscoveredToken].self, from: data) else {
             return []
         }
         return tokens
     }
 
-    /// Clears persisted discovered tokens.
-    nonisolated func clearPersistedTokens() {
-        UserDefaults.standard.removeObject(forKey: persistenceKey)
+    /// Clears persisted discovered tokens for a specific wallet address.
+    nonisolated func clearPersistedTokens(for address: String) {
+        let key = Self.persistenceKeyPrefix + address.lowercased()
+        UserDefaults.standard.removeObject(forKey: key)
     }
 }

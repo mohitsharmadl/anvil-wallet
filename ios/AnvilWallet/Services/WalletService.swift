@@ -216,6 +216,9 @@ final class WalletService: ObservableObject {
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
         }
 
+        // Discover ERC-20 tokens in background (best-effort, non-blocking)
+        Task { await runTokenDiscovery() }
+
         return words
     }
 
@@ -275,6 +278,9 @@ final class WalletService: ObservableObject {
             self.isWalletCreated = true
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
         }
+
+        // Discover ERC-20 tokens in background (best-effort, non-blocking)
+        Task { await runTokenDiscovery() }
     }
 
     // MARK: - Address Derivation
@@ -515,6 +521,9 @@ final class WalletService: ObservableObject {
                 }
             }
         }
+
+        // Re-discover tokens on each refresh (picks up newly received ERC-20s)
+        await runTokenDiscovery()
     }
 
     /// Parses a hex string (with or without 0x prefix) to Double.
@@ -555,8 +564,10 @@ final class WalletService: ObservableObject {
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
 
-        // Clear discovered tokens
-        TokenDiscoveryService.shared.clearPersistedTokens()
+        // Clear discovered tokens for this wallet
+        if let ethAddr = addresses["ethereum"] {
+            TokenDiscoveryService.shared.clearPersistedTokens(for: ethAddr)
+        }
 
         // Zero password bytes in-place before releasing (avoid COW copy)
         if sessionPasswordBytes != nil {
@@ -784,8 +795,9 @@ final class WalletService: ObservableObject {
         addresses = wallet.addresses
         tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
 
-        // Merge previously discovered tokens from UserDefaults
-        let persisted = TokenDiscoveryService.shared.loadPersistedTokens()
+        // Merge previously discovered tokens from UserDefaults (scoped to current wallet)
+        guard let ethAddr = addresses["ethereum"] else { return }
+        let persisted = TokenDiscoveryService.shared.loadPersistedTokens(for: ethAddr)
         let existingContracts = Set(tokens.compactMap { $0.contractAddress?.lowercased() })
         for dt in persisted {
             if existingContracts.contains(dt.contractAddress.lowercased()) { continue }

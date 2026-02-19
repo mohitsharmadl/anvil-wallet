@@ -72,12 +72,11 @@ struct BalanceChangeSimulator {
             let cleanValue = value.hasPrefix("0x") ? String(value.dropFirst(2)) : value
             let isZero = cleanValue.isEmpty || cleanValue.allSatisfy { $0 == "0" }
             if !isZero {
-                let weiDouble = hexToDouble(cleanValue)
-                let ethAmount = weiDouble / 1e18
-                if ethAmount > 0 {
+                let weiDecimal = hexToDecimal(cleanValue)
+                if weiDecimal > 0 {
                     changes.append(BalanceChange(
                         tokenSymbol: chainSymbol,
-                        amount: formatAmount(ethAmount),
+                        amount: formatWei(weiDecimal),
                         isOutgoing: true,
                         isGasFee: false
                     ))
@@ -95,8 +94,7 @@ struct BalanceChangeSimulator {
                 // transfer(address, uint256) — ERC-20 send
                 if cleanData.count >= 136 {
                     let amountHex = String(cleanData.suffix(from: cleanData.index(cleanData.startIndex, offsetBy: 72))).prefix(64)
-                    let amount = hexToDouble(String(amountHex))
-                    // We don't know decimals here — show raw if large, else as-is
+                    let amount = hexToDecimal(String(amountHex))
                     changes.append(BalanceChange(
                         tokenSymbol: "ERC-20",
                         amount: formatTokenAmount(amount),
@@ -125,7 +123,7 @@ struct BalanceChangeSimulator {
                 // transferFrom(from, to, uint256)
                 if cleanData.count >= 200 {
                     let amountHex = String(cleanData.suffix(from: cleanData.index(cleanData.startIndex, offsetBy: 136))).prefix(64)
-                    let amount = hexToDouble(String(amountHex))
+                    let amount = hexToDecimal(String(amountHex))
                     changes.append(BalanceChange(
                         tokenSymbol: "ERC-20",
                         amount: formatTokenAmount(amount),
@@ -158,32 +156,51 @@ struct BalanceChangeSimulator {
 
     // MARK: - Helpers
 
-    private static func hexToDouble(_ hex: String) -> Double {
-        var result: Double = 0
+    /// Converts a hex string to a Decimal using digit-by-digit accumulation.
+    /// Decimal has ~38 significant digits — sufficient for uint256 display
+    /// (uint256.max is 78 digits, but token amounts rarely exceed 30).
+    private static func hexToDecimal(_ hex: String) -> Decimal {
+        var result = Decimal(0)
         for char in hex {
             guard let digit = Int(String(char), radix: 16) else { return 0 }
-            result = result * 16.0 + Double(digit)
+            result = result * 16 + Decimal(digit)
         }
         return result
     }
 
-    private static func formatAmount(_ value: Double) -> String {
-        if value == 0 { return "0" }
-        if value < 0.0001 { return String(format: "%.18g", value) }
-        if value < 1 { return String(format: "%.6f", value) }
-        return String(format: "%.4f", value)
+    /// Divides a Decimal by 10^exp for human-readable display.
+    private static func divideByDecimals(_ value: Decimal, _ exp: Int) -> Decimal {
+        var divisor = Decimal(1)
+        for _ in 0..<exp { divisor *= 10 }
+        return value / divisor
     }
 
-    /// Formats a raw token amount (no decimal info) — show in scientific if very large.
-    private static func formatTokenAmount(_ rawAmount: Double) -> String {
+    private static func formatDecimal(_ value: Decimal) -> String {
+        if value == 0 { return "0" }
+        let d = NSDecimalNumber(decimal: value).doubleValue
+        if d < 0.0001 { return String(format: "%.18g", d) }
+        if d < 1 { return String(format: "%.6f", d) }
+        return String(format: "%.4f", d)
+    }
+
+    /// Formats a raw token amount (no decimal info known).
+    /// Heuristic: if value > 10^15, assume 18 decimals; if > 10^6, assume 6.
+    private static func formatTokenAmount(_ rawAmount: Decimal) -> String {
         if rawAmount == 0 { return "0" }
-        if rawAmount > 1e15 {
-            // Likely has 18 decimals — divide
-            return formatAmount(rawAmount / 1e18)
+        let threshold18 = Decimal(sign: .plus, exponent: 15, significand: 1) // 10^15
+        let threshold6 = Decimal(sign: .plus, exponent: 6, significand: 1)   // 10^6
+        if rawAmount > threshold18 {
+            return formatDecimal(divideByDecimals(rawAmount, 18))
         }
-        if rawAmount > 1e6 {
-            return formatAmount(rawAmount / 1e6)
+        if rawAmount > threshold6 {
+            return formatDecimal(divideByDecimals(rawAmount, 6))
         }
-        return formatAmount(rawAmount)
+        return formatDecimal(rawAmount)
+    }
+
+    /// Formats a wei value to ETH with Decimal precision.
+    private static func formatWei(_ weiDecimal: Decimal) -> String {
+        let ethAmount = divideByDecimals(weiDecimal, 18)
+        return formatDecimal(ethAmount)
     }
 }
