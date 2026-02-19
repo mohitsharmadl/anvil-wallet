@@ -35,7 +35,7 @@ mkdir -p "$GENERATED_DIR"
 UDL_FILE="$CRATE_DIR/src/wallet_core.udl"
 cargo run -p uniffi-bindgen --manifest-path "$ROOT_DIR/Cargo.toml" -- generate "$UDL_FILE" \
     --language swift \
-    --out-dir "$GENERATED_DIR" 2>/dev/null || true
+    --out-dir "$GENERATED_DIR"
 
 # Rename modulemap to standard name (Swift convention)
 if [ -f "$GENERATED_DIR/wallet_coreFFI.modulemap" ]; then

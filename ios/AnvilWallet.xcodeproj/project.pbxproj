@@ -1005,11 +1005,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N7MU2BBA93;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.tests;
 				PRODUCT_NAME = AnvilWalletTests;
 				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnvilWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnvilWallet";
@@ -1024,11 +1029,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N7MU2BBA93;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/AnvilWallet/Generated",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.anvilwallet.tests;
 				PRODUCT_NAME = AnvilWalletTests;
 				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/AnvilWallet/Generated";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnvilWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnvilWallet";
