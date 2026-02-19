@@ -82,6 +82,19 @@
 		AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33010405060711 /* AccountManagerView.swift */; };
 		BA01AA02BB03CC04DD05EE01 /* BuyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE01 /* BuyView.swift */; };
 		BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */; };
+		DA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */; };
+		DA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */; };
+		DA01AB02CD03EF04A10B2C03 /* NFTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C03 /* NFTService.swift */; };
+		DA01AB02CD03EF04A10B2C04 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C04 /* NotificationService.swift */; };
+		DA01AB02CD03EF04A10B2C05 /* NFTModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C05 /* NFTModel.swift */; };
+		DA01AB02CD03EF04A10B2C06 /* Base58.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C06 /* Base58.swift */; };
+		DA01AB02CD03EF04A10B2C07 /* AddTokenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C07 /* AddTokenView.swift */; };
+		DA01AB02CD03EF04A10B2C08 /* NFTListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C08 /* NFTListView.swift */; };
+		DA01AB02CD03EF04A10B2C09 /* NFTDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C09 /* NFTDetailView.swift */; };
+		DA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift */; };
+		DA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift */; };
+		DA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */; };
+		DA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -164,6 +177,19 @@
 		AB11CD22EF33010405060711 /* AccountManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountManagerView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE01 /* BuyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuyView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonPayWebView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomRPCStore.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualTokenService.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C03 /* NFTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFTService.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C04 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C05 /* NFTModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFTModel.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C06 /* Base58.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Base58.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C07 /* AddTokenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTokenView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C08 /* NFTListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFTListView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C09 /* NFTDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFTDetailView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHistoryView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportBackupView.swift; sourceTree = "<group>"; };
+		CA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportBackupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -294,8 +320,12 @@
 				E1D5CBD640ECBEEC823F6FE0 /* BalanceChangeSimulator.swift */,
 				B96FF3504CC1CEA909240B51 /* BiometricService.swift */,
 				DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */,
+				CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */,
 				97B03A5C4D68DB8DD9AA3094 /* EtherscanService.swift */,
 				82E95CA13963288BB627DCE4 /* KeychainService.swift */,
+				CA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift */,
+				CA01AB02CD03EF04A10B2C03 /* NFTService.swift */,
+				CA01AB02CD03EF04A10B2C04 /* NotificationService.swift */,
 				0EC94C6B7269D62CF64407B2 /* PriceService.swift */,
 				61D843EF46CD12F68B4CB725 /* RPCService.swift */,
 				C71F6412709C43E017CD623C /* SecureEnclaveService.swift */,
@@ -314,6 +344,7 @@
 			isa = PBXGroup;
 			children = (
 				658CA0A71B5D222A59C693F4 /* ChainModel.swift */,
+				CA01AB02CD03EF04A10B2C05 /* NFTModel.swift */,
 				C61FC7C4A3F825FEC127C18C /* TokenModel.swift */,
 				3EBACF2913C82A01C79871CD /* TransactionModel.swift */,
 				267C5F07D51E8455CA12C849 /* WalletModel.swift */,
@@ -364,7 +395,11 @@
 			isa = PBXGroup;
 			children = (
 				AB11CD22EF33010405060709 /* AccountPickerView.swift */,
+				CA01AB02CD03EF04A10B2C07 /* AddTokenView.swift */,
 				2E9F51E5866FF46FFD9F7F02 /* ChainPickerView.swift */,
+				CA01AB02CD03EF04A10B2C09 /* NFTDetailView.swift */,
+				CA01AB02CD03EF04A10B2C08 /* NFTListView.swift */,
+				CA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift */,
 				870D01C593148616D0BE89B2 /* ReceiveView.swift */,
 				1D56C315A34F049854265ADC /* TokenDetailView.swift */,
 				3B7A9ED7F9380E561504066E /* TokenListView.swift */,
@@ -397,7 +432,10 @@
 				AB11CD22EF33010405060711 /* AccountManagerView.swift */,
 				830E3B8CD5D238ABF08207B9 /* ApprovalTrackerView.swift */,
 				F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */,
+				CA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift */,
+				CA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift */,
 				0211E06D53277076763E8D5F /* NetworkSettingsView.swift */,
+				CA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift */,
 				A8105BE95F033BEDE62C65F1 /* SecuritySettingsView.swift */,
 				0F84C764CA78A1E0F0836B25 /* SettingsView.swift */,
 			);
@@ -440,6 +478,7 @@
 		F639C36373E5D87EB7CF32F1 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				CA01AB02CD03EF04A10B2C06 /* Base58.swift */,
 				6847F29D89294D4C693D513D /* Color+Theme.swift */,
 				6D57415F7ED4061DDEC7D639 /* View+Extensions.swift */,
 			);
@@ -565,6 +604,7 @@
 				AB01CD02EF03010405060708 /* AccountPickerView.swift in Sources */,
 				AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */,
 				EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C07 /* AddTokenView.swift in Sources */,
 				FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */,
 				BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */,
 				189BB7346C1852EE39E77715 /* AppIntegrityChecker.swift in Sources */,
@@ -572,6 +612,7 @@
 				13BE6CD1C42BB43CE25D9FE5 /* ApprovalService.swift in Sources */,
 				C3125846E891945F29B2A929 /* ApprovalTrackerView.swift in Sources */,
 				617197CA1F5CC98668F41887 /* BackupMnemonicView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C06 /* Base58.swift in Sources */,
 				EF7C77FA6D055B84CF42AFF1 /* BackupSettingsView.swift in Sources */,
 				BE3563CECC834D283E27002A /* BalanceChangePreviewView.swift in Sources */,
 				F131F7C0C3E4D35B6A72F5D1 /* BalanceChangeSimulator.swift in Sources */,
@@ -586,13 +627,24 @@
 				674819B449322FD1CB59585B /* ConfirmTransactionView.swift in Sources */,
 				117A14C55C89E29D646982F9 /* ContentView.swift in Sources */,
 				B3FA9A793D510421AACED3C1 /* CreateWalletView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift in Sources */,
 				7A4EEDC77490CCFEEC9582AB /* DAppsView.swift in Sources */,
 				B03A4E8D3230D9E604BB6B03 /* EtherscanService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0D /* ImportBackupView.swift in Sources */,
 				AE4A7B2341291F7BF9E58AFC /* ImportWalletView.swift in Sources */,
 				0960920730A37C2E3801CB90 /* JailbreakDetector.swift in Sources */,
 				1746DB767479E7E994F3A4FE /* KeychainService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C02 /* ManualTokenService.swift in Sources */,
 				BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */,
 				88823B7741780DC2E6D28F1A /* NetworkSettingsView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C09 /* NFTDetailView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C08 /* NFTListView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C05 /* NFTModel.swift in Sources */,
+				DA01AB02CD03EF04A10B2C03 /* NFTService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0A /* NotificationHistoryView.swift in Sources */,
+				DA01AB02CD03EF04A10B2C04 /* NotificationService.swift in Sources */,
+				DA01AB02CD03EF04A10B2C0B /* NotificationSettingsView.swift in Sources */,
 				97D03AB2A5566FBAF3C06F44 /* PriceService.swift in Sources */,
 				01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */,
 				261F508DC246530978564B9C /* RPCService.swift in Sources */,
