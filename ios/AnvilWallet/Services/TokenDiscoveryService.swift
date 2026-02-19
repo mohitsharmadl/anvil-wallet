@@ -39,7 +39,7 @@ actor TokenDiscoveryService {
         }
 
         for transfer in transfers {
-            guard let decimals = Int(transfer.tokenDecimal), decimals > 0 && decimals <= 18 else {
+            guard let decimals = Int(transfer.tokenDecimal), decimals >= 0 && decimals <= 18 else {
                 continue
             }
 
