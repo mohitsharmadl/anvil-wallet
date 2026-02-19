@@ -42,24 +42,26 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 | **BSC** | EVM | BNB + BEP-20 |
 | **Avalanche** | EVM | AVAX + ERC-20 |
 | **Solana** | Ed25519 | SOL + SPL tokens |
+| **Zcash** | UTXO | Transparent t-addresses + transaction signing |
 
 ## Implementation Status
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Rust crypto core (5 crates) | Complete | 241 tests passing |
+| Rust crypto core (6 crates) | Complete | 241+ tests passing |
 | BIP-39 mnemonic generation | Complete | 24-word, via Rust FFI |
-| HD key derivation (BTC, ETH, SOL) | Complete | BIP-44/84 paths |
+| HD key derivation (BTC, ETH, SOL, ZEC) | Complete | BIP-44/84 paths |
 | AES-256-GCM + Argon2id encryption | Complete | Double encryption with SE |
 | EVM transaction signing (EIP-1559) | Complete | Wired to Rust FFI, checked fee arithmetic |
 | Solana transaction signing | Complete | Wired to Rust FFI |
 | Bitcoin transaction signing | Complete | P2WPKH via Rust FFI, UTXO coin selection, Blockstream API |
+| Zcash transaction signing | Complete | Transparent v5 tx signing + Blockchair broadcast |
 | Certificate pinning | Complete | Fail-closed SPKI SHA-256 pinning, dual pins (leaf + intermediate CA) per host |
 | Binary integrity check | Complete | Build-time SHA-256 injection, fail-closed in Release |
-| WalletConnect v2 | Complete | Reown SDK: pairing, session approval, personal_sign |
-| Token balance fetching | Complete | EVM (native + ERC-20), Solana, Bitcoin via public RPCs |
-| Recovery phrase backup | Complete | Encrypted mnemonic storage + biometric-gated display |
-| Transaction history | Complete | Blockstream (BTC), Solana RPC, Etherscan (ETH) |
+| WalletConnect v2 | Complete | Pairing, session approval, `personal_sign`, `eth_sendTransaction`, `eth_signTypedData_v4`, `solana_signTransaction`, `solana_signMessage` |
+| Token balance fetching | Complete | EVM (native + ERC-20), Solana, Bitcoin, Zcash |
+| Recovery phrase backup | Complete | Encrypted mnemonic + optional BIP-39 passphrase backup/restore |
+| Transaction history | Complete | BTC (Blockstream), SOL (RPC), EVM (Etherscan-family), ZEC (Blockchair) |
 
 ## Architecture
 
@@ -128,7 +130,7 @@ anvil-wallet/
 | | |
 |---|---|
 | **241** | Tests passing |
-| **5** | Rust crates |
+| **6** | Rust crates |
 | **46** | Swift files |
 | **16** | Security layers |
 | **0** | Analytics SDKs |
@@ -148,7 +150,7 @@ Anvil Wallet implements 16 security layers spanning hardware, OS, application, a
 | Jailbreak Detection | 6 sub-layer detection (files, symlinks, sandbox, dyld, fork, URL schemes) |
 | Anti-Screenshot | Secure text overlay + background blur |
 | Clipboard Auto-Clear | Copied data wiped after 120 seconds |
-| Certificate Pinning | Fail-closed SPKI SHA-256 pinning — dual pins (leaf + intermediate CA) for all 10 RPC hosts; unlisted hosts rejected |
+| Certificate Pinning | Fail-closed SPKI SHA-256 pinning — dual pins (leaf + intermediate CA) for configured RPC/explorer/price/bridge hosts; unlisted hosts rejected |
 | Memory Zeroization | All keys, seeds, mnemonics zeroed on drop (Rust + Swift); session passwords zeroed in-place (no COW copies) |
 | Anti-Debugging | ptrace deny-attach + sysctl P_TRACED check |
 | Binary Integrity | Mach-O header + executable SHA-256 verification; build-time hash injection; fail-closed in Release |
@@ -215,8 +217,14 @@ After building:
    ```bash
    cp ios/Secrets.xcconfig.example ios/Secrets.xcconfig
    # Edit ios/Secrets.xcconfig:
-   #   REOWN_PROJECT_ID — free from https://cloud.reown.com
-   #   ETHERSCAN_API_KEY — free from https://etherscan.io/apis (enables EVM tx history)
+   #   REOWN_PROJECT_ID
+   #   ETHERSCAN_API_KEY
+   #   SOCKET_API_KEY
+   #   ZERO_EX_API_KEY
+   #   MOONPAY_API_KEY
+   #   TRANSAK_API_KEY
+   #   SUPPORT_URL
+   #   PRIVACY_POLICY_URL
    ```
 2. Generate the Xcode project:
    ```bash
@@ -229,7 +237,7 @@ After building:
 
 ### WalletConnect
 
-WalletConnect v2 is integrated via the [Reown SDK](https://reown.com). You can connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code or pasting a WalletConnect URI. Currently supports session approval and `personal_sign` message signing. The SDK's `CryptoProvider` (keccak256 + secp256k1 public key recovery) is bridged to the Rust core via UniFFI -- no Swift crypto libraries needed. `eth_sendTransaction` and `eth_signTypedData_v4` are planned.
+WalletConnect v2 is integrated via the [Reown SDK](https://reown.com). You can connect to dApps like Uniswap, OpenSea, and Aave by scanning a QR code or pasting a WalletConnect URI. Supported methods include session approval, `personal_sign`, `eth_sendTransaction`, `eth_signTypedData_v4`, `solana_signTransaction`, and `solana_signMessage`. The SDK's `CryptoProvider` (keccak256 + secp256k1 public key recovery) is bridged to the Rust core via UniFFI -- no Swift crypto libraries needed.
 
 ## Dependencies
 
