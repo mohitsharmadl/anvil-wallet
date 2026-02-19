@@ -82,6 +82,11 @@
 		AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33010405060711 /* AccountManagerView.swift */; };
 		BA01AA02BB03CC04DD05EE01 /* BuyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE01 /* BuyView.swift */; };
 		BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */; };
+		FB01AB02CD03EF04A10B2C20 /* DAppBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB11AB22CD33EF44A15B2C20 /* DAppBrowserView.swift */; };
+		FB01AB02CD03EF04A10B2C21 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB11AB22CD33EF44A15B2C21 /* BridgeView.swift */; };
+		FB01AB02CD03EF04A10B2C22 /* BridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB11AB22CD33EF44A15B2C22 /* BridgeService.swift */; };
+		FB01AB02CD03EF04A10B2C23 /* StakingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB11AB22CD33EF44A15B2C23 /* StakingView.swift */; };
+		FB01AB02CD03EF04A10B2C24 /* StakingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB11AB22CD33EF44A15B2C24 /* StakingService.swift */; };
 		DA01AB02CD03EF04A10B2C0E /* AddressBookService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */; };
 		DA01AB02CD03EF04A10B2C0F /* AddressBookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C0F /* AddressBookView.swift */; };
 		DA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift */; };
@@ -182,6 +187,11 @@
 		AB11CD22EF33010405060711 /* AccountManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountManagerView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE01 /* BuyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuyView.swift; sourceTree = "<group>"; };
 		BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonPayWebView.swift; sourceTree = "<group>"; };
+		FB11AB22CD33EF44A15B2C20 /* DAppBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DAppBrowserView.swift; sourceTree = "<group>"; };
+		FB11AB22CD33EF44A15B2C21 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
+		FB11AB22CD33EF44A15B2C22 /* BridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeService.swift; sourceTree = "<group>"; };
+		FB11AB22CD33EF44A15B2C23 /* StakingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StakingView.swift; sourceTree = "<group>"; };
+		FB11AB22CD33EF44A15B2C24 /* StakingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StakingService.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressBookService.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C0F /* AddressBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressBookView.swift; sourceTree = "<group>"; };
 		CA01AB02CD03EF04A10B2C10 /* WidgetDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataProvider.swift; sourceTree = "<group>"; };
@@ -294,9 +304,26 @@
 			path = Send;
 			sourceTree = "<group>";
 		};
+		FB11AB22CD33EF44A15B2C30 /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				FB11AB22CD33EF44A15B2C21 /* BridgeView.swift */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		FB11AB22CD33EF44A15B2C31 /* Staking */ = {
+			isa = PBXGroup;
+			children = (
+				FB11AB22CD33EF44A15B2C23 /* StakingView.swift */,
+			);
+			path = Staking;
+			sourceTree = "<group>";
+		};
 		63FB3DAC54868680D64C4ACD /* DApps */ = {
 			isa = PBXGroup;
 			children = (
+				FB11AB22CD33EF44A15B2C20 /* DAppBrowserView.swift */,
 				309E410DC4DF83744923FE7F /* DAppsView.swift */,
 				C45081E0DA480C49E0B0FB4C /* SessionApproveView.swift */,
 				CE79EF2F2800CBF93803A637 /* SignRequestView.swift */,
@@ -330,6 +357,8 @@
 				0C0A552E883C39BC4C497CF1 /* ApprovalService.swift */,
 				E1D5CBD640ECBEEC823F6FE0 /* BalanceChangeSimulator.swift */,
 				B96FF3504CC1CEA909240B51 /* BiometricService.swift */,
+				FB11AB22CD33EF44A15B2C22 /* BridgeService.swift */,
+				FB11AB22CD33EF44A15B2C24 /* StakingService.swift */,
 				DD59627A4A9C91F35966C0BE /* CertificatePinner.swift */,
 				CA01AB02CD03EF04A10B2C0E /* AddressBookService.swift */,
 				CA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift */,
@@ -470,11 +499,13 @@
 			isa = PBXGroup;
 			children = (
 				21F28E278E14546D3F9E74F0 /* Activity */,
+				FB11AB22CD33EF44A15B2C30 /* Bridge */,
 				BA11AA22BB33CC44DD55EE03 /* Buy */,
 				63FB3DAC54868680D64C4ACD /* DApps */,
 				D04194508266BED54F119A6C /* Onboarding */,
 				574D312D6527BB0C97599D48 /* Send */,
 				E36045F00381652B371BC921 /* Settings */,
+				FB11AB22CD33EF44A15B2C31 /* Staking */,
 				C6A4E01551A311AA7D1B1B0F /* Swap */,
 				D2F5900A9405B6D40CC9ECF2 /* Wallet */,
 			);
@@ -630,6 +661,10 @@
 				C3125846E891945F29B2A929 /* ApprovalTrackerView.swift in Sources */,
 				617197CA1F5CC98668F41887 /* BackupMnemonicView.swift in Sources */,
 				DA01AB02CD03EF04A10B2C06 /* Base58.swift in Sources */,
+				FB01AB02CD03EF04A10B2C21 /* BridgeView.swift in Sources */,
+				FB01AB02CD03EF04A10B2C22 /* BridgeService.swift in Sources */,
+				FB01AB02CD03EF04A10B2C23 /* StakingView.swift in Sources */,
+				FB01AB02CD03EF04A10B2C24 /* StakingService.swift in Sources */,
 				EF7C77FA6D055B84CF42AFF1 /* BackupSettingsView.swift in Sources */,
 				BE3563CECC834D283E27002A /* BalanceChangePreviewView.swift in Sources */,
 				F131F7C0C3E4D35B6A72F5D1 /* BalanceChangeSimulator.swift in Sources */,
@@ -645,6 +680,7 @@
 				117A14C55C89E29D646982F9 /* ContentView.swift in Sources */,
 				B3FA9A793D510421AACED3C1 /* CreateWalletView.swift in Sources */,
 				DA01AB02CD03EF04A10B2C01 /* CustomRPCStore.swift in Sources */,
+				FB01AB02CD03EF04A10B2C20 /* DAppBrowserView.swift in Sources */,
 				7A4EEDC77490CCFEEC9582AB /* DAppsView.swift in Sources */,
 				B03A4E8D3230D9E604BB6B03 /* EtherscanService.swift in Sources */,
 				DA01AB02CD03EF04A10B2C0C /* ExportBackupView.swift in Sources */,

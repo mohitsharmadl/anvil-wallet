@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// DAppsView shows connected dApps and allows pairing with new ones via WalletConnect.
-///
-/// Phase 5 feature -- currently shows the pairing UI and placeholder session list.
+/// DAppsView shows connected dApps, popular dApp shortcuts, and allows
+/// pairing with new ones via WalletConnect or opening them in the in-app browser.
 struct DAppsView: View {
     @EnvironmentObject var walletService: WalletService
     @StateObject private var walletConnect = WalletConnectService.shared
@@ -11,14 +10,22 @@ struct DAppsView: View {
     @State private var showQRScanner = false
     @State private var isPairing = false
     @State private var errorMessage: String?
+    @State private var browserURL: URL?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
+                    // Popular DApps
+                    popularDAppsSection
+
+                    Divider()
+                        .background(Color.separator)
+                        .padding(.horizontal, 20)
+
                     // Pairing section
                     VStack(spacing: 16) {
-                        Text("Connect to DApp")
+                        Text("WalletConnect")
                             .font(.headline)
                             .foregroundColor(.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,7 +60,6 @@ struct DAppsView: View {
                         .disabled(pairingURI.isEmpty || isPairing)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -83,7 +89,7 @@ struct DAppsView: View {
                                     .font(.body)
                                     .foregroundColor(.textSecondary)
 
-                                Text("Scan a QR code or paste a WalletConnect URI to connect to a dApp.")
+                                Text("Connect via WalletConnect or open a dApp from the browser above.")
                                     .font(.caption)
                                     .foregroundColor(.textTertiary)
                                     .multilineTextAlignment(.center)
@@ -101,11 +107,15 @@ struct DAppsView: View {
                         }
                     }
                     .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
             }
             .background(Color.backgroundPrimary)
             .navigationTitle("DApps")
             .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(for: URL.self) { url in
+                DAppBrowserView(initialURL: url)
+            }
             .sheet(isPresented: $showQRScanner) {
                 QRScannerView { scannedURI in
                     pairingURI = scannedURI
@@ -122,6 +132,34 @@ struct DAppsView: View {
         }
     }
 
+    // MARK: - Popular DApps
+
+    private var popularDAppsSection: some View {
+        VStack(spacing: 16) {
+            Text("Popular DApps")
+                .font(.headline)
+                .foregroundColor(.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12),
+            ], spacing: 12) {
+                ForEach(PopularDApp.all) { dapp in
+                    NavigationLink(value: dapp.url) {
+                        DAppTile(dapp: dapp)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+    }
+
+    // MARK: - Pairing
+
     private func pair() async {
         isPairing = true
         errorMessage = nil
@@ -137,6 +175,57 @@ struct DAppsView: View {
     }
 }
 
+// MARK: - Popular DApp Model
+
+private struct PopularDApp: Identifiable {
+    let id: String
+    let name: String
+    let icon: String
+    let url: URL
+    let color: Color
+
+    static let all: [PopularDApp] = [
+        PopularDApp(id: "uniswap", name: "Uniswap", icon: "arrow.triangle.2.circlepath", url: URL(string: "https://app.uniswap.org")!, color: .pink),
+        PopularDApp(id: "aave", name: "Aave", icon: "building.columns", url: URL(string: "https://app.aave.com")!, color: .purple),
+        PopularDApp(id: "opensea", name: "OpenSea", icon: "photo.stack", url: URL(string: "https://opensea.io")!, color: .blue),
+        PopularDApp(id: "lido", name: "Lido", icon: "water.waves", url: URL(string: "https://stake.lido.fi")!, color: .cyan),
+        PopularDApp(id: "curve", name: "Curve", icon: "chart.line.uptrend.xyaxis", url: URL(string: "https://curve.fi")!, color: .yellow),
+        PopularDApp(id: "ens", name: "ENS", icon: "person.text.rectangle", url: URL(string: "https://app.ens.domains")!, color: .indigo),
+        PopularDApp(id: "raydium", name: "Raydium", icon: "bolt.circle", url: URL(string: "https://raydium.io/swap")!, color: .mint),
+        PopularDApp(id: "jupiter", name: "Jupiter", icon: "globe.americas", url: URL(string: "https://jup.ag")!, color: .green),
+        PopularDApp(id: "zapper", name: "Zapper", icon: "chart.pie", url: URL(string: "https://zapper.xyz")!, color: .orange),
+    ]
+}
+
+// MARK: - DApp Tile
+
+private struct DAppTile: View {
+    let dapp: PopularDApp
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(dapp.color.opacity(0.15))
+                    .frame(width: 52, height: 52)
+
+                Image(systemName: dapp.icon)
+                    .font(.title3)
+                    .foregroundColor(dapp.color)
+            }
+
+            Text(dapp.name)
+                .font(.caption.weight(.medium))
+                .foregroundColor(.textPrimary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Color.backgroundCard)
+        .cornerRadius(12)
+    }
+}
+
 // MARK: - Session Row
 
 private struct SessionRowView: View {
@@ -145,7 +234,6 @@ private struct SessionRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // DApp icon placeholder
             Circle()
                 .fill(Color.backgroundElevated)
                 .frame(width: 44, height: 44)
@@ -183,4 +271,5 @@ private struct SessionRowView: View {
 #Preview {
     DAppsView()
         .environmentObject(WalletService.shared)
+        .environmentObject(AppRouter())
 }

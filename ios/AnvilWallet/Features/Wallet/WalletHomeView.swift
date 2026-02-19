@@ -11,6 +11,8 @@ struct WalletHomeView: View {
     @State private var isRefreshing = false
     @State private var showSwap = false
     @State private var showBuy = false
+    @State private var showBridge = false
+    @State private var showStaking = false
     @State private var isBalanceHidden = false
     @State private var showAccountPicker = false
     @State private var selectedSegment: WalletSegment = .tokens
@@ -88,6 +90,12 @@ struct WalletHomeView: View {
             }
             .sheet(isPresented: $showBuy) {
                 BuyView()
+            }
+            .sheet(isPresented: $showBridge) {
+                BridgeView()
+            }
+            .sheet(isPresented: $showStaking) {
+                StakingView()
             }
             .sheet(isPresented: $showAccountPicker) {
                 AccountPickerView()
@@ -169,8 +177,11 @@ struct WalletHomeView: View {
             ActionPill(icon: "arrow.left.arrow.right", label: "Swap", color: .chainSolana) {
                 showSwap = true
             }
-            ActionPill(icon: "clock", label: "Activity", color: .warning) {
-                router.walletPath.append(AppRouter.WalletDestination.activity)
+            ActionPill(icon: "arrow.triangle.branch", label: "Bridge", color: .chainEthereum) {
+                showBridge = true
+            }
+            ActionPill(icon: "chart.line.uptrend.xyaxis", label: "Stake", color: .warning) {
+                showStaking = true
             }
         }
     }
