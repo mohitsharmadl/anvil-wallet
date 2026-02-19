@@ -421,6 +421,43 @@ final class WalletService: ObservableObject {
 
     // MARK: - Balance & Price Updates
 
+    /// Merges discovered ERC-20 tokens into the token list, avoiding duplicates.
+    func mergeDiscoveredTokens(_ discovered: [TokenDiscoveryService.DiscoveredToken]) async {
+        let existingContracts = Set(tokens.compactMap { $0.contractAddress?.lowercased() })
+
+        var newTokens: [TokenModel] = []
+        for dt in discovered {
+            if existingContracts.contains(dt.contractAddress.lowercased()) { continue }
+            newTokens.append(TokenModel(
+                id: UUID(),
+                symbol: dt.symbol,
+                name: dt.name,
+                chain: dt.chain,
+                contractAddress: dt.contractAddress,
+                decimals: dt.decimals,
+                balance: 0,
+                priceUsd: 0
+            ))
+        }
+
+        if !newTokens.isEmpty {
+            await MainActor.run {
+                tokens.append(contentsOf: newTokens)
+            }
+        }
+    }
+
+    /// Runs token discovery for Ethereum mainnet and merges results.
+    func runTokenDiscovery() async {
+        guard let ethAddress = addresses["ethereum"] else { return }
+        do {
+            let discovered = try await TokenDiscoveryService.shared.discoverTokens(for: ethAddress)
+            await mergeDiscoveredTokens(discovered)
+        } catch {
+            // Non-fatal — discovery is best-effort
+        }
+    }
+
     /// Refreshes token balances for all chains.
     func refreshBalances() async throws {
         let rpc = RPCService.shared
@@ -517,6 +554,9 @@ final class WalletService: ObservableObject {
         try? keychain.delete(key: encryptedMnemonicKey)
         try keychain.delete(key: walletMetadataKey)
         try keychain.delete(key: passwordSaltKey)
+
+        // Clear discovered tokens
+        TokenDiscoveryService.shared.clearPersistedTokens()
 
         // Zero password bytes in-place before releasing (avoid COW copy)
         if sessionPasswordBytes != nil {
@@ -743,6 +783,23 @@ final class WalletService: ObservableObject {
         currentWallet = wallet
         addresses = wallet.addresses
         tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
+
+        // Merge previously discovered tokens from UserDefaults
+        let persisted = TokenDiscoveryService.shared.loadPersistedTokens()
+        let existingContracts = Set(tokens.compactMap { $0.contractAddress?.lowercased() })
+        for dt in persisted {
+            if existingContracts.contains(dt.contractAddress.lowercased()) { continue }
+            tokens.append(TokenModel(
+                id: UUID(),
+                symbol: dt.symbol,
+                name: dt.name,
+                chain: dt.chain,
+                contractAddress: dt.contractAddress,
+                decimals: dt.decimals,
+                balance: 0,
+                priceUsd: 0
+            ))
+        }
     }
 }
 

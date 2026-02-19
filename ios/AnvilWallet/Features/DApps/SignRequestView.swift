@@ -15,6 +15,8 @@ struct SignRequestView: View {
 
     @State private var isProcessing = false
     @State private var errorMessage: String?
+    @State private var riskAssessment: RiskAssessment?
+    @State private var balanceChanges: [BalanceChangeSimulator.BalanceChange] = []
 
     var body: some View {
         NavigationStack {
@@ -52,6 +54,16 @@ struct SignRequestView: View {
                 .background(Color.backgroundCard)
                 .cornerRadius(16)
                 .padding(.horizontal, 20)
+
+                // Risk banner (eth_sendTransaction only)
+                if let risk = riskAssessment {
+                    RiskBannerView(assessment: risk)
+                }
+
+                // Balance change preview (eth_sendTransaction only)
+                if !balanceChanges.isEmpty {
+                    BalanceChangePreviewView(changes: balanceChanges)
+                }
 
                 // Security note
                 HStack(spacing: 8) {
@@ -94,7 +106,7 @@ struct SignRequestView: View {
                         Text(request.method == "eth_sendTransaction" ? "Sign & Send" : "Sign")
                     }
                     .buttonStyle(.primary)
-                    .disabled(isProcessing)
+                    .disabled(isProcessing || riskAssessment?.overallLevel == .danger)
 
                     Button {
                         Task {
@@ -117,6 +129,34 @@ struct SignRequestView: View {
             .navigationTitle("Sign Request")
             .navigationBarTitleDisplayMode(.inline)
             .loadingOverlay(isLoading: isProcessing, message: "Signing...")
+            .task {
+                // Risk assessment + balance preview for eth_sendTransaction only
+                if request.method == "eth_sendTransaction", let tx = parsedTransaction {
+                    riskAssessment = TransactionRiskEngine.shared.assessWCTransaction(
+                        to: tx.to,
+                        value: tx.value,
+                        data: tx.data,
+                        previousTransactions: walletService.transactions
+                    )
+
+                    // Determine chain symbol from WC chain format ("eip155:1")
+                    let chainSymbol: String
+                    if let chainIdStr = request.chain.split(separator: ":").last,
+                       let chainId = UInt64(chainIdStr),
+                       let chain = ChainModel.allChains.first(where: { $0.evmChainId == chainId }) {
+                        chainSymbol = chain.symbol
+                    } else {
+                        chainSymbol = "ETH"
+                    }
+
+                    balanceChanges = BalanceChangeSimulator.simulateWC(
+                        to: tx.to,
+                        value: tx.value,
+                        data: tx.data,
+                        chainSymbol: chainSymbol
+                    )
+                }
+            }
         }
     }
 }

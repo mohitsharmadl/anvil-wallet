@@ -43,6 +43,10 @@ struct SettingsView: View {
                     NavigationLink(destination: BackupSettingsView()) {
                         SettingsRow(icon: "arrow.counterclockwise", title: "Backup & Recovery", color: .info)
                     }
+
+                    NavigationLink(destination: ApprovalTrackerView()) {
+                        SettingsRow(icon: "checkmark.seal.fill", title: "Token Approvals", color: .warning)
+                    }
                 }
                 .listRowBackground(Color.backgroundCard)
 

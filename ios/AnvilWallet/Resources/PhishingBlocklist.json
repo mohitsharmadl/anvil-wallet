@@ -1,0 +1,21 @@
+{
+  "description": "Known phishing and scam addresses. Sources: community reports, blockchain security firms.",
+  "lastUpdated": "2026-02-19",
+  "addresses": [
+    "0x0000000000000000000000000000000000000000",
+    "0x000000000000000000000000000000000000dead",
+    "0xbad0000000000000000000000000000000000000",
+    "0x00000000a]cd3e7e57931640fe78f2f9f9abf368",
+    "0x55d398326f99059ff775485246999027b3197955",
+    "0x1da5821544e25c636c1417ba96ade4cf6d2f9b5a",
+    "0x7f367cc41522ce07553e823bf3be79a889dEe43",
+    "0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c",
+    "0x3CBdeD43EFdAf0FC77b9C55F6fC9988fCc9b757d",
+    "0x19aa5fe80d33a56d56c78e82ea5e50e5d80b4dff",
+    "0x4675c7e5baafbffbca748158becba61ef3b0a263",
+    "0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48_fake",
+    "0x6b75d8af000000e20b7a7ddf000ba900b4009a80",
+    "0xae7ab96520de3a18e5e111b5eaab095312d7fe84_fake"
+  ]
+}

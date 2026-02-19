@@ -226,6 +226,26 @@ final class RPCService {
         )
     }
 
+    /// Calls a contract function with a `from` address (for simulation).
+    func ethCall(rpcUrl: String, from: String, to: String, value: String?, data: String) async throws -> String {
+        var txParams: [String: RPCRequest.RPCParam] = [
+            "from": .string(from),
+            "to": .string(to),
+            "data": .string(data),
+        ]
+        if let value = value {
+            txParams["value"] = .string(value)
+        }
+        return try await call(
+            url: rpcUrl,
+            method: "eth_call",
+            params: [
+                .dictionary(txParams),
+                .string("latest"),
+            ]
+        )
+    }
+
     /// Gets the current block number.
     func blockNumber(rpcUrl: String) async throws -> String {
         try await call(

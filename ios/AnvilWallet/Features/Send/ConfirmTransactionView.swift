@@ -40,6 +40,12 @@ struct ConfirmTransactionView: View {
     @State private var fetchedBtcUtxos: [UtxoData] = []
     @State private var fetchedBtcAmountSat: UInt64 = 0
 
+    // Risk assessment
+    @State private var riskAssessment: RiskAssessment?
+
+    // Balance change preview
+    @State private var balanceChanges: [BalanceChangeSimulator.BalanceChange] = []
+
     /// Whether this transaction is an ERC-20 token transfer (vs native coin transfer).
     private var isERC20: Bool {
         transaction.contractAddress != nil
@@ -157,6 +163,11 @@ struct ConfirmTransactionView: View {
                     }
                     .padding(.top, 16)
 
+                    // Risk assessment banner
+                    if let risk = riskAssessment {
+                        RiskBannerView(assessment: risk)
+                    }
+
                     // Transaction details
                     VStack(spacing: 16) {
                         DetailRow(label: "From", value: transaction.shortFrom)
@@ -220,6 +231,11 @@ struct ConfirmTransactionView: View {
                         .padding(.horizontal, 20)
                     }
 
+                    // Balance change preview
+                    if !balanceChanges.isEmpty {
+                        BalanceChangePreviewView(changes: balanceChanges)
+                    }
+
                     // Security note
                     HStack(spacing: 8) {
                         Image(systemName: "faceid")
@@ -245,8 +261,8 @@ struct ConfirmTransactionView: View {
                 } label: {
                     Text("Confirm & Send")
                 }
-                .buttonStyle(PrimaryButtonStyle(isEnabled: !isSimulating && simulationError == nil))
-                .disabled(isSimulating || simulationError != nil || isSigning)
+                .buttonStyle(PrimaryButtonStyle(isEnabled: !isSimulating && simulationError == nil && riskAssessment?.overallLevel != .danger))
+                .disabled(isSimulating || simulationError != nil || isSigning || riskAssessment?.overallLevel == .danger)
 
                 Button {
                     router.sendPath.removeLast()
@@ -266,7 +282,37 @@ struct ConfirmTransactionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .loadingOverlay(isLoading: isSigning, message: "Signing transaction...")
         .task {
+            // Run risk assessment
+            let token = walletService.tokens.first {
+                if let ca = transaction.contractAddress {
+                    return $0.contractAddress?.lowercased() == ca.lowercased()
+                } else {
+                    return $0.chain == transaction.chain && $0.isNativeToken
+                }
+            }
+            riskAssessment = TransactionRiskEngine.shared.assess(
+                to: transaction.to,
+                amount: transaction.amount,
+                tokenSymbol: transaction.tokenSymbol,
+                tokenBalance: token?.balance ?? 0,
+                tokenDecimals: transaction.tokenDecimals,
+                contractAddress: transaction.contractAddress,
+                previousTransactions: walletService.transactions
+            )
+
             await simulateTransaction()
+
+            // Compute balance changes after fee estimation
+            if simulationError == nil {
+                let nativeSymbol = chainModel?.symbol ?? transaction.tokenSymbol
+                balanceChanges = BalanceChangeSimulator.simulate(
+                    amount: transaction.amount,
+                    tokenSymbol: transaction.tokenSymbol,
+                    isERC20: isERC20,
+                    estimatedFee: estimatedFee,
+                    nativeSymbol: nativeSymbol
+                )
+            }
         }
         .sheet(isPresented: $showPasswordPrompt) {
             PasswordReentrySheet(
