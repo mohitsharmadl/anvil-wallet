@@ -173,11 +173,14 @@ final class SwapService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "quoteResponse": try JSONSerialization.jsonObject(with: quote.rawQuoteData),
             "userPublicKey": userAddress,
-            "feeAccount": solanaFeeAccount,
         ]
+        // Only include feeAccount if a real address is configured
+        if solanaFeeAccount != "PLACEHOLDER_SOLANA_FEE_ADDRESS" {
+            body["feeAccount"] = solanaFeeAccount
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)
@@ -187,14 +190,21 @@ final class SwapService {
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let swapTxBase64 = json["swapTransaction"] as? String,
-              let _ = Data(base64Encoded: swapTxBase64) else {
+              let rawTxData = Data(base64Encoded: swapTxBase64) else {
             throw SwapServiceError.invalidResponse
         }
 
-        // TODO: Jupiter returns a versioned transaction that needs raw signing support.
-        // The current signTransaction API only supports building SOL transfers from scratch.
-        // Implement raw Solana transaction signing (sign pre-built tx bytes) to enable this.
-        throw SwapServiceError.transactionBuildFailed
+        // Sign the pre-built versioned transaction with the wallet's Ed25519 key
+        let signedTxData = try await WalletService.shared.signSolanaRawTransaction(rawTxData)
+
+        // Broadcast via Solana RPC
+        let signedBase64 = signedTxData.base64EncodedString()
+        let txSignature = try await RPCService.shared.sendSolanaTransaction(
+            rpcUrl: solanaChain.activeRpcUrl,
+            signedTx: signedBase64
+        )
+
+        return Data(txSignature.utf8)
     }
 
     // MARK: - 0x (EVM)
