@@ -9,115 +9,40 @@ struct TokenDetailView: View {
     let token: TokenModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Token header
-                VStack(spacing: 12) {
-                    Circle()
-                        .fill(Color.accentGreen.opacity(0.2))
-                        .frame(width: 64, height: 64)
-                        .overlay(
-                            Text(token.symbol)
-                                .font(.title3.bold())
-                                .foregroundColor(.accentGreen)
-                        )
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 28) {
+                // Hero header
+                VStack(spacing: 16) {
+                    TokenIconView(symbol: token.symbol, chain: token.chain, size: 72)
 
                     Text(token.name)
                         .font(.title2.bold())
                         .foregroundColor(.textPrimary)
 
-                    Text(token.formattedBalance + " " + token.symbol)
-                        .font(.title3.monospacedDigit())
-                        .foregroundColor(.textPrimary)
-
-                    Text(token.formattedBalanceUsd)
-                        .font(.headline)
-                        .foregroundColor(.textSecondary)
-                }
-                .padding(.top, 16)
-
-                // Price info
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("Price")
-                            .foregroundColor(.textSecondary)
-                        Spacer()
-                        Text(String(format: "$%.2f", token.priceUsd))
+                    VStack(spacing: 4) {
+                        Text(token.formattedBalance + " " + token.symbol)
+                            .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
                             .foregroundColor(.textPrimary)
-                            .monospacedDigit()
-                    }
 
-                    HStack {
-                        Text("Chain")
+                        Text(token.formattedBalanceUsd)
+                            .font(.headline.monospacedDigit())
                             .foregroundColor(.textSecondary)
-                        Spacer()
-                        Text(token.chain.capitalized)
-                            .foregroundColor(.textPrimary)
-                    }
-
-                    if let contractAddress = token.contractAddress {
-                        HStack {
-                            Text("Contract")
-                                .foregroundColor(.textSecondary)
-                            Spacer()
-                            Text(contractAddress.prefix(6) + "..." + contractAddress.suffix(4))
-                                .foregroundColor(.textPrimary)
-                                .monospacedDigit()
-
-                            Button {
-                                ClipboardManager.shared.copyToClipboard(contractAddress)
-                            } label: {
-                                Image(systemName: "doc.on.doc")
-                                    .font(.caption)
-                                    .foregroundColor(.accentGreen)
-                            }
-                        }
-                    }
-
-                    HStack {
-                        Text("Decimals")
-                            .foregroundColor(.textSecondary)
-                        Spacer()
-                        Text("\(token.decimals)")
-                            .foregroundColor(.textPrimary)
                     }
                 }
-                .font(.body)
-                .padding()
-                .background(Color.backgroundCard)
-                .cornerRadius(16)
-                .padding(.horizontal, 20)
-
-                // Price chart placeholder
-                VStack(spacing: 8) {
-                    Text("Price Chart")
-                        .font(.headline)
-                        .foregroundColor(.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.backgroundCard)
-                        .frame(height: 200)
-                        .overlay(
-                            Text("Chart coming in Phase 4")
-                                .font(.subheadline)
-                                .foregroundColor(.textTertiary)
-                        )
-                }
-                .padding(.horizontal, 20)
+                .padding(.top, 20)
 
                 // Action buttons
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Button {
                         router.navigateToTab(.send)
                     } label: {
-                        Label("Send", systemImage: "paperplane.fill")
-                            .font(.headline)
+                        Label("Send", systemImage: "arrow.up.right")
+                            .font(.subheadline.weight(.semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color.accentGreen)
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
                     Button {
@@ -127,31 +52,94 @@ struct TokenDetailView: View {
                             )
                         }
                     } label: {
-                        Label("Receive", systemImage: "qrcode")
-                            .font(.headline)
+                        Label("Receive", systemImage: "arrow.down.left")
+                            .font(.subheadline.weight(.semibold))
                             .foregroundColor(.accentGreen)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.accentGreen.opacity(0.1))
-                            .cornerRadius(12)
+                            .background(Color.accentGreen.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                 }
                 .padding(.horizontal, 20)
 
-                // Recent transactions placeholder
+                // Info card
+                VStack(spacing: 0) {
+                    infoRow(label: "Price", value: formatPrice(token.priceUsd))
+                    Divider().foregroundColor(.separator)
+                    infoRow(label: "Network", value: token.chain.capitalized)
+
+                    if let contractAddress = token.contractAddress {
+                        Divider().foregroundColor(.separator)
+                        HStack {
+                            Text("Contract")
+                                .font(.subheadline)
+                                .foregroundColor(.textSecondary)
+                            Spacer()
+                            Text(contractAddress.prefix(6) + "..." + contractAddress.suffix(4))
+                                .font(.subheadline.monospaced())
+                                .foregroundColor(.textPrimary)
+                            Button {
+                                ClipboardManager.shared.copyToClipboard(contractAddress)
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.caption2)
+                                    .foregroundColor(.accentGreen)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+
+                    Divider().foregroundColor(.separator)
+                    infoRow(label: "Decimals", value: "\(token.decimals)")
+                }
+                .background(Color.backgroundCard)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, 20)
+
+                // Chart placeholder
+                VStack(spacing: 12) {
+                    Text("Price Chart")
+                        .font(.headline)
+                        .foregroundColor(.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.backgroundCard)
+                        .frame(height: 180)
+                        .overlay(
+                            VStack(spacing: 8) {
+                                Image(systemName: "chart.xyaxis.line")
+                                    .font(.title2)
+                                    .foregroundColor(.textTertiary)
+                                Text("Coming soon")
+                                    .font(.caption)
+                                    .foregroundColor(.textTertiary)
+                            }
+                        )
+                }
+                .padding(.horizontal, 20)
+
+                // Recent transactions
                 VStack(spacing: 12) {
                     Text("Recent Transactions")
                         .font(.headline)
                         .foregroundColor(.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("No transactions yet")
-                        .font(.body)
-                        .foregroundColor(.textTertiary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 32)
-                        .background(Color.backgroundCard)
-                        .cornerRadius(12)
+                    VStack(spacing: 8) {
+                        Image(systemName: "tray")
+                            .font(.title2)
+                            .foregroundColor(.textTertiary)
+                        Text("No transactions yet")
+                            .font(.subheadline)
+                            .foregroundColor(.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .background(Color.backgroundCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
@@ -160,6 +148,29 @@ struct TokenDetailView: View {
         .background(Color.backgroundPrimary)
         .navigationTitle(token.symbol)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func infoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundColor(.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.medium).monospacedDigit())
+                .foregroundColor(.textPrimary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func formatPrice(_ price: Double) -> String {
+        if price >= 1 {
+            return String(format: "$%.2f", price)
+        } else if price > 0 {
+            return String(format: "$%.6f", price)
+        }
+        return "$0.00"
     }
 }
 

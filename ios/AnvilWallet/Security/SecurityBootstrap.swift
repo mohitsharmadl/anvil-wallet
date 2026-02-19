@@ -110,39 +110,43 @@ struct SecurityWarningView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 28) {
+            Spacer()
+
             Image(systemName: "exclamationmark.shield.fill")
-                .font(.system(size: 64))
-                .foregroundColor(.red)
+                .font(.system(size: 56))
+                .foregroundColor(.error)
 
             Text("Security Warning")
-                .font(.title.bold())
-                .foregroundColor(.white)
+                .font(.title2.bold())
+                .foregroundColor(.textPrimary)
 
             Text(message)
-                .font(.body)
-                .foregroundColor(.secondary)
+                .font(.subheadline)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                .padding(.horizontal, 24)
 
             Text("Your funds may be at risk. We strongly recommend using a non-jailbroken device.")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textTertiary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                .padding(.horizontal, 24)
+
+            Spacer()
 
             Button(action: onDismiss) {
                 Text("I Understand the Risks")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red.opacity(0.8))
-                    .cornerRadius(12)
+                    .padding(.vertical, 16)
+                    .background(Color.error)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
-        .padding()
         .background(Color.backgroundPrimary)
     }
 }

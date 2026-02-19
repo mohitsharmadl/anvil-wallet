@@ -8,6 +8,7 @@ struct WalletHomeView: View {
 
     @State private var isRefreshing = false
     @State private var showSwap = false
+    @State private var isBalanceHidden = false
 
     private var totalBalanceUsd: Double {
         walletService.tokens.reduce(0) { $0 + $1.balanceUsd }
@@ -15,29 +16,17 @@ struct WalletHomeView: View {
 
     var body: some View {
         NavigationStack(path: $router.walletPath) {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Balance card
-                    BalanceCardView(totalBalance: totalBalanceUsd)
-                        .padding(.horizontal, 20)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // Hero balance section
+                    balanceSection
                         .padding(.top, 8)
+                        .padding(.bottom, 28)
 
                     // Quick actions
-                    HStack(spacing: 16) {
-                        QuickActionButton(icon: "paperplane.fill", label: "Send") {
-                            router.navigateToTab(.send)
-                        }
-                        QuickActionButton(icon: "qrcode", label: "Receive") {
-                            router.walletPath.append(AppRouter.WalletDestination.chainPicker)
-                        }
-                        QuickActionButton(icon: "arrow.left.arrow.right", label: "Swap") {
-                            showSwap = true
-                        }
-                        QuickActionButton(icon: "clock.arrow.circlepath", label: "Activity") {
-                            router.walletPath.append(AppRouter.WalletDestination.activity)
-                        }
-                    }
-                    .padding(.horizontal, 20)
+                    actionButtons
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
 
                     // Token list
                     TokenListView()
@@ -51,8 +40,12 @@ struct WalletHomeView: View {
                     Button {
                         // TODO: Navigate to notifications
                     } label: {
-                        Image(systemName: "bell.fill")
+                        Image(systemName: "bell")
+                            .font(.body.weight(.medium))
                             .foregroundColor(.textSecondary)
+                            .frame(width: 36, height: 36)
+                            .background(Color.backgroundCard)
+                            .clipShape(Circle())
                     }
                 }
             }
@@ -77,6 +70,74 @@ struct WalletHomeView: View {
         }
     }
 
+    // MARK: - Balance Section
+
+    private var balanceSection: some View {
+        VStack(spacing: 6) {
+            Text("Total Balance")
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(.textSecondary)
+
+            HStack(spacing: 8) {
+                if isBalanceHidden {
+                    Text("*****")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(.textPrimary)
+                } else {
+                    Text(formattedBalance)
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(.textPrimary)
+                        .contentTransition(.numericText())
+                }
+            }
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isBalanceHidden.toggle() }
+            } label: {
+                Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
+                    .font(.footnote.weight(.medium))
+                    .foregroundColor(.textTertiary)
+                    .padding(6)
+                    .background(Color.backgroundCard)
+                    .clipShape(Circle())
+            }
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Action Buttons
+
+    private var actionButtons: some View {
+        HStack(spacing: 12) {
+            ActionPill(icon: "arrow.up.right", label: "Send", color: .accentGreen) {
+                router.navigateToTab(.send)
+            }
+            ActionPill(icon: "arrow.down.left", label: "Receive", color: .info) {
+                router.walletPath.append(AppRouter.WalletDestination.chainPicker)
+            }
+            ActionPill(icon: "arrow.left.arrow.right", label: "Swap", color: .chainSolana) {
+                showSwap = true
+            }
+            ActionPill(icon: "clock", label: "Activity", color: .warning) {
+                router.walletPath.append(AppRouter.WalletDestination.activity)
+            }
+        }
+    }
+
+    private var formattedBalance: String {
+        if totalBalanceUsd < 0.01 && totalBalanceUsd > 0 {
+            return "<$0.01"
+        }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: totalBalanceUsd)) ?? "$0.00"
+    }
+
     private func refreshData() async {
         isRefreshing = true
         try? await walletService.refreshBalances()
@@ -85,77 +146,46 @@ struct WalletHomeView: View {
     }
 }
 
-// MARK: - Balance Card
+// MARK: - Action Pill Button
 
-private struct BalanceCardView: View {
-    let totalBalance: Double
-
-    @State private var isBalanceHidden = false
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Text("Total Balance")
-                .font(.subheadline)
-                .foregroundColor(.textSecondary)
-
-            if isBalanceHidden {
-                Text("********")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundColor(.textPrimary)
-            } else {
-                Text(String(format: "$%.2f", totalBalance))
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundColor(.textPrimary)
-            }
-
-            Button {
-                withAnimation { isBalanceHidden.toggle() }
-            } label: {
-                Image(systemName: isBalanceHidden ? "eye.slash.fill" : "eye.fill")
-                    .font(.caption)
-                    .foregroundColor(.textTertiary)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(
-            LinearGradient(
-                colors: [Color.backgroundCard, Color.backgroundElevated],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.border, lineWidth: 1)
-        )
-    }
-}
-
-// MARK: - Quick Action Button
-
-private struct QuickActionButton: View {
+private struct ActionPill: View {
     let icon: String
     let label: String
+    let color: Color
     let action: () -> Void
+
+    @State private var isPressed = false
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundColor(.accentGreen)
-                    .frame(width: 48, height: 48)
-                    .background(Color.accentGreen.opacity(0.1))
-                    .cornerRadius(14)
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.12))
+                        .frame(width: 52, height: 52)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(color)
+                }
 
                 Text(label)
-                    .font(.caption)
-                    .foregroundColor(.textSecondary)
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.textPrimary)
             }
         }
         .frame(maxWidth: .infinity)
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+// MARK: - Scale Button Style
+
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

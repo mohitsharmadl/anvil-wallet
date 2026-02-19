@@ -18,11 +18,11 @@ struct TokenListView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             // Section header
             HStack {
                 Text("Tokens")
-                    .font(.headline)
+                    .font(.title3.bold())
                     .foregroundColor(.textPrimary)
 
                 Spacer()
@@ -30,28 +30,41 @@ struct TokenListView: View {
                 Button {
                     // TODO: Add/manage tokens
                 } label: {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
                         .foregroundColor(.accentGreen)
                 }
             }
             .padding(.horizontal, 20)
 
             // Search bar
-            HStack {
+            HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
+                    .font(.subheadline)
                     .foregroundColor(.textTertiary)
 
                 TextField("Search tokens", text: $searchText)
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundColor(.textPrimary)
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.textTertiary)
+                    }
+                }
             }
-            .padding(10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .background(Color.backgroundCard)
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 20)
 
             // Token list
-            LazyVStack(spacing: 0) {
+            VStack(spacing: 4) {
                 ForEach(filteredTokens) { token in
                     Button {
                         router.walletPath.append(
@@ -60,12 +73,7 @@ struct TokenListView: View {
                     } label: {
                         TokenRowView(token: token)
                     }
-
-                    if token.id != filteredTokens.last?.id {
-                        Divider()
-                            .background(Color.separator)
-                            .padding(.leading, 68)
-                    }
+                    .buttonStyle(ScaleButtonStyle())
                 }
             }
             .padding(.horizontal, 20)
@@ -73,15 +81,15 @@ struct TokenListView: View {
             if filteredTokens.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
-                        .font(.title)
+                        .font(.largeTitle)
                         .foregroundColor(.textTertiary)
 
                     Text("No tokens found")
-                        .font(.body)
+                        .font(.subheadline)
                         .foregroundColor(.textSecondary)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                .padding(.vertical, 48)
             }
         }
     }
@@ -93,16 +101,17 @@ private struct TokenRowView: View {
     let token: TokenModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            TokenIconView(symbol: token.symbol, chain: token.chain, size: 40)
+        HStack(spacing: 14) {
+            // Token icon
+            TokenIconView(symbol: token.symbol, chain: token.chain, size: 44)
 
             // Token info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(token.name)
-                    .font(.body)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(token.symbol)
+                    .font(.body.weight(.semibold))
                     .foregroundColor(.textPrimary)
 
-                Text(token.chain.capitalized)
+                Text(token.name)
                     .font(.caption)
                     .foregroundColor(.textTertiary)
             }
@@ -110,9 +119,9 @@ private struct TokenRowView: View {
             Spacer()
 
             // Balance
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(token.formattedBalance)
-                    .font(.body.monospacedDigit())
+                    .font(.body.weight(.medium).monospacedDigit())
                     .foregroundColor(.textPrimary)
 
                 Text(token.formattedBalanceUsd)
@@ -120,9 +129,11 @@ private struct TokenRowView: View {
                     .foregroundColor(.textSecondary)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.backgroundCard)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
-
 }
 
 #Preview {
