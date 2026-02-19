@@ -43,6 +43,7 @@ struct BridgeView: View {
 
                     // Fetch routes button
                     Button {
+                        Haptic.impact(.medium)
                         Task { await fetchRoutes() }
                     } label: {
                         Text("Find Routes")
@@ -50,6 +51,8 @@ struct BridgeView: View {
                     .buttonStyle(.primary)
                     .disabled(amount.isEmpty || fromChainId == toChainId)
                     .padding(.horizontal, 20)
+                    .accessibilityLabel("Find bridge routes")
+                    .accessibilityHint("Double tap to search for available bridge routes")
 
                     // Routes
                     if bridgeService.isLoading {
@@ -168,11 +171,13 @@ struct BridgeView: View {
             await MainActor.run {
                 isBridging = false
                 bridgeResult = txHash
+                Haptic.success()
             }
         } catch {
             await MainActor.run {
                 isBridging = false
                 bridgeError = error.localizedDescription
+                Haptic.error()
             }
         }
     }
@@ -224,6 +229,7 @@ struct BridgeView: View {
 
                 // Swap direction
                 Button {
+                    Haptic.impact(.light)
                     let temp = fromChainId
                     fromChainId = toChainId
                     toChainId = temp
@@ -231,11 +237,13 @@ struct BridgeView: View {
                     Image(systemName: "arrow.left.arrow.right")
                         .font(.body.weight(.medium))
                         .foregroundColor(.accentGreen)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                         .background(Color.accentGreen.opacity(0.1))
-                        .cornerRadius(18)
+                        .cornerRadius(22)
                 }
                 .padding(.top, 20)
+                .accessibilityLabel("Swap source and destination chains")
+                .accessibilityHint("Double tap to swap from and to chains")
 
                 // To chain
                 VStack(alignment: .leading, spacing: 6) {
@@ -289,6 +297,7 @@ struct BridgeView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundColor(.textPrimary)
                     .keyboardType(.decimalPad)
+                    .minimumScaleFactor(0.5)
 
                 Spacer()
 
@@ -393,6 +402,9 @@ private struct RouteCard: View {
         .padding(16)
         .background(Color.backgroundCard)
         .cornerRadius(12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(route.bridgeName), estimated output: \(route.estimatedOutputFormatted), gas: approximately \(String(format: "%.2f", route.estimatedGasUsd)) dollars, time: about \(route.estimatedTimeMinutes) minutes")
+        .accessibilityHint("Double tap to select this bridge route")
     }
 }
 

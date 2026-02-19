@@ -13,6 +13,7 @@ crypto-utils = { path = "../crypto-utils" }
 chain-btc = { path = "../chain-btc" }
 chain-eth = { path = "../chain-eth" }
 chain-sol = { path = "../chain-sol" }
+chain-zec = { path = "../chain-zec" }
 
 bip39 = { workspace = true }
 bip32 = { workspace = true }

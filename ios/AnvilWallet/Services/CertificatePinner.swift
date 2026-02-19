@@ -125,6 +125,16 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
             "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
             "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
         ],
+        // 0x DEX aggregator API (swap quotes and execution)
+        "api.0x.org": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
+        ],
+        // Jupiter DEX aggregator API (Solana swaps)
+        "quote-api.jup.ag": [
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
+            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
+        ],
     ]
 
     func urlSession(

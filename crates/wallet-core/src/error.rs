@@ -59,3 +59,9 @@ impl From<chain_sol::error::SolError> for WalletError {
         WalletError::TransactionFailed(format!("SOL: {e}"))
     }
 }
+
+impl From<chain_zec::error::ZecError> for WalletError {
+    fn from(e: chain_zec::error::ZecError) -> Self {
+        WalletError::TransactionFailed(format!("ZEC: {e}"))
+    }
+}

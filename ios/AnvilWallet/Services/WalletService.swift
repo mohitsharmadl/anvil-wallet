@@ -8,6 +8,7 @@ enum TransactionRequest {
     case eth(EthTransactionRequest)
     case sol(SolTransactionRequest)
     case btc(BtcTransactionRequest)
+    case zec(ZecTransactionRequest)
 }
 
 struct EthTransactionRequest {
@@ -33,6 +34,16 @@ struct BtcTransactionRequest {
     let amountSat: UInt64
     let changeAddress: String
     let feeRateSatVbyte: UInt64
+    let isTestnet: Bool
+}
+
+struct ZecTransactionRequest {
+    let utxos: [ZecUtxoData]
+    let recipientAddress: String
+    let amountZatoshi: UInt64
+    let changeAddress: String
+    let feeRateZatByte: UInt64
+    let expiryHeight: UInt32
     let isTestnet: Bool
 }
 
@@ -225,7 +236,7 @@ final class WalletService: ObservableObject {
             self.accounts = [wallet]
             self.activeAccountIndex = 0
             self.isWalletCreated = true
-            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
+            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
 
         // Discover ERC-20 tokens in background (best-effort, non-blocking)
@@ -293,7 +304,7 @@ final class WalletService: ObservableObject {
             self.accounts = [wallet]
             self.activeAccountIndex = 0
             self.isWalletCreated = true
-            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
+            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
 
         // Discover ERC-20 tokens in background (best-effort, non-blocking)
@@ -335,6 +346,8 @@ final class WalletService: ObservableObject {
                 addresses["solana"] = derived.address
             case .bitcoin:
                 addresses["bitcoin"] = derived.address
+            case .zcash:
+                addresses["zcash"] = derived.address
             default:
                 break
             }
@@ -440,6 +453,21 @@ final class WalletService: ObservableObject {
                 isTestnet: btcReq.isTestnet
             )
             signedTx = Data(result)
+
+        case .zec(let zecReq):
+            let result = try signZecTransaction(
+                seed: seedBytes,
+                account: accountIdx,
+                index: 0,
+                utxos: zecReq.utxos,
+                recipientAddress: zecReq.recipientAddress,
+                amountZatoshi: zecReq.amountZatoshi,
+                changeAddress: zecReq.changeAddress,
+                feeRateZatByte: zecReq.feeRateZatByte,
+                expiryHeight: zecReq.expiryHeight,
+                isTestnet: zecReq.isTestnet
+            )
+            signedTx = Data(result)
         }
 
         return signedTx
@@ -525,6 +553,10 @@ final class WalletService: ObservableObject {
                 case .bitcoin:
                     let satoshis = try await rpc.getBitcoinBalance(apiUrl: chain.activeRpcUrl, address: address)
                     balance = Double(satoshis) / pow(10.0, Double(token.decimals))
+
+                case .zcash:
+                    let zatoshi = try await rpc.getZcashBalance(address: address)
+                    balance = Double(zatoshi) / pow(10.0, Double(token.decimals))
                 }
 
                 results.append((index: index, balance: balance))
@@ -1248,7 +1280,7 @@ final class WalletService: ObservableObject {
             self.currentWallet = account
             self.activeAccountIndex = index
             self.addresses = account.addresses
-            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults
+            self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
             self.transactions = []
         }
 

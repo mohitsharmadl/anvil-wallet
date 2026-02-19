@@ -68,7 +68,7 @@ struct WalletHomeView: View {
                             Image(systemName: "bell")
                                 .font(.body.weight(.medium))
                                 .foregroundColor(.textSecondary)
-                                .frame(width: 36, height: 36)
+                                .frame(width: 44, height: 44)
                                 .background(Color.backgroundCard)
                                 .clipShape(Circle())
 
@@ -83,6 +83,10 @@ struct WalletHomeView: View {
                             }
                         }
                     }
+                    .accessibilityLabel(notificationService.unreadCount > 0
+                        ? "Notifications, \(notificationService.unreadCount) unread"
+                        : "Notifications")
+                    .accessibilityHint("Double tap to view notifications")
                 }
             }
             .sheet(isPresented: $showSwap) {
@@ -136,16 +140,21 @@ struct WalletHomeView: View {
                     Text("*****")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.textPrimary)
+                        .minimumScaleFactor(0.5)
                 } else {
                     Text(formattedBalance)
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.textPrimary)
                         .contentTransition(.numericText())
+                        .minimumScaleFactor(0.5)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(isBalanceHidden ? "Balance hidden" : "Total balance: \(formattedBalance)")
 
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) { isBalanceHidden.toggle() }
+                Haptic.impact(.light)
             } label: {
                 Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
                     .font(.footnote.weight(.medium))
@@ -154,6 +163,9 @@ struct WalletHomeView: View {
                     .background(Color.backgroundCard)
                     .clipShape(Circle())
             }
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel(isBalanceHidden ? "Show balance" : "Hide balance")
+            .accessibilityHint("Double tap to toggle balance visibility")
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
@@ -166,23 +178,35 @@ struct WalletHomeView: View {
     private var actionButtons: some View {
         HStack(spacing: 12) {
             ActionPill(icon: "plus.circle", label: "Buy", color: .accentGreen) {
+                Haptic.impact(.medium)
                 showBuy = true
             }
+            .accessibilityHint("Double tap to buy crypto")
             ActionPill(icon: "arrow.up.right", label: "Send", color: .accentGreen) {
+                Haptic.impact(.medium)
                 router.navigateToTab(.send)
             }
+            .accessibilityHint("Double tap to send tokens")
             ActionPill(icon: "arrow.down.left", label: "Receive", color: .info) {
+                Haptic.impact(.medium)
                 router.walletPath.append(AppRouter.WalletDestination.chainPicker)
             }
+            .accessibilityHint("Double tap to receive tokens")
             ActionPill(icon: "arrow.left.arrow.right", label: "Swap", color: .chainSolana) {
+                Haptic.impact(.medium)
                 showSwap = true
             }
+            .accessibilityHint("Double tap to swap tokens")
             ActionPill(icon: "arrow.triangle.branch", label: "Bridge", color: .chainEthereum) {
+                Haptic.impact(.medium)
                 showBridge = true
             }
+            .accessibilityHint("Double tap to bridge tokens across chains")
             ActionPill(icon: "chart.line.uptrend.xyaxis", label: "Stake", color: .warning) {
+                Haptic.impact(.medium)
                 showStaking = true
             }
+            .accessibilityHint("Double tap to stake tokens")
         }
     }
 
@@ -190,6 +214,7 @@ struct WalletHomeView: View {
 
     private var accountSwitcher: some View {
         Button {
+            Haptic.impact(.light)
             showAccountPicker = true
         } label: {
             HStack(spacing: 6) {
@@ -210,6 +235,9 @@ struct WalletHomeView: View {
             .background(Color.backgroundCard)
             .clipShape(Capsule())
         }
+        .frame(minHeight: 44)
+        .accessibilityLabel("Switch account: \(walletService.currentWallet?.displayName ?? "Account 0")")
+        .accessibilityHint("Double tap to switch wallet accounts")
     }
 
     // MARK: - Segment Picker
@@ -221,6 +249,7 @@ struct WalletHomeView: View {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedSegment = segment
                     }
+                    Haptic.selection()
                 } label: {
                     Text(segment.rawValue)
                         .font(.subheadline.weight(.semibold))
@@ -234,11 +263,14 @@ struct WalletHomeView: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
+                .accessibilityLabel("\(segment.rawValue) tab")
+                .accessibilityAddTraits(selectedSegment == segment ? .isSelected : [])
             }
         }
         .padding(3)
         .background(Color.backgroundSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .contain)
     }
 
     private var formattedBalance: String {
@@ -288,8 +320,11 @@ private struct ActionPill: View {
                     .foregroundColor(.textPrimary)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 44)
         .buttonStyle(ScaleButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

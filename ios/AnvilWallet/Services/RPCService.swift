@@ -573,6 +573,132 @@ final class RPCService {
         return txid
     }
 
+    // MARK: - Zcash-specific Methods (REST API via Blockchair)
+
+    /// Fetches the ZEC balance for a transparent Zcash address (in zatoshi).
+    /// Uses the Blockchair API for address info.
+    func getZcashBalance(address: String) async throws -> Int {
+        let url = try httpsURL("https://api.blockchair.com/zcash/dashboards/address/\(address)")
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        struct BlockchairResponse: Decodable {
+            struct Data: Decodable {
+                struct AddressData: Decodable {
+                    struct Address: Decodable {
+                        let balance: Int
+                    }
+                    let address: Address
+                }
+            }
+            let data: [String: Data.AddressData]
+        }
+
+        let result = try JSONDecoder().decode(BlockchairResponse.self, from: data)
+        guard let addressData = result.data.values.first else {
+            return 0
+        }
+        return addressData.address.balance
+    }
+
+    /// Fetches UTXOs for a transparent Zcash address.
+    /// Uses the Blockchair API for UTXO data.
+    func getZcashUtxos(address: String) async throws -> [ZecUtxoData] {
+        let url = try httpsURL("https://api.blockchair.com/zcash/dashboards/address/\(address)?limit=100")
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw RPCServiceError.invalidResponse
+        }
+
+        struct BlockchairUtxoResponse: Decodable {
+            struct Data: Decodable {
+                struct AddressData: Decodable {
+                    let utxo: [Utxo]
+                }
+                struct Utxo: Decodable {
+                    let transaction_hash: String
+                    let index: UInt32
+                    let value: UInt64
+                    let script_hex: String
+                }
+            }
+            let data: [String: Data.AddressData]
+        }
+
+        let result = try JSONDecoder().decode(BlockchairUtxoResponse.self, from: data)
+        guard let addressData = result.data.values.first else {
+            return []
+        }
+
+        return addressData.utxo.map { utxo in
+            let scriptBytes: Data
+            if let decoded = Self.hexToData(utxo.script_hex) {
+                scriptBytes = decoded
+            } else {
+                scriptBytes = Data()
+            }
+            return ZecUtxoData(
+                txid: utxo.transaction_hash,
+                vout: utxo.index,
+                amountZatoshi: utxo.value,
+                scriptPubkey: scriptBytes
+            )
+        }
+    }
+
+    /// Broadcasts a signed Zcash transaction via Blockchair push API.
+    /// Returns the transaction hash on success.
+    func broadcastZcashTransaction(txHex: String) async throws -> String {
+        let url = try httpsURL("https://api.blockchair.com/zcash/push/transaction")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = ["data": txHex]
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw RPCServiceError.decodingError("ZEC broadcast failed: \(errorBody)")
+        }
+
+        struct PushResponse: Decodable {
+            struct Data: Decodable {
+                let transaction_hash: String
+            }
+            let data: Data
+        }
+
+        let pushResult = try JSONDecoder().decode(PushResponse.self, from: data)
+        return pushResult.data.transaction_hash
+    }
+
+    /// Converts a hex string to Data.
+    private static func hexToData(_ hex: String) -> Data? {
+        let cleaned = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+        guard cleaned.count % 2 == 0 else { return nil }
+        var data = Data(capacity: cleaned.count / 2)
+        var index = cleaned.startIndex
+        while index < cleaned.endIndex {
+            let nextIndex = cleaned.index(index, offsetBy: 2)
+            guard let byte = UInt8(cleaned[index..<nextIndex], radix: 16) else { return nil }
+            data.append(byte)
+            index = nextIndex
+        }
+        return data
+    }
+
     // Base58 is now provided by the shared Base58 enum in Extensions/Base58.swift
 
     /// Gets Bitcoin address info via Blockstream/Mempool REST API.

@@ -129,7 +129,7 @@ private struct TransactionDetailRow: View {
 
                 if let fullValue {
                     Button {
-                        ClipboardManager.shared.copyToClipboard(fullValue, sensitive: false)
+                        SecurityService.shared.copyWithAutoClear(fullValue, sensitive: false)
                     } label: {
                         Image(systemName: "doc.on.doc")
                             .font(.caption)

@@ -35,6 +35,9 @@ struct TokenListView: View {
                         .font(.title3)
                         .foregroundColor(.accentGreen)
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Add token")
+                .accessibilityHint("Double tap to add a custom token")
             }
             .padding(.horizontal, 20)
 
@@ -137,6 +140,9 @@ private struct TokenRowView: View {
         .padding(.vertical, 14)
         .background(Color.backgroundCard)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(token.symbol) balance: \(token.formattedBalance), \(token.formattedBalanceUsd)")
+        .accessibilityHint("Double tap to view \(token.name) details")
     }
 }
 

@@ -29,6 +29,10 @@ fn derivation_path_for_chain(chain: Chain, account: u32, index: u32) -> Result<S
 
         // Solana: all hardened
         Chain::Solana | Chain::SolanaDevnet => Ok(format!("m/44'/501'/{}'/0'", account)),
+
+        // Zcash: BIP-44 coin type 133
+        Chain::Zcash => Ok(format!("m/44'/133'/{}'/0/{}", account, index)),
+        Chain::ZcashTestnet => Ok(format!("m/44'/1'/{}'/0/{}", account, index)),
     }
 }
 

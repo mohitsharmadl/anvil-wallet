@@ -98,6 +98,10 @@ final class TransactionHistoryService {
                             try await self.fetchEVMTransactions(address: address, chain: chain)
                         }
                     }
+
+                case .zcash:
+                    // Zcash transaction history not yet supported — skip silently
+                    continue
                 }
             }
 

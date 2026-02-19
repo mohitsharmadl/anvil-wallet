@@ -41,6 +41,7 @@ struct DAppBrowserView: View {
                 Image(systemName: isSecure ? "lock.fill" : "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundColor(isSecure ? .accentGreen : .warning)
+                    .accessibilityLabel(isSecure ? "Secure connection" : "Insecure connection")
 
                 TextField("Search or enter URL", text: $urlText)
                     .font(.subheadline)
@@ -53,6 +54,7 @@ struct DAppBrowserView: View {
                     .onSubmit {
                         navigateTo(urlText)
                     }
+                    .accessibilityLabel("URL field")
 
                 if !urlText.isEmpty {
                     Button {
@@ -62,6 +64,8 @@ struct DAppBrowserView: View {
                             .font(.caption)
                             .foregroundColor(.textTertiary)
                     }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("Clear URL")
                 }
             }
             .padding(.horizontal, 12)
@@ -106,16 +110,18 @@ struct DAppBrowserView: View {
                 Button { webViewRef?.goBack() } label: {
                     Image(systemName: "chevron.left")
                         .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .disabled(!canGoBack)
+                .accessibilityLabel("Go back")
 
                 Button { webViewRef?.goForward() } label: {
                     Image(systemName: "chevron.right")
                         .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .disabled(!canGoForward)
+                .accessibilityLabel("Go forward")
 
                 Button {
                     if isLoading {
@@ -126,8 +132,9 @@ struct DAppBrowserView: View {
                 } label: {
                     Image(systemName: isLoading ? "xmark" : "arrow.clockwise")
                         .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .accessibilityLabel(isLoading ? "Stop loading" : "Reload page")
 
                 Button {
                     if let url = currentURL {
@@ -136,8 +143,9 @@ struct DAppBrowserView: View {
                 } label: {
                     Image(systemName: "safari")
                         .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .accessibilityLabel("Open in Safari")
             }
             .foregroundColor(.accentGreen)
             .padding(.vertical, 10)

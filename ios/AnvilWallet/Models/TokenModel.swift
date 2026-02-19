@@ -73,4 +73,8 @@ struct TokenModel: Identifiable, Codable, Hashable {
     static let bitcoinDefaults: [TokenModel] = [
         TokenModel(symbol: "BTC", name: "Bitcoin", chain: "bitcoin", decimals: 8),
     ]
+
+    static let zcashDefaults: [TokenModel] = [
+        TokenModel(symbol: "ZEC", name: "Zcash", chain: "zcash", decimals: 8),
+    ]
 }

@@ -115,6 +115,7 @@ struct SettingsView: View {
                 // Danger zone
                 Section {
                     Button {
+                        Haptic.warning()
                         showDeleteConfirmation = true
                     } label: {
                         HStack {
@@ -123,7 +124,10 @@ struct SettingsView: View {
                             Text("Delete Wallet")
                                 .foregroundColor(.error)
                         }
+                        .frame(minHeight: 44)
                     }
+                    .accessibilityLabel("Delete wallet")
+                    .accessibilityHint("Double tap to permanently delete your wallet from this device")
                 } footer: {
                     Text("Deleting your wallet removes all data from this device. Make sure you have your recovery phrase backed up.")
                         .font(.caption)
@@ -166,6 +170,9 @@ struct SettingsRow: View {
                 .font(.body)
                 .foregroundColor(.textPrimary)
         }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
     }
 }
 

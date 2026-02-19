@@ -383,7 +383,7 @@ private struct EditAddressSheet: View {
                             .foregroundColor(.textPrimary)
 
                         Button {
-                            ClipboardManager.shared.copyToClipboard(address.address, sensitive: false)
+                            SecurityService.shared.copyWithAutoClear(address.address, sensitive: false)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .font(.caption)

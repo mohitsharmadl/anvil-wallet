@@ -31,6 +31,7 @@ struct ReceiveView: View {
                     .padding(20)
                     .background(Color.white)
                     .cornerRadius(20)
+                    .accessibilityLabel("QR code for \(chain.capitalized) address")
             } else {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.backgroundCard)
@@ -39,6 +40,7 @@ struct ReceiveView: View {
                         Text("QR Code")
                             .foregroundColor(.textTertiary)
                     )
+                    .accessibilityLabel("QR code unavailable")
             }
 
             // Address display
@@ -54,11 +56,15 @@ struct ReceiveView: View {
                     .padding(.horizontal, 24)
                     .lineLimit(3)
                     .textSelection(.enabled)
+                    .minimumScaleFactor(0.7)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Your \(chain.capitalized) address: \(address)")
 
             // Copy button
             Button {
-                ClipboardManager.shared.copyToClipboard(address, sensitive: false)
+                SecurityService.shared.copyWithAutoClear(address, sensitive: false)
+                Haptic.impact(.light)
                 withAnimation {
                     showCopiedFeedback = true
                 }
@@ -80,6 +86,8 @@ struct ReceiveView: View {
                 .cornerRadius(12)
             }
             .padding(.horizontal, 24)
+            .accessibilityLabel(showCopiedFeedback ? "Address copied" : "Copy address")
+            .accessibilityHint("Double tap to copy address to clipboard")
 
             // Share button
             Button {
@@ -104,6 +112,8 @@ struct ReceiveView: View {
                 .cornerRadius(12)
             }
             .padding(.horizontal, 24)
+            .accessibilityLabel("Share address")
+            .accessibilityHint("Double tap to share your address")
 
             // Warning
             HStack(spacing: 8) {
@@ -119,6 +129,8 @@ struct ReceiveView: View {
             .background(Color.warning.opacity(0.1))
             .cornerRadius(12)
             .padding(.horizontal, 24)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Warning: Only send \(chain.capitalized) tokens to this address. Sending other tokens may result in permanent loss.")
 
             Spacer()
         }

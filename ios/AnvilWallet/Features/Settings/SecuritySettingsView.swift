@@ -24,6 +24,7 @@ enum AutoLockInterval: String, CaseIterable {
 /// SecuritySettingsView allows users to manage wallet security settings.
 struct SecuritySettingsView: View {
     @EnvironmentObject var walletService: WalletService
+    @ObservedObject private var securityService = SecurityService.shared
 
     @State private var isBiometricEnabled = true
     @AppStorage("autoLockInterval") private var autoLockInterval = AutoLockInterval.fiveMinutes
@@ -62,6 +63,42 @@ struct SecuritySettingsView: View {
             }
             .listRowBackground(Color.backgroundCard)
 
+            // Security features
+            Section("Security") {
+                Toggle(isOn: $securityService.isAutoClearClipboardEnabled) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.on.clipboard")
+                            .foregroundColor(.accentGreen)
+
+                        VStack(alignment: .leading) {
+                            Text("Auto-clear clipboard")
+                                .foregroundColor(.textPrimary)
+                            Text("Clear copied data after 60 seconds")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                }
+                .tint(.accentGreen)
+
+                Toggle(isOn: $securityService.isScreenProtectionEnabled) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "eye.slash.fill")
+                            .foregroundColor(.accentGreen)
+
+                        VStack(alignment: .leading) {
+                            Text("Screen protection")
+                                .foregroundColor(.textPrimary)
+                            Text("Blur app content in app switcher")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                }
+                .tint(.accentGreen)
+            }
+            .listRowBackground(Color.backgroundCard)
+
             // Password
             Section("Password") {
                 Button {
@@ -76,8 +113,8 @@ struct SecuritySettingsView: View {
             Section("Security Status") {
                 SecurityStatusRow(
                     label: "Jailbreak Detection",
-                    status: !SecurityBootstrap.jailbreakDetected,
-                    description: SecurityBootstrap.jailbreakDetected
+                    status: !securityService.isJailbroken,
+                    description: securityService.isJailbroken
                         ? "Jailbreak indicators detected"
                         : "No jailbreak indicators found"
                 )
@@ -95,6 +132,28 @@ struct SecuritySettingsView: View {
                     status: true,
                     description: "Hardware key protection active"
                 )
+
+                if securityService.isBiometricLockedOut {
+                    HStack(spacing: 12) {
+                        Image(systemName: "lock.fill")
+                            .foregroundColor(.warning)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Biometric Lockout")
+                                .font(.body)
+                                .foregroundColor(.textPrimary)
+
+                            Text("Too many failed attempts. Try again in \(securityService.lockoutRemainingFormatted)")
+                                .font(.caption)
+                                .foregroundColor(.warning)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(.warning)
+                    }
+                }
             }
             .listRowBackground(Color.backgroundCard)
 

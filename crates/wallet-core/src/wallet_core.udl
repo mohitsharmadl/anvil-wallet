@@ -25,6 +25,8 @@ enum Chain {
     "Avalanche",
     "Solana",
     "SolanaDevnet",
+    "Zcash",
+    "ZcashTestnet",
     "Sepolia",
     "PolygonAmoy",
 };
@@ -38,6 +40,13 @@ dictionary DerivedAddress {
 dictionary EncryptedSeedData {
     bytes ciphertext;
     bytes salt;
+};
+
+dictionary ZecUtxoData {
+    string txid;
+    u32 vout;
+    u64 amount_zatoshi;
+    bytes script_pubkey;
 };
 
 dictionary UtxoData {
@@ -202,6 +211,21 @@ namespace wallet_core {
     string derive_sol_token_address(
         string wallet_address,
         string mint_address
+    );
+
+    /// Sign a Zcash transparent P2PKH transaction (returns serialized signed tx bytes)
+    [Throws=WalletError]
+    bytes sign_zec_transaction(
+        bytes seed,
+        u32 account,
+        u32 index,
+        sequence<ZecUtxoData> utxos,
+        string recipient_address,
+        u64 amount_zatoshi,
+        string change_address,
+        u64 fee_rate_zat_byte,
+        u32 expiry_height,
+        boolean is_testnet
     );
 
     /// Sign a Bitcoin P2WPKH transaction (returns serialized signed tx bytes)

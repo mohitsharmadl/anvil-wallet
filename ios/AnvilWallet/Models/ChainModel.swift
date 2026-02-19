@@ -14,6 +14,7 @@ struct ChainModel: Identifiable, Codable, Hashable {
         case evm
         case solana
         case bitcoin
+        case zcash
     }
 
     init(
@@ -136,6 +137,16 @@ struct ChainModel: Identifiable, Codable, Hashable {
         chainType: .evm
     )
 
+    static let zcash = ChainModel(
+        id: "zcash",
+        name: "Zcash",
+        symbol: "ZEC",
+        iconName: "zcash_icon",
+        rpcUrl: "https://mainnet.lightwalletd.com",
+        explorerUrl: "https://zcashblockexplorer.com",
+        chainType: .zcash
+    )
+
     // Testnets
     static let sepolia = ChainModel(
         id: "sepolia",
@@ -181,6 +192,17 @@ struct ChainModel: Identifiable, Codable, Hashable {
         chainType: .evm
     )
 
+    static let zcashTestnet = ChainModel(
+        id: "zcash_testnet",
+        name: "Zcash Testnet",
+        symbol: "TAZ",
+        iconName: "zcash_icon",
+        rpcUrl: "https://testnet.lightwalletd.com",
+        explorerUrl: "https://zcashblockexplorer.com",
+        isTestnet: true,
+        chainType: .zcash
+    )
+
     static let defaults: [ChainModel] = [
         .ethereum,
         .polygon,
@@ -191,6 +213,7 @@ struct ChainModel: Identifiable, Codable, Hashable {
         .avalanche,
         .solana,
         .bitcoin,
+        .zcash,
     ]
 
     static let allChains: [ChainModel] = [
@@ -203,10 +226,12 @@ struct ChainModel: Identifiable, Codable, Hashable {
         .avalanche,
         .solana,
         .bitcoin,
+        .zcash,
         .sepolia,
         .bitcoinTestnet,
         .solanaDevnet,
         .polygonAmoy,
+        .zcashTestnet,
     ]
 
     /// Returns the active RPC URL for this chain — custom override if set, otherwise the default.

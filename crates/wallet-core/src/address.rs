@@ -23,6 +23,8 @@ pub fn derive_address(
         | Chain::PolygonAmoy => derive_eth_address(seed, chain, account, index),
 
         Chain::Solana | Chain::SolanaDevnet => derive_sol_address(seed, chain, account),
+
+        Chain::Zcash | Chain::ZcashTestnet => derive_zec_address(seed, chain, account, index),
     }
 }
 
@@ -35,6 +37,7 @@ pub fn derive_all_addresses(
         Chain::Bitcoin,
         Chain::Ethereum,
         Chain::Solana,
+        Chain::Zcash,
     ];
 
     let mut addresses = Vec::new();
@@ -101,6 +104,29 @@ fn derive_sol_address(
     })
 }
 
+fn derive_zec_address(
+    seed: &[u8],
+    chain: Chain,
+    account: u32,
+    index: u32,
+) -> Result<DerivedAddress, WalletError> {
+    let key = hd_derivation::derive_secp256k1_key(seed, chain, account, index)?;
+
+    let network = match chain {
+        Chain::ZcashTestnet => chain_zec::address::ZecNetwork::Testnet,
+        _ => chain_zec::address::ZecNetwork::Mainnet,
+    };
+
+    let address =
+        chain_zec::address::pubkey_to_t_address(&key.public_key_compressed, network)?;
+
+    Ok(DerivedAddress {
+        chain,
+        address,
+        derivation_path: key.derivation_path.clone(),
+    })
+}
+
 /// Validate an address for a given chain
 pub fn validate_address(address: &str, chain: Chain) -> Result<bool, WalletError> {
     match chain {
@@ -124,6 +150,16 @@ pub fn validate_address(address: &str, chain: Chain) -> Result<bool, WalletError
             .map_err(|e| WalletError::InvalidAddress(e.to_string())),
         Chain::Solana | Chain::SolanaDevnet => chain_sol::address::validate_address(address)
             .map_err(|e| WalletError::InvalidAddress(e.to_string())),
+        Chain::Zcash => chain_zec::address::validate_address(
+            address,
+            chain_zec::address::ZecNetwork::Mainnet,
+        )
+        .map_err(|e| WalletError::InvalidAddress(e.to_string())),
+        Chain::ZcashTestnet => chain_zec::address::validate_address(
+            address,
+            chain_zec::address::ZecNetwork::Testnet,
+        )
+        .map_err(|e| WalletError::InvalidAddress(e.to_string())),
     }
 }
 
@@ -168,7 +204,7 @@ mod tests {
     fn test_derive_all_addresses() {
         let seed = test_seed();
         let addresses = derive_all_addresses(&seed, 0).unwrap();
-        assert_eq!(addresses.len(), 3); // BTC, ETH, SOL
+        assert_eq!(addresses.len(), 4); // BTC, ETH, SOL, ZEC
     }
 
     #[test]

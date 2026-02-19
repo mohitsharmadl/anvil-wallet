@@ -37,10 +37,12 @@ struct TransactionResultView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 80))
                     .foregroundColor(.success)
+                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 80))
                     .foregroundColor(.error)
+                    .accessibilityHidden(true)
             }
 
             // Status text
@@ -56,6 +58,7 @@ struct TransactionResultView: View {
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
 
             // Transaction hash
             if success {
@@ -73,12 +76,16 @@ struct TransactionResultView: View {
                         .foregroundColor(.textPrimary)
 
                     Button {
-                        ClipboardManager.shared.copyToClipboard(txHash, sensitive: false)
+                        SecurityService.shared.copyWithAutoClear(txHash, sensitive: false)
+                        Haptic.impact(.light)
                     } label: {
                         Label("Copy Hash", systemImage: "doc.on.doc")
                             .font(.caption.bold())
                             .foregroundColor(.accentGreen)
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityLabel("Copy transaction hash")
+                    .accessibilityHint("Double tap to copy hash to clipboard")
                 }
                 .padding()
                 .background(Color.backgroundCard)
@@ -155,6 +162,13 @@ struct TransactionResultView: View {
         }
         .background(Color.backgroundPrimary)
         .navigationBarBackButtonHidden()
+        .onAppear {
+            if success {
+                Haptic.success()
+            } else {
+                Haptic.error()
+            }
+        }
         .sheet(isPresented: $showSaveContactSheet) {
             AddAddressSheet(
                 prefillAddress: recipientAddress,

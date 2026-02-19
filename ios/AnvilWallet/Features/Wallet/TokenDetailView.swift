@@ -94,7 +94,7 @@ struct TokenDetailView: View {
                                 .font(.subheadline.monospaced())
                                 .foregroundColor(.textPrimary)
                             Button {
-                                ClipboardManager.shared.copyToClipboard(contractAddress)
+                                SecurityService.shared.copyWithAutoClear(contractAddress)
                             } label: {
                                 Image(systemName: "doc.on.doc")
                                     .font(.caption2)

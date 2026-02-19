@@ -749,6 +749,88 @@ public func FfiConverterTypeUtxoData_lower(_ value: UtxoData) -> RustBuffer {
     return FfiConverterTypeUtxoData.lower(value)
 }
 
+
+public struct ZecUtxoData {
+    public var txid: String
+    public var vout: UInt32
+    public var amountZatoshi: UInt64
+    public var scriptPubkey: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(txid: String, vout: UInt32, amountZatoshi: UInt64, scriptPubkey: Data) {
+        self.txid = txid
+        self.vout = vout
+        self.amountZatoshi = amountZatoshi
+        self.scriptPubkey = scriptPubkey
+    }
+}
+
+
+
+extension ZecUtxoData: Equatable, Hashable {
+    public static func ==(lhs: ZecUtxoData, rhs: ZecUtxoData) -> Bool {
+        if lhs.txid != rhs.txid {
+            return false
+        }
+        if lhs.vout != rhs.vout {
+            return false
+        }
+        if lhs.amountZatoshi != rhs.amountZatoshi {
+            return false
+        }
+        if lhs.scriptPubkey != rhs.scriptPubkey {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(txid)
+        hasher.combine(vout)
+        hasher.combine(amountZatoshi)
+        hasher.combine(scriptPubkey)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeZecUtxoData: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ZecUtxoData {
+        return
+            try ZecUtxoData(
+                txid: FfiConverterString.read(from: &buf), 
+                vout: FfiConverterUInt32.read(from: &buf), 
+                amountZatoshi: FfiConverterUInt64.read(from: &buf), 
+                scriptPubkey: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ZecUtxoData, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.txid, into: &buf)
+        FfiConverterUInt32.write(value.vout, into: &buf)
+        FfiConverterUInt64.write(value.amountZatoshi, into: &buf)
+        FfiConverterData.write(value.scriptPubkey, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeZecUtxoData_lift(_ buf: RustBuffer) throws -> ZecUtxoData {
+    return try FfiConverterTypeZecUtxoData.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeZecUtxoData_lower(_ value: ZecUtxoData) -> RustBuffer {
+    return FfiConverterTypeZecUtxoData.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
@@ -765,6 +847,8 @@ public enum Chain {
     case avalanche
     case solana
     case solanaDevnet
+    case zcash
+    case zcashTestnet
     case sepolia
     case polygonAmoy
 }
@@ -802,9 +886,13 @@ public struct FfiConverterTypeChain: FfiConverterRustBuffer {
         
         case 11: return .solanaDevnet
         
-        case 12: return .sepolia
+        case 12: return .zcash
         
-        case 13: return .polygonAmoy
+        case 13: return .zcashTestnet
+        
+        case 14: return .sepolia
+        
+        case 15: return .polygonAmoy
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -858,12 +946,20 @@ public struct FfiConverterTypeChain: FfiConverterRustBuffer {
             writeInt(&buf, Int32(11))
         
         
-        case .sepolia:
+        case .zcash:
             writeInt(&buf, Int32(12))
         
         
-        case .polygonAmoy:
+        case .zcashTestnet:
             writeInt(&buf, Int32(13))
+        
+        
+        case .sepolia:
+            writeInt(&buf, Int32(14))
+        
+        
+        case .polygonAmoy:
+            writeInt(&buf, Int32(15))
         
         }
     }
@@ -1070,6 +1166,31 @@ fileprivate struct FfiConverterSequenceTypeUtxoData: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeUtxoData.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeZecUtxoData: FfiConverterRustBuffer {
+    typealias SwiftType = [ZecUtxoData]
+
+    public static func write(_ value: [ZecUtxoData], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeZecUtxoData.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ZecUtxoData] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ZecUtxoData]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeZecUtxoData.read(from: &buf))
         }
         return seq
     }
@@ -1326,6 +1447,25 @@ public func signSplTransfer(seed: Data, account: UInt32, toAddress: String, mint
 })
 }
 /**
+ * Sign a Zcash transparent P2PKH transaction (returns serialized signed tx bytes)
+ */
+public func signZecTransaction(seed: Data, account: UInt32, index: UInt32, utxos: [ZecUtxoData], recipientAddress: String, amountZatoshi: UInt64, changeAddress: String, feeRateZatByte: UInt64, expiryHeight: UInt32, isTestnet: Bool)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_zec_transaction(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterUInt32.lower(index),
+        FfiConverterSequenceTypeZecUtxoData.lower(utxos),
+        FfiConverterString.lower(recipientAddress),
+        FfiConverterUInt64.lower(amountZatoshi),
+        FfiConverterString.lower(changeAddress),
+        FfiConverterUInt64.lower(feeRateZatByte),
+        FfiConverterUInt32.lower(expiryHeight),
+        FfiConverterBool.lower(isTestnet),$0
+    )
+})
+}
+/**
  * Validate an address for a given chain
  */
 public func validateAddress(address: String, chain: Chain)throws  -> Bool {
@@ -1417,6 +1557,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_sign_spl_transfer() != 54905) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wallet_core_checksum_func_sign_zec_transaction() != 21757) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_validate_address() != 57593) {

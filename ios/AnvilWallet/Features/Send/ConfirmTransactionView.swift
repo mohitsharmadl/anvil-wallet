@@ -319,6 +319,7 @@ struct ConfirmTransactionView: View {
             // Bottom buttons
             VStack(spacing: 12) {
                 Button {
+                    Haptic.impact(.medium)
                     Task {
                         await signAndSend()
                     }
@@ -327,6 +328,8 @@ struct ConfirmTransactionView: View {
                 }
                 .buttonStyle(PrimaryButtonStyle(isEnabled: !isSimulating && simulationError == nil && riskAssessment?.overallLevel != .danger))
                 .disabled(isSimulating || simulationError != nil || isSigning || riskAssessment?.overallLevel == .danger)
+                .accessibilityLabel("Confirm and send transaction")
+                .accessibilityHint(isSimulating ? "Waiting for fee estimation" : "Double tap to sign and broadcast")
 
                 Button {
                     router.sendPath.removeLast()
@@ -334,7 +337,9 @@ struct ConfirmTransactionView: View {
                     Text("Cancel")
                         .font(.headline)
                         .foregroundColor(.textSecondary)
+                        .frame(minHeight: 44)
                 }
+                .accessibilityLabel("Cancel transaction")
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
@@ -527,6 +532,12 @@ struct ConfirmTransactionView: View {
                 fetchedBtcFeeRates = feeRates
                 fetchedBtcUtxos = selected
                 fetchedBtcAmountSat = amountSat
+
+            case .zcash:
+                // Zcash send not yet supported from this view
+                simulationError = "Zcash send coming soon"
+                isSimulating = false
+                return
             }
 
             isSimulating = false
@@ -688,6 +699,9 @@ struct ConfirmTransactionView: View {
                     apiUrl: chain.activeRpcUrl,
                     txHex: txHexStr
                 )
+
+            case .zcash:
+                throw AppWalletError.signingFailed
             }
 
             // Record the transaction locally so it appears immediately in ActivityView
@@ -711,6 +725,7 @@ struct ConfirmTransactionView: View {
 
             await MainActor.run {
                 isSigning = false
+                Haptic.success()
                 router.sendPath.append(
                     AppRouter.SendDestination.transactionResult(txHash: txHash, success: true, chain: transaction.chain, recipientAddress: transaction.to)
                 )
@@ -728,6 +743,7 @@ struct ConfirmTransactionView: View {
             await MainActor.run {
                 isSigning = false
                 simulationError = error.localizedDescription
+                Haptic.error()
             }
         }
     }
@@ -897,6 +913,8 @@ private struct DetailRow: View {
                 .foregroundColor(valueColor)
                 .monospacedDigit()
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 

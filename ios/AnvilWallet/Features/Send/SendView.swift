@@ -75,6 +75,11 @@ struct SendView: View {
                             .background(Color.backgroundCard)
                             .cornerRadius(12)
                         }
+                        .frame(minHeight: 44)
+                        .accessibilityLabel(selectedToken != nil
+                            ? "Selected token: \(selectedToken!.symbol), balance: \(selectedToken!.formattedBalance)"
+                            : "Select token")
+                        .accessibilityHint("Double tap to choose a token")
                     }
                     .padding(.horizontal, 20)
 
@@ -90,29 +95,40 @@ struct SendView: View {
                                 .foregroundColor(.textPrimary)
                                 .autocapitalization(.none)
                                 .autocorrectionDisabled()
+                                .accessibilityLabel("Recipient address")
 
                             Button {
                                 showAddressBookPicker = true
                             } label: {
                                 Image(systemName: "person.crop.rectangle.stack")
                                     .foregroundColor(.accentGreen)
+                                    .frame(minWidth: 44, minHeight: 44)
                             }
+                            .accessibilityLabel("Address book")
+                            .accessibilityHint("Double tap to select from saved addresses")
 
                             Button {
                                 showQRScanner = true
                             } label: {
                                 Image(systemName: "qrcode.viewfinder")
                                     .foregroundColor(.accentGreen)
+                                    .frame(minWidth: 44, minHeight: 44)
                             }
+                            .accessibilityLabel("Scan QR code")
+                            .accessibilityHint("Double tap to scan a QR code")
 
                             Button {
                                 if let clipboard = UIPasteboard.general.string {
                                     recipientAddress = clipboard
+                                    Haptic.impact(.light)
                                 }
                             } label: {
                                 Image(systemName: "doc.on.clipboard")
                                     .foregroundColor(.accentGreen)
+                                    .frame(minWidth: 44, minHeight: 44)
                             }
+                            .accessibilityLabel("Paste from clipboard")
+                            .accessibilityHint("Double tap to paste address from clipboard")
                         }
                         .padding(14)
                         .background(Color.backgroundCard)
@@ -150,6 +166,7 @@ struct SendView: View {
 
                                 Button("Max") {
                                     amount = token.formattedBalance
+                                    Haptic.impact(.light)
                                 }
                                 .font(.caption.bold())
                                 .foregroundColor(.accentGreen)
@@ -157,6 +174,9 @@ struct SendView: View {
                                 .padding(.vertical, 6)
                                 .background(Color.accentGreen.opacity(0.1))
                                 .cornerRadius(8)
+                                .frame(minHeight: 44)
+                                .accessibilityLabel("Use maximum balance")
+                                .accessibilityHint("Double tap to set amount to full \(token.symbol) balance")
                             }
                         }
                         .padding(14)
@@ -179,6 +199,7 @@ struct SendView: View {
                             .font(.caption)
                             .foregroundColor(.error)
                             .padding(.horizontal, 20)
+                            .accessibilityLabel("Error: \(errorMessage)")
                     }
 
                     Spacer(minLength: 40)
@@ -190,6 +211,7 @@ struct SendView: View {
                               Decimal(string: amount) != nil,
                               !recipientAddress.isEmpty else {
                             errorMessage = "Please fill in all fields with valid values."
+                            Haptic.error()
                             return
                         }
 
@@ -198,6 +220,7 @@ struct SendView: View {
                             let isValid = (try? validateAddress(address: recipientAddress, chain: rustChain)) ?? false
                             if !isValid {
                                 errorMessage = "Invalid address for \(token.chain.capitalized)"
+                                Haptic.error()
                                 return
                             }
                         }
@@ -212,6 +235,7 @@ struct SendView: View {
                             tokenDecimals: token.decimals,
                             contractAddress: token.contractAddress
                         )
+                        Haptic.impact(.medium)
                         router.sendPath.append(
                             AppRouter.SendDestination.confirmTransaction(transaction: tx)
                         )
@@ -222,6 +246,8 @@ struct SendView: View {
                     .disabled(!isValidInput)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)
+                    .accessibilityLabel("Review transaction")
+                    .accessibilityHint(isValidInput ? "Double tap to review and confirm" : "Fill in all fields to enable")
                 }
                 .padding(.top, 16)
             }

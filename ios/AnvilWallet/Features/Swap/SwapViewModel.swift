@@ -12,7 +12,48 @@ final class SwapViewModel: ObservableObject {
     @Published var error: String?
     @Published var txHash: String?
 
+    /// Selected EVM chain ID, or 0 for Solana.
+    @Published var selectedChainId: UInt64 = 1
+
+    /// Slippage tolerance in basis points.
+    @Published var slippageBps: Int = 50
+
     private let swapService = SwapService.shared
+
+    // MARK: - Slippage Presets
+
+    /// Available slippage presets in basis points.
+    static let slippagePresets: [Int] = [50, 100, 300]
+
+    /// Human-readable label for a slippage preset.
+    static func slippageLabel(bps: Int) -> String {
+        let pct = Double(bps) / 100.0
+        if pct == pct.rounded() {
+            return String(format: "%.0f%%", pct)
+        }
+        return String(format: "%.1f%%", pct)
+    }
+
+    // MARK: - Chain Helpers
+
+    /// The display name for the currently selected chain.
+    var selectedChainName: String {
+        if selectedChainId == 0 { return "Solana" }
+        return SwapService.supportedChains.first { $0.chainId == selectedChainId }?.name ?? "Ethereum"
+    }
+
+    /// Maps the selected chain ID to a ChainModel.id string for filtering tokens.
+    var selectedChainModelId: String {
+        if selectedChainId == 0 { return "solana" }
+        switch selectedChainId {
+        case 1: return "ethereum"
+        case 137: return "polygon"
+        case 42161: return "arbitrum"
+        case 10: return "optimism"
+        case 8453: return "base"
+        default: return "ethereum"
+        }
+    }
 
     // MARK: - Computed
 
@@ -24,10 +65,10 @@ final class SwapViewModel: ObservableObject {
         isLoadingQuote || isExecutingSwap
     }
 
-    /// The chain for the current swap (determined by fromToken).
+    /// The chain for the current swap (determined by selected chain, not fromToken).
     var chain: ChainModel? {
-        guard let chainId = fromToken?.chain else { return nil }
-        return ChainModel.allChains.first { $0.id == chainId }
+        if selectedChainId == 0 { return ChainModel.solana }
+        return ChainModel.allChains.first { $0.evmChainId == selectedChainId }
     }
 
     /// Checks that from and to tokens are on the same chain.
@@ -96,7 +137,8 @@ final class SwapViewModel: ObservableObject {
                 from: fromMint,
                 to: toMint,
                 amount: rawAmountString,
-                chain: chain
+                chain: chain,
+                slippageBps: slippageBps
             )
         } catch {
             self.error = error.localizedDescription
@@ -112,7 +154,7 @@ final class SwapViewModel: ObservableObject {
         return quote.provider != .jupiter
     }
 
-    /// Executes the swap using the current quote.
+    /// Executes the swap: signs the transaction and broadcasts it.
     func executeSwap() async {
         guard let quote else { return }
         guard canExecuteSwap else {

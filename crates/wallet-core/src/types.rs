@@ -14,6 +14,8 @@ pub enum Chain {
     Avalanche,
     Solana,
     SolanaDevnet,
+    Zcash,
+    ZcashTestnet,
     // Testnets
     Sepolia,
     PolygonAmoy,
@@ -35,6 +37,8 @@ impl Chain {
             | Chain::Sepolia
             | Chain::PolygonAmoy => 60,
             Chain::Solana | Chain::SolanaDevnet => 501,
+            Chain::Zcash => 133,
+            Chain::ZcashTestnet => 1,
         }
     }
 
@@ -42,7 +46,7 @@ impl Chain {
     pub fn curve(&self) -> CurveType {
         match self {
             Chain::Solana | Chain::SolanaDevnet => CurveType::Ed25519,
-            _ => CurveType::Secp256k1,
+            _ => CurveType::Secp256k1, // BTC, ETH, ZEC all use secp256k1
         }
     }
 
@@ -60,6 +64,8 @@ impl Chain {
             Chain::Avalanche => "Avalanche C-Chain",
             Chain::Solana => "Solana",
             Chain::SolanaDevnet => "Solana Devnet",
+            Chain::Zcash => "Zcash",
+            Chain::ZcashTestnet => "Zcash Testnet",
             Chain::Sepolia => "Sepolia Testnet",
             Chain::PolygonAmoy => "Polygon Amoy Testnet",
         }
@@ -77,6 +83,7 @@ impl Chain {
             Chain::Bsc => "BNB",
             Chain::Avalanche => "AVAX",
             Chain::Solana | Chain::SolanaDevnet => "SOL",
+            Chain::Zcash | Chain::ZcashTestnet => "ZEC",
         }
     }
 
@@ -84,7 +91,7 @@ impl Chain {
     pub fn is_testnet(&self) -> bool {
         matches!(
             self,
-            Chain::BitcoinTestnet | Chain::Sepolia | Chain::PolygonAmoy | Chain::SolanaDevnet
+            Chain::BitcoinTestnet | Chain::Sepolia | Chain::PolygonAmoy | Chain::SolanaDevnet | Chain::ZcashTestnet
         )
     }
 }

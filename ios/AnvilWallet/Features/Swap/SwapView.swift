@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// SwapView allows users to swap tokens via Jupiter (Solana) or 0x (EVM).
+/// SwapView allows users to swap tokens on supported EVM chains via 0x
+/// and on Solana via Jupiter.
+///
+/// Flow: select chain -> pick from/to tokens -> enter amount -> set slippage ->
+/// get quote -> review rate/impact/gas/sources -> confirm swap -> sign + broadcast.
 struct SwapView: View {
     @EnvironmentObject var walletService: WalletService
     @StateObject private var viewModel = SwapViewModel()
@@ -14,6 +18,14 @@ struct SwapView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Chain selector
+                    chainSelector
+                        .padding(.horizontal, 20)
+
+                    // Slippage presets
+                    slippageSelector
+                        .padding(.horizontal, 20)
+
                     // From token
                     SwapTokenSection(
                         label: "From",
@@ -113,7 +125,7 @@ struct SwapView: View {
                         } label: {
                             Text("Done")
                         }
-                        .buttonStyle(PrimaryButtonStyle(isEnabled: true))
+                        .buttonStyle(.primary)
                         .padding(.horizontal, 20)
                     }
                 }
@@ -136,7 +148,7 @@ struct SwapView: View {
             )
             .sheet(isPresented: $showFromTokenPicker) {
                 SwapTokenPickerSheet(
-                    tokens: walletService.tokens,
+                    tokens: tokensForSelectedChain,
                     selectedToken: $viewModel.fromToken
                 )
             }
@@ -148,7 +160,9 @@ struct SwapView: View {
             }
             .onAppear {
                 if viewModel.fromToken == nil {
-                    viewModel.fromToken = walletService.tokens.first
+                    viewModel.fromToken = walletService.tokens.first(where: {
+                        $0.chain == viewModel.selectedChainModelId
+                    })
                 }
             }
             .onChange(of: viewModel.fromToken) {
@@ -157,15 +171,101 @@ struct SwapView: View {
             .onChange(of: viewModel.toToken) {
                 viewModel.quote = nil
             }
+            .onChange(of: viewModel.selectedChainId) {
+                // Reset tokens when chain changes
+                viewModel.fromToken = walletService.tokens.first(where: {
+                    $0.chain == viewModel.selectedChainModelId
+                })
+                viewModel.toToken = nil
+                viewModel.quote = nil
+                viewModel.error = nil
+            }
         }
     }
 
-    /// Filters tokens to only those on the same chain as the selected from token.
+    // MARK: - Chain Selector
+
+    private var chainSelector: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Chain")
+                .font(.caption.weight(.medium))
+                .foregroundColor(.textTertiary)
+
+            Menu {
+                ForEach(SwapService.supportedChains, id: \.chainId) { chain in
+                    Button(chain.name) {
+                        viewModel.selectedChainId = chain.chainId
+                    }
+                }
+                // Solana option
+                Button("Solana") {
+                    viewModel.selectedChainId = 0  // sentinel for Solana
+                }
+            } label: {
+                HStack {
+                    Text(viewModel.selectedChainName)
+                        .font(.body.bold())
+                        .foregroundColor(.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.textTertiary)
+                }
+                .padding(14)
+                .background(Color.backgroundCard)
+                .cornerRadius(12)
+            }
+        }
+    }
+
+    // MARK: - Slippage Selector
+
+    private var slippageSelector: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Slippage Tolerance")
+                .font(.caption.weight(.medium))
+                .foregroundColor(.textTertiary)
+
+            HStack(spacing: 8) {
+                ForEach(SwapViewModel.slippagePresets, id: \.self) { preset in
+                    Button {
+                        viewModel.slippageBps = preset
+                        viewModel.quote = nil
+                    } label: {
+                        Text(SwapViewModel.slippageLabel(bps: preset))
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(
+                                viewModel.slippageBps == preset
+                                    ? .white
+                                    : .textSecondary
+                            )
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                viewModel.slippageBps == preset
+                                    ? Color.accentGreen
+                                    : Color.backgroundCard
+                            )
+                            .cornerRadius(10)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Tokens available for the selected chain.
+    private var tokensForSelectedChain: [TokenModel] {
+        walletService.tokens.filter { $0.chain == viewModel.selectedChainModelId }
+    }
+
+    /// Filters tokens to only those on the same chain as the selected from token,
+    /// excluding the from token itself.
     private func swappableTokens(excluding token: TokenModel?) -> [TokenModel] {
-        let chainFilter = token?.chain
+        let chainFilter = viewModel.selectedChainModelId
         return walletService.tokens.filter { t in
-            if let chainFilter { return t.chain == chainFilter }
-            return true
+            t.chain == chainFilter && t.id != token?.id
         }
     }
 }
@@ -277,20 +377,29 @@ private struct QuoteDetailsView: View {
                 QuoteRow(label: "Rate", value: exchangeRate)
             }
 
+            if let guaranteedPrice = quote.guaranteedPrice {
+                QuoteRow(label: "Guaranteed Price", value: guaranteedPrice)
+            }
+
             QuoteRow(
                 label: "Price Impact",
                 value: String(format: "%.2f%%", quote.priceImpact),
                 valueColor: quote.priceImpact > 1.0 ? .error : .textSecondary
             )
 
-            QuoteRow(label: "Network Fee", value: "\(quote.estimatedGas) gas")
+            QuoteRow(label: "Estimated Gas", value: "\(quote.estimatedGas)")
 
-            QuoteRow(label: "Anvil Fee", value: String(format: "%.1f%%", quote.fee))
-
-            QuoteRow(
-                label: "Route",
-                value: quote.route.label.isEmpty ? "Direct" : quote.route.label
-            )
+            if let sources = quote.sources, !sources.isEmpty {
+                QuoteRow(
+                    label: "Sources",
+                    value: sources.map { $0.name }.joined(separator: ", ")
+                )
+            } else {
+                QuoteRow(
+                    label: "Route",
+                    value: quote.route.label.isEmpty ? "Direct" : quote.route.label
+                )
+            }
         }
         .padding(14)
         .background(Color.backgroundCard)
@@ -312,6 +421,8 @@ private struct QuoteRow: View {
             Text(value)
                 .font(.caption.monospacedDigit())
                 .foregroundColor(valueColor)
+                .lineLimit(2)
+                .multilineTextAlignment(.trailing)
         }
     }
 }

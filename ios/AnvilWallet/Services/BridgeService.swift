@@ -186,7 +186,7 @@ final class BridgeService: ObservableObject {
 
     // MARK: - Parsing
 
-    private func parseQuoteResponse(data: Data, decimals: Int) throws -> [BridgeRoute] {
+    func parseQuoteResponse(data: Data, decimals: Int) throws -> [BridgeRoute] {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let result = json["result"] as? [String: Any],
               let routesArray = result["routes"] as? [[String: Any]] else {
@@ -220,7 +220,7 @@ final class BridgeService: ObservableObject {
         }
     }
 
-    private func formatAmount(_ amount: Double) -> String {
+    func formatAmount(_ amount: Double) -> String {
         if amount >= 1 {
             return String(format: "%.4f", amount)
         } else if amount > 0 {

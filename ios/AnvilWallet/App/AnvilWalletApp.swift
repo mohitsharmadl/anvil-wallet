@@ -56,6 +56,7 @@ enum AppTheme: String, CaseIterable {
 struct AnvilWalletApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var walletService = WalletService.shared
+    @StateObject private var securityService = SecurityService.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("appTheme") private var appTheme = AppTheme.system
 
@@ -83,46 +84,59 @@ struct AnvilWalletApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(router)
-                .environmentObject(walletService)
-                .preferredColorScheme(appTheme.colorScheme)
-                .onAppear {
-                    router.isOnboarded = walletService.isWalletCreated
-                    // Show security warning sheet if any checks failed
-                    if SecurityBootstrap.securityWarningMessage != nil && !securityWarningDismissed {
-                        showSecurityWarning = true
-                    }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .didTapNotification)) { _ in
-                    // Navigate to wallet tab -> notifications when a notification is tapped
-                    guard router.isOnboarded else { return }
-                    router.selectedTab = .wallet
-                    router.walletPath.append(AppRouter.WalletDestination.notifications)
-                }
-                .sheet(isPresented: $showSecurityWarning) {
-                    if let message = SecurityBootstrap.securityWarningMessage {
-                        SecurityWarningView(message: message) {
-                            securityWarningDismissed = true
-                            showSecurityWarning = false
+            ZStack {
+                ContentView()
+                    .environmentObject(router)
+                    .environmentObject(walletService)
+                    .preferredColorScheme(appTheme.colorScheme)
+                    .onAppear {
+                        router.isOnboarded = walletService.isWalletCreated
+                        // Show security warning sheet if any checks failed
+                        if SecurityBootstrap.securityWarningMessage != nil && !securityWarningDismissed {
+                            showSecurityWarning = true
                         }
-                        .interactiveDismissDisabled() // Force user to tap "I Understand"
                     }
-                }
-                .task {
-                    guard walletService.isWalletCreated else { return }
-                    try? await walletService.refreshBalances()
-                    try? await walletService.refreshPrices()
+                    .onReceive(NotificationCenter.default.publisher(for: .didTapNotification)) { _ in
+                        // Navigate to wallet tab -> notifications when a notification is tapped
+                        guard router.isOnboarded else { return }
+                        router.selectedTab = .wallet
+                        router.walletPath.append(AppRouter.WalletDestination.notifications)
+                    }
+                    .sheet(isPresented: $showSecurityWarning) {
+                        if let message = SecurityBootstrap.securityWarningMessage {
+                            SecurityWarningView(message: message) {
+                                securityWarningDismissed = true
+                                showSecurityWarning = false
+                            }
+                            .interactiveDismissDisabled() // Force user to tap "I Understand"
+                        }
+                    }
+                    .task {
+                        guard walletService.isWalletCreated else { return }
+                        try? await walletService.refreshBalances()
+                        try? await walletService.refreshPrices()
 
-                    // Request notification permissions if wallet exists and not yet asked
-                    await NotificationService.shared.requestPermission()
+                        // Request notification permissions if wallet exists and not yet asked
+                        await NotificationService.shared.requestPermission()
+                    }
+
+                // Screen protection blur overlay for app switcher
+                if securityService.isScreenProtectionActive {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea()
+                        .transition(.opacity)
                 }
+            }
+            .animation(.easeInOut(duration: 0.2), value: securityService.isScreenProtectionActive)
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .background:
                 backgroundedAt = Date()
+                securityService.activateScreenProtection()
             case .active:
+                securityService.deactivateScreenProtection()
                 if let backgroundedAt {
                     let elapsed = Date().timeIntervalSince(backgroundedAt)
                     let interval = autoLockSeconds

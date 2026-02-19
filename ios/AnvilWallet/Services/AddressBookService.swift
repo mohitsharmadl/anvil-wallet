@@ -66,6 +66,8 @@ final class AddressBookService: ObservableObject {
                 return saved.chain == "solana"
             case .bitcoin:
                 return saved.chain == "bitcoin"
+            case .zcash:
+                return saved.chain == "zcash"
             }
         }
     }

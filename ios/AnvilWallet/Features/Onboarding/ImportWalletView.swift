@@ -91,7 +91,7 @@ struct ImportWalletView: View {
                             if let clipboard = UIPasteboard.general.string {
                                 mnemonicInput = clipboard
                                 // Clear clipboard after pasting sensitive mnemonic
-                                ClipboardManager.shared.clearClipboard()
+                                SecurityService.shared.clearClipboard()
                             }
                         }
                         .font(.caption.bold())

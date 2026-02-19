@@ -347,6 +347,11 @@ RustBuffer uniffi_wallet_core_fn_func_sign_sol_transfer(RustBuffer seed, uint32_
 RustBuffer uniffi_wallet_core_fn_func_sign_spl_transfer(RustBuffer seed, uint32_t account, RustBuffer to_address, RustBuffer mint_address, uint64_t amount, uint8_t decimals, RustBuffer recent_blockhash, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ZEC_TRANSACTION
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ZEC_TRANSACTION
+RustBuffer uniffi_wallet_core_fn_func_sign_zec_transaction(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer utxos, RustBuffer recipient_address, uint64_t amount_zatoshi, RustBuffer change_address, uint64_t fee_rate_zat_byte, uint32_t expiry_height, int8_t is_testnet, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_VALIDATE_ADDRESS
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_VALIDATE_ADDRESS
 int8_t uniffi_wallet_core_fn_func_validate_address(RustBuffer address, RustBuffer chain, RustCallStatus *_Nonnull out_status
@@ -748,6 +753,12 @@ uint16_t uniffi_wallet_core_checksum_func_sign_sol_transfer(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SPL_TRANSFER
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SPL_TRANSFER
 uint16_t uniffi_wallet_core_checksum_func_sign_spl_transfer(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ZEC_TRANSACTION
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ZEC_TRANSACTION
+uint16_t uniffi_wallet_core_checksum_func_sign_zec_transaction(void
     
 );
 #endif

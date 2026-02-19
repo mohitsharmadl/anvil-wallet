@@ -105,6 +105,8 @@ final class CustomRPCStore: ObservableObject {
             return await testSolanaConnectivity(url: url)
         case .bitcoin:
             return await testBitcoinConnectivity(url: url)
+        case .zcash:
+            return .failure("Custom RPC not supported for Zcash")
         }
     }
 

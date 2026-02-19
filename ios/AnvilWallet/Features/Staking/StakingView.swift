@@ -136,6 +136,7 @@ struct StakingView: View {
                 await MainActor.run {
                     isStaking = false
                     stakeResult = txHash
+                    Haptic.success()
                 }
             } else {
                 // SOL native staking requires stake account creation + delegation
@@ -143,12 +144,14 @@ struct StakingView: View {
                 await MainActor.run {
                     isStaking = false
                     stakeError = "Solana native staking requires a future update. Use a Solana staking dApp via the browser for now."
+                    Haptic.error()
                 }
             }
         } catch {
             await MainActor.run {
                 isStaking = false
                 stakeError = error.localizedDescription
+                Haptic.error()
             }
         }
     }
@@ -240,6 +243,7 @@ struct StakingView: View {
                         .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
                         .foregroundColor(.textPrimary)
                         .keyboardType(.decimalPad)
+                        .minimumScaleFactor(0.5)
 
                     Spacer()
 
@@ -293,6 +297,7 @@ struct StakingView: View {
             }
 
             Button {
+                Haptic.impact(.medium)
                 showConfirmation = true
             } label: {
                 Text("Stake \(option.tokenSymbol)")
@@ -300,6 +305,8 @@ struct StakingView: View {
             .buttonStyle(.primary)
             .disabled(amount.isEmpty || (Double(amount) ?? 0) < option.minAmount)
             .padding(.horizontal, 20)
+            .accessibilityLabel("Stake \(option.tokenSymbol)")
+            .accessibilityHint("Double tap to confirm staking")
 
             Text(option.description)
                 .font(.caption)
@@ -371,6 +378,10 @@ private struct StakingOptionCard: View {
             .cornerRadius(14)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(option.protocol_) \(option.tokenSymbol) staking, \(String(format: "%.2f", option.apy)) percent APY, balance: \(String(format: "%.4f", balance)) \(option.tokenSymbol)")
+        .accessibilityHint("Double tap to select this staking option")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var chainColor: Color {

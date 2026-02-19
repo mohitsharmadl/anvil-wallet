@@ -182,7 +182,7 @@ struct NFTDetailView: View {
                     .font(.subheadline.monospaced())
                     .foregroundColor(.textPrimary)
                 Button {
-                    ClipboardManager.shared.copyToClipboard(nft.contractAddress)
+                    SecurityService.shared.copyWithAutoClear(nft.contractAddress)
                     copiedAddress = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         copiedAddress = false

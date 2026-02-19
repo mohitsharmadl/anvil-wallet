@@ -1,0 +1,17 @@
+[package]
+name = "chain-zec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+k256 = { workspace = true }
+sha2 = { workspace = true }
+ripemd = { workspace = true }
+hex = { workspace = true }
+bs58 = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+blake2b_simd = "1"
+
+[dev-dependencies]
