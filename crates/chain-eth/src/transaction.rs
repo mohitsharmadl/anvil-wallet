@@ -188,6 +188,32 @@ pub fn sign_message(
     Ok(sig)
 }
 
+/// Signs a raw 32-byte hash without any prefix (no EIP-191).
+///
+/// Used for EIP-712 typed data signing where the caller has already computed
+/// the final hash as `keccak256("\x19\x01" || domainSeparator || structHash)`.
+///
+/// Returns the 65-byte signature (r[32] + s[32] + v[1]) where v is 27 or 28.
+pub fn sign_raw_hash(
+    hash: &[u8; 32],
+    private_key: &[u8; 32],
+) -> Result<Vec<u8>, EthError> {
+    let mut key_bytes = *private_key;
+    let signing_key = SigningKey::from_bytes((&key_bytes).into())
+        .map_err(|e| EthError::InvalidPrivateKey(e.to_string()))?;
+    key_bytes.zeroize();
+
+    let (signature, recovery_id): (Signature, RecoveryId) = signing_key
+        .sign_prehash(hash.as_slice())
+        .map_err(|e| EthError::SigningError(e.to_string()))?;
+
+    let mut sig = Vec::with_capacity(65);
+    sig.extend_from_slice(&signature.r().to_bytes());
+    sig.extend_from_slice(&signature.s().to_bytes());
+    sig.push(recovery_id.is_y_odd() as u8 + 27); // v = 27 or 28
+    Ok(sig)
+}
+
 /// Encodes the unsigned EIP-1559 transaction as `0x02 || rlp(fields)`.
 ///
 /// The RLP-encoded fields are:
@@ -545,6 +571,38 @@ mod tests {
             65_000,
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn sign_raw_hash_produces_65_bytes() {
+        let hash = [0xAAu8; 32];
+        let sig = sign_raw_hash(&hash, &TEST_PRIVKEY).unwrap();
+        assert_eq!(sig.len(), 65);
+        assert!(sig[64] == 27 || sig[64] == 28);
+    }
+
+    #[test]
+    fn sign_raw_hash_deterministic() {
+        let hash = [0xBBu8; 32];
+        let sig1 = sign_raw_hash(&hash, &TEST_PRIVKEY).unwrap();
+        let sig2 = sign_raw_hash(&hash, &TEST_PRIVKEY).unwrap();
+        assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn sign_raw_hash_differs_from_sign_message() {
+        // sign_message adds EIP-191 prefix, sign_raw_hash does not
+        let data = [0xCCu8; 32];
+        let raw_sig = sign_raw_hash(&data, &TEST_PRIVKEY).unwrap();
+        let personal_sig = sign_message(&data, &TEST_PRIVKEY).unwrap();
+        assert_ne!(raw_sig, personal_sig);
+    }
+
+    #[test]
+    fn sign_raw_hash_invalid_key() {
+        let hash = [0xAAu8; 32];
+        let bad_key = [0u8; 32];
+        assert!(sign_raw_hash(&hash, &bad_key).is_err());
     }
 
     #[test]

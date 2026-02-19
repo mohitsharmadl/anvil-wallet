@@ -54,10 +54,10 @@
 ### Layer 10: Certificate Pinning
 - Native `URLSessionDelegate` with SPKI SHA-256 pin validation
 - Constructs proper SubjectPublicKeyInfo DER for RSA and ECDSA keys before hashing
-- **Current status: framework wired, pin hashes NOT yet configured**
-- All hosts currently fall through to default OS TLS validation
-- To activate: add base64 SPKI hashes to `CertificatePinner.pinnedHashes` per hostname
-- Include 2+ pins per host (primary + backup) to avoid lockout on cert rotation
+- 12 hosts pinned with dual SPKI hashes (leaf certificate + intermediate CA) per host
+- Covers all RPC endpoints, block explorers, and price APIs
+- Fail-closed: any host not in the pinning table is rejected via `.cancelAuthenticationChallenge`
+- Handles both RSA (dynamic ASN.1 header) and ECDSA (P-256/P-384) key types
 
 ### Layer 11: Memory Zeroization
 - Rust: `zeroize` crate with `ZeroizeOnDrop` derive
@@ -73,11 +73,11 @@
 ### Layer 13: App Binary Integrity
 - Mach-O header verification (MH_PIE flag)
 - Executable SHA-256 hash validation (CryptoKit)
-- **Current status: framework wired, expected hash NOT yet injected**
-- Hash auto-passes when `expectedExecutableHash` is empty (current state)
-- Build-time script needed to compute hash and write it as a constant
-- DEBUG builds always skip hash check to avoid false positives
-- Release builds exit(0) on integrity failure (once hash is configured)
+- Build script (`build-scripts/inject-binary-hash.sh`) runs as an Xcode Build Phase
+- Release builds: computes SHA-256 of the compiled executable and injects it as a Swift constant
+- Runtime check compares the running binary's hash against the injected expected hash
+- DEBUG builds skip hash check to avoid false positives during development
+- Release builds exit(0) on integrity failure (hash mismatch)
 
 ### Layer 14: Transaction Simulation
 - Pre-sign simulation via `eth_call` for EVM transactions
@@ -124,7 +124,7 @@ Both the password-derived AES key AND the Secure Enclave key must be compromised
 |--------|-----------|
 | Device theft | Biometric + password + device encryption |
 | Jailbreak | 6-layer detection, exit on detection |
-| MITM on RPC | Native SPKI pinning framework wired (pin hashes not yet configured — currently uses default TLS) |
+| MITM on RPC | Native SPKI pinning with 12 hosts pinned (dual leaf + CA hashes), fail-closed for unlisted hosts |
 | Memory dump | Zeroize all sensitive data on drop |
 | Screenshot/recording | Anti-screenshot overlay + blur |
 | Debugger attachment | ptrace + sysctl checks |

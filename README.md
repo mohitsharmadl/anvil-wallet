@@ -214,7 +214,9 @@ After building:
 1. Copy the secrets template and fill in your keys:
    ```bash
    cp ios/Secrets.xcconfig.example ios/Secrets.xcconfig
-   # Edit ios/Secrets.xcconfig — set REOWN_PROJECT_ID (free from https://cloud.reown.com)
+   # Edit ios/Secrets.xcconfig:
+   #   REOWN_PROJECT_ID — free from https://cloud.reown.com
+   #   ETHERSCAN_API_KEY — free from https://etherscan.io/apis (enables EVM tx history)
    ```
 2. Generate the Xcode project:
    ```bash

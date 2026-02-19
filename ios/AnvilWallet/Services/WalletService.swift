@@ -562,6 +562,52 @@ final class WalletService: ObservableObject {
         return [UInt8](signature)
     }
 
+    // MARK: - Raw Hash Signing (EIP-712)
+
+    /// Signs a raw 32-byte hash without EIP-191 prefixing.
+    /// Used for EIP-712 typed data signing where the caller computes the final hash.
+    ///
+    /// - Parameter hash: The 32-byte hash to sign directly
+    /// - Returns: 65-byte signature (r + s + v)
+    func signRawHash(_ hash: [UInt8]) async throws -> [UInt8] {
+        guard hash.count == 32 else {
+            throw AppWalletError.signingFailed
+        }
+        guard let pwBytes = sessionPasswordBytes else {
+            throw AppWalletError.passwordRequired
+        }
+        let password = String(decoding: pwBytes, as: UTF8.self)
+
+        let authenticated = try await biometric.authenticate(
+            reason: "Authenticate to sign typed data"
+        )
+        guard authenticated else {
+            throw AppWalletError.authenticationFailed
+        }
+
+        guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
+            throw AppWalletError.seedNotFound
+        }
+
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let (salt, ciphertext) = try unpackSaltAndCiphertext(from: packed)
+        var seedBytes = try decryptSeedWithPassword(
+            ciphertext: ciphertext,
+            salt: salt,
+            password: password
+        )
+        defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
+
+        let signature = try signEthRawHash(
+            seed: seedBytes,
+            account: 0,
+            index: 0,
+            hash: Data(hash)
+        )
+
+        return [UInt8](signature)
+    }
+
     // MARK: - Mnemonic Encryption
 
     /// Encrypts and stores the mnemonic string using the same double-encryption pipeline as the seed.

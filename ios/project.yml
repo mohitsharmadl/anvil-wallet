@@ -45,6 +45,7 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_EtherscanApiKey: "$(ETHERSCAN_API_KEY)"
         INFOPLIST_KEY_ReownProjectID: "$(REOWN_PROJECT_ID)"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true

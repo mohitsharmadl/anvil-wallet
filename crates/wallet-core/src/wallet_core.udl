@@ -143,6 +143,51 @@ namespace wallet_core {
     [Throws=WalletError]
     bytes recover_eth_pubkey(bytes signature, bytes message_hash);
 
+    /// Sign a raw 32-byte hash (no EIP-191 prefix). Used for EIP-712.
+    [Throws=WalletError]
+    bytes sign_eth_raw_hash(
+        bytes seed,
+        u32 account,
+        u32 index,
+        bytes hash
+    );
+
+    /// Sign an ERC-20 token transfer (returns raw signed tx bytes)
+    [Throws=WalletError]
+    bytes sign_erc20_transfer(
+        bytes seed,
+        string passphrase,
+        u32 account,
+        u32 index,
+        u64 chain_id,
+        u64 nonce,
+        string token_contract,
+        string to_address,
+        string amount_hex,
+        string max_priority_fee_hex,
+        string max_fee_hex,
+        u64 gas_limit
+    );
+
+    /// Sign an SPL token transfer (returns serialized signed tx bytes)
+    [Throws=WalletError]
+    bytes sign_spl_transfer(
+        bytes seed,
+        u32 account,
+        string to_address,
+        string mint_address,
+        u64 amount,
+        u8 decimals,
+        bytes recent_blockhash
+    );
+
+    /// Derive the associated token account address for a wallet + mint pair
+    [Throws=WalletError]
+    string derive_sol_token_address(
+        string wallet_address,
+        string mint_address
+    );
+
     /// Sign a Bitcoin P2WPKH transaction (returns serialized signed tx bytes)
     [Throws=WalletError]
     bytes sign_btc_transaction(

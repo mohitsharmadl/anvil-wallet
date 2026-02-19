@@ -10,9 +10,11 @@ final class TransactionHistoryService {
     static let shared = TransactionHistoryService()
 
     private let session: URLSession
-    // Store the Etherscan API key in the iOS Keychain or a build-time environment
-    // variable — never commit it as a string literal. Empty = EVM tx history disabled.
-    private let etherscanApiKey = ""
+    // Etherscan API key injected via Secrets.xcconfig → Info.plist at build time.
+    // Empty = EVM tx history silently disabled.
+    private let etherscanApiKey: String = {
+        Bundle.main.object(forInfoDictionaryKey: "EtherscanApiKey") as? String ?? ""
+    }()
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -140,7 +142,7 @@ final class TransactionHistoryService {
         }
     }
 
-    // MARK: - Solana (RPC getSignaturesForAddress)
+    // MARK: - Solana (RPC getSignaturesForAddress + getTransaction)
 
     private func fetchSolanaTransactions(address: String, rpcUrl: String) async throws -> [TransactionModel] {
         let rpc = RPCService.shared
@@ -152,14 +154,13 @@ final class TransactionHistoryService {
             let memo: String?
         }
 
-        // AnyCodable to handle nullable error field
         struct AnyCodable: Decodable {
             init(from decoder: Decoder) throws {
                 _ = try decoder.singleValueContainer()
             }
         }
 
-        let results: [SigInfo] = try await rpc.call(
+        let signatures: [SigInfo] = try await rpc.call(
             url: rpcUrl,
             method: "getSignaturesForAddress",
             params: [
@@ -168,22 +169,149 @@ final class TransactionHistoryService {
             ]
         )
 
-        return results.map { sig in
-            let timestamp: Date
-            if let blockTime = sig.blockTime {
-                timestamp = Date(timeIntervalSince1970: TimeInterval(blockTime))
-            } else {
-                timestamp = Date()
+        // Fetch full transaction details in batches of 10
+        var transactions: [TransactionModel] = []
+        let batchSize = 10
+
+        for startIndex in stride(from: 0, to: signatures.count, by: batchSize) {
+            let endIndex = min(startIndex + batchSize, signatures.count)
+            let batch = Array(signatures[startIndex..<endIndex])
+
+            await withTaskGroup(of: TransactionModel?.self) { group in
+                for sig in batch {
+                    group.addTask { [self] in
+                        await self.fetchSolanaTransactionDetail(
+                            signature: sig.signature,
+                            blockTime: sig.blockTime,
+                            hasError: sig.err != nil,
+                            userAddress: address,
+                            rpcUrl: rpcUrl
+                        )
+                    }
+                }
+                for await tx in group {
+                    if let tx { transactions.append(tx) }
+                }
+            }
+        }
+
+        return transactions.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    /// Fetches a single Solana transaction's details via `getTransaction` (jsonParsed).
+    private func fetchSolanaTransactionDetail(
+        signature: String,
+        blockTime: Int?,
+        hasError: Bool,
+        userAddress: String,
+        rpcUrl: String
+    ) async -> TransactionModel? {
+        struct SolTxResponse: Decodable {
+            let transaction: SolTransaction?
+            let meta: SolMeta?
+
+            struct SolTransaction: Decodable {
+                let message: SolMessage
+            }
+            struct SolMessage: Decodable {
+                let instructions: [SolInstruction]
+            }
+            struct SolInstruction: Decodable {
+                let programId: String?
+                let parsed: SolParsed?
+
+                enum CodingKeys: String, CodingKey {
+                    case programId, parsed
+                }
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    programId = try container.decodeIfPresent(String.self, forKey: .programId)
+                    // parsed may be an object or absent; silently nil on shape mismatch
+                    parsed = try? container.decodeIfPresent(SolParsed.self, forKey: .parsed)
+                }
+            }
+            struct SolParsed: Decodable {
+                let type: String?
+                let info: SolTransferInfo?
+            }
+            struct SolTransferInfo: Decodable {
+                let source: String?
+                let destination: String?
+                let lamports: UInt64?
+            }
+            struct SolMeta: Decodable {
+                let fee: UInt64?
+            }
+        }
+
+        let timestamp: Date
+        if let blockTime {
+            timestamp = Date(timeIntervalSince1970: TimeInterval(blockTime))
+        } else {
+            timestamp = Date()
+        }
+
+        do {
+            let result: SolTxResponse = try await RPCService.shared.call(
+                url: rpcUrl,
+                method: "getTransaction",
+                params: [
+                    .string(signature),
+                    .dictionary([
+                        "encoding": .string("jsonParsed"),
+                        "maxSupportedTransactionVersion": .int(0)
+                    ])
+                ]
+            )
+
+            // Find system program transfer instruction
+            let systemProgramId = "11111111111111111111111111111111"
+            let transferInstruction = result.transaction?.message.instructions.first { instr in
+                instr.programId == systemProgramId && instr.parsed?.type == "transfer"
             }
 
+            let fee = Double(result.meta?.fee ?? 0) / 1_000_000_000.0
+
+            if let info = transferInstruction?.parsed?.info,
+               let lamports = info.lamports {
+                let solAmount = Double(lamports) / 1_000_000_000.0
+                return TransactionModel(
+                    hash: signature,
+                    chain: "solana",
+                    from: info.source ?? userAddress,
+                    to: info.destination ?? "unknown",
+                    amount: String(format: "%.9f", solAmount),
+                    fee: String(format: "%.9f", fee),
+                    status: hasError ? .failed : .confirmed,
+                    timestamp: timestamp,
+                    tokenSymbol: "SOL",
+                    tokenDecimals: 9
+                )
+            } else {
+                // Non-transfer tx (token swap, program call, etc.)
+                return TransactionModel(
+                    hash: signature,
+                    chain: "solana",
+                    from: userAddress,
+                    to: "unknown",
+                    amount: "0",
+                    fee: String(format: "%.9f", fee),
+                    status: hasError ? .failed : .confirmed,
+                    timestamp: timestamp,
+                    tokenSymbol: "SOL",
+                    tokenDecimals: 9
+                )
+            }
+        } catch {
+            // Fallback if getTransaction fails — show basic entry
             return TransactionModel(
-                hash: sig.signature,
+                hash: signature,
                 chain: "solana",
-                from: address,
-                to: "View on Explorer",
+                from: userAddress,
+                to: "unknown",
                 amount: "—",
                 fee: "0",
-                status: sig.err == nil ? .confirmed : .failed,
+                status: hasError ? .failed : .confirmed,
                 timestamp: timestamp,
                 tokenSymbol: "SOL",
                 tokenDecimals: 9

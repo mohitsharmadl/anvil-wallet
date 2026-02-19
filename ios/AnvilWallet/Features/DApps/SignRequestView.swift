@@ -33,7 +33,9 @@ struct SignRequestView: View {
                         .font(.headline)
                         .foregroundColor(.textPrimary)
 
-                    Text("requests a signature")
+                    Text(request.method == "eth_sendTransaction"
+                         ? "requests a transaction"
+                         : "requests a signature")
                         .font(.body)
                         .foregroundColor(.textSecondary)
                 }
@@ -44,28 +46,7 @@ struct SignRequestView: View {
                     DetailItem(label: "Method", value: request.method)
                     DetailItem(label: "Chain", value: request.chain)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Data")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.textSecondary)
-
-                        ScrollView {
-                            if let paramsString = String(data: request.params, encoding: .utf8) {
-                                Text(paramsString)
-                                    .font(.caption.monospaced())
-                                    .foregroundColor(.textPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            } else {
-                                Text("\(request.params.count) bytes")
-                                    .font(.caption)
-                                    .foregroundColor(.textTertiary)
-                            }
-                        }
-                        .frame(maxHeight: 200)
-                        .padding(12)
-                        .background(Color.backgroundElevated)
-                        .cornerRadius(8)
-                    }
+                    requestDataView
                 }
                 .padding()
                 .background(Color.backgroundCard)
@@ -110,7 +91,7 @@ struct SignRequestView: View {
                             isProcessing = false
                         }
                     } label: {
-                        Text("Sign")
+                        Text(request.method == "eth_sendTransaction" ? "Sign & Send" : "Sign")
                     }
                     .buttonStyle(.primary)
                     .disabled(isProcessing)
@@ -137,6 +118,164 @@ struct SignRequestView: View {
             .navigationBarTitleDisplayMode(.inline)
             .loadingOverlay(isLoading: isProcessing, message: "Signing...")
         }
+    }
+}
+
+// MARK: - Method-specific data display
+
+extension SignRequestView {
+
+    /// Returns a view appropriate for the request method.
+    @ViewBuilder
+    var requestDataView: some View {
+        switch request.method {
+        case "eth_sendTransaction":
+            transactionDataView
+        case "eth_signTypedData_v4":
+            typedDataView
+        default:
+            rawDataView
+        }
+    }
+
+    private var transactionDataView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let tx = parsedTransaction {
+                DetailItem(label: "To", value: tx.to)
+                if let value = tx.value, value != "0x0" {
+                    DetailItem(label: "Value", value: value)
+                }
+                if let data = tx.data, !data.isEmpty, data != "0x" {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Calldata")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.textSecondary)
+                        Text(data.prefix(200) + (data.count > 200 ? "..." : ""))
+                            .font(.caption.monospaced())
+                            .foregroundColor(.textPrimary)
+                    }
+                }
+                if let gas = tx.gas {
+                    DetailItem(label: "Gas Limit", value: gas)
+                }
+            } else {
+                rawDataView
+            }
+        }
+    }
+
+    private var typedDataView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let info = parsedTypedDataInfo {
+                if let domain = info.domain {
+                    DetailItem(label: "Domain", value: domain)
+                }
+                DetailItem(label: "Type", value: info.primaryType)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Message")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.textSecondary)
+                    ScrollView {
+                        Text(info.messagePreview)
+                            .font(.caption.monospaced())
+                            .foregroundColor(.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 200)
+                    .padding(12)
+                    .background(Color.backgroundElevated)
+                    .cornerRadius(8)
+                }
+            } else {
+                rawDataView
+            }
+        }
+    }
+
+    private var rawDataView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Data")
+                .font(.subheadline.bold())
+                .foregroundColor(.textSecondary)
+            ScrollView {
+                if let paramsString = String(data: request.params, encoding: .utf8) {
+                    Text(paramsString)
+                        .font(.caption.monospaced())
+                        .foregroundColor(.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text("\(request.params.count) bytes")
+                        .font(.caption)
+                        .foregroundColor(.textTertiary)
+                }
+            }
+            .frame(maxHeight: 200)
+            .padding(12)
+            .background(Color.backgroundElevated)
+            .cornerRadius(8)
+        }
+    }
+
+    // MARK: - Parsing helpers
+
+    private struct ParsedTransaction {
+        let to: String
+        let value: String?
+        let data: String?
+        let gas: String?
+    }
+
+    private var parsedTransaction: ParsedTransaction? {
+        guard let jsonArray = try? JSONSerialization.jsonObject(with: request.params) as? [[String: Any]],
+              let tx = jsonArray.first,
+              let to = tx["to"] as? String else {
+            return nil
+        }
+        return ParsedTransaction(
+            to: to,
+            value: tx["value"] as? String,
+            data: tx["data"] as? String,
+            gas: (tx["gas"] as? String) ?? (tx["gasLimit"] as? String)
+        )
+    }
+
+    private struct TypedDataInfo {
+        let domain: String?
+        let primaryType: String
+        let messagePreview: String
+    }
+
+    private var parsedTypedDataInfo: TypedDataInfo? {
+        // Params: [address, typedDataJSON]
+        guard let array = try? JSONDecoder().decode([String].self, from: request.params),
+              array.count >= 2,
+              let tdData = array[1].data(using: .utf8),
+              let td = try? JSONSerialization.jsonObject(with: tdData) as? [String: Any],
+              let primaryType = td["primaryType"] as? String else {
+            return nil
+        }
+
+        var domainStr: String?
+        if let domain = td["domain"] as? [String: Any] {
+            let parts = [
+                domain["name"] as? String,
+                domain["version"].map { "v\($0)" },
+            ].compactMap { $0 }
+            if !parts.isEmpty { domainStr = parts.joined(separator: " ") }
+        }
+
+        var messagePreview = ""
+        if let message = td["message"] as? [String: Any],
+           let msgData = try? JSONSerialization.data(withJSONObject: message, options: [.prettyPrinted, .sortedKeys]),
+           let msgStr = String(data: msgData, encoding: .utf8) {
+            messagePreview = msgStr
+        }
+
+        return TypedDataInfo(
+            domain: domainStr,
+            primaryType: primaryType,
+            messagePreview: messagePreview
+        )
     }
 }
 

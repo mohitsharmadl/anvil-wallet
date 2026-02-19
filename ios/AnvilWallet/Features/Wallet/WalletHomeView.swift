@@ -7,6 +7,7 @@ struct WalletHomeView: View {
     @EnvironmentObject var router: AppRouter
 
     @State private var isRefreshing = false
+    @State private var showSwap = false
 
     private var totalBalanceUsd: Double {
         walletService.tokens.reduce(0) { $0 + $1.balanceUsd }
@@ -30,7 +31,7 @@ struct WalletHomeView: View {
                             router.walletPath.append(AppRouter.WalletDestination.chainPicker)
                         }
                         QuickActionButton(icon: "arrow.left.arrow.right", label: "Swap") {
-                            // TODO: Implement swap feature
+                            showSwap = true
                         }
                         QuickActionButton(icon: "clock.arrow.circlepath", label: "Activity") {
                             router.walletPath.append(AppRouter.WalletDestination.activity)
@@ -54,6 +55,9 @@ struct WalletHomeView: View {
                             .foregroundColor(.textSecondary)
                     }
                 }
+            }
+            .sheet(isPresented: $showSwap) {
+                SwapView()
             }
             .refreshable {
                 await refreshData()

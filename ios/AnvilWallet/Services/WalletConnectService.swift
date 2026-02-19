@@ -26,6 +26,7 @@ final class NativeWebSocket: WebSocketConnecting {
 
     private var task: URLSessionWebSocketTask?
     private let session: URLSession
+    private var didConnect = false
 
     init(url: URL) {
         self.request = URLRequest(url: url)
@@ -35,8 +36,7 @@ final class NativeWebSocket: WebSocketConnecting {
     func connect() {
         task = session.webSocketTask(with: request)
         task?.resume()
-        isConnected = true
-        onConnect?()
+        didConnect = false
         receiveMessage()
     }
 
@@ -54,18 +54,24 @@ final class NativeWebSocket: WebSocketConnecting {
 
     private func receiveMessage() {
         task?.receive { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let message):
+                if !self.didConnect {
+                    self.didConnect = true
+                    self.isConnected = true
+                    self.onConnect?()
+                }
                 switch message {
                 case .string(let text):
-                    self?.onText?(text)
+                    self.onText?(text)
                 default:
                     break
                 }
-                self?.receiveMessage()
+                self.receiveMessage()
             case .failure(let error):
-                self?.isConnected = false
-                self?.onDisconnect?(error)
+                self.isConnected = false
+                self.onDisconnect?(error)
             }
         }
     }
@@ -97,9 +103,11 @@ struct AnvilCryptoProvider: CryptoProvider {
 ///   - Pairing with dApps via WalletConnect URI
 ///   - Approving/rejecting session proposals
 ///   - personal_sign message signing
+///   - eth_sendTransaction (sign + broadcast EIP-1559 transactions)
+///   - eth_signTypedData_v4 (EIP-712 typed data — pending raw hash FFI)
 ///   - Session management (list, disconnect)
 ///
-/// Future: eth_sendTransaction, eth_signTypedData_v4, Solana signing
+/// Future: Solana signing
 final class WalletConnectService: ObservableObject {
 
     static let shared = WalletConnectService()
@@ -331,7 +339,11 @@ final class WalletConnectService: ObservableObject {
     // MARK: - Request Handling
 
     /// Supported signing methods — only sign methods we actually implement.
-    private static let supportedMethods: Set<String> = ["personal_sign"]
+    private static let supportedMethods: Set<String> = [
+        "personal_sign",
+        "eth_sendTransaction",
+        "eth_signTypedData_v4",
+    ]
 
     /// Approves a pending sign request by signing the message data.
     func approveRequest(_ request: WCSignRequest, walletService: WalletService) async throws {
@@ -360,6 +372,12 @@ final class WalletConnectService: ObservableObject {
             // Sign using the wallet service (requires biometric auth)
             let signature = try await walletService.signMessage(messageBytes)
             responseValue = AnyCodable("0x" + signature.map { String(format: "%02x", $0) }.joined())
+
+        case "eth_sendTransaction":
+            responseValue = try await handleSendTransaction(request, walletService: walletService)
+
+        case "eth_signTypedData_v4":
+            responseValue = try await handleSignTypedData(request, walletService: walletService)
 
         default:
             throw WCError.unsupportedMethod(request.method)
@@ -425,12 +443,476 @@ final class WalletConnectService: ObservableObject {
         return bytes
     }
 
+    // MARK: - eth_sendTransaction
+
+    /// Transaction parameters from a WC eth_sendTransaction request.
+    private struct WCTransactionParams: Decodable {
+        let from: String?
+        let to: String
+        let value: String?
+        let data: String?
+        let gas: String?
+        let gasLimit: String?
+        let gasPrice: String?
+        let maxFeePerGas: String?
+        let maxPriorityFeePerGas: String?
+        let nonce: String?
+    }
+
+    private func parseTransactionParams(from params: Data) -> WCTransactionParams? {
+        guard let array = try? JSONDecoder().decode([WCTransactionParams].self, from: params),
+              let first = array.first else {
+            return nil
+        }
+        return first
+    }
+
+    /// Handles eth_sendTransaction: parse tx, fetch missing params, sign, broadcast.
+    private func handleSendTransaction(
+        _ request: WCSignRequest,
+        walletService: WalletService
+    ) async throws -> AnyCodable {
+        guard let chainId = Self.extractEvmChainId(from: request.chain) else {
+            throw WCError.chainNotSupported(request.chain)
+        }
+        guard let rpcUrl = Self.rpcUrl(forEvmChainId: chainId) else {
+            throw WCError.chainNotSupported("No RPC endpoint for chain \(chainId)")
+        }
+        guard let txParams = parseTransactionParams(from: request.params) else {
+            throw WCError.malformedParams("Invalid eth_sendTransaction params")
+        }
+
+        let rpc = RPCService.shared
+
+        // Nonce: use provided or fetch from network
+        let nonce: UInt64
+        if let n = txParams.nonce, let parsed = Self.hexToUInt64(n) {
+            nonce = parsed
+        } else {
+            guard let from = txParams.from else {
+                throw WCError.malformedParams("Missing 'from' address")
+            }
+            let nonceHex: String = try await rpc.getTransactionCount(rpcUrl: rpcUrl, address: from)
+            guard let parsed = Self.hexToUInt64(nonceHex) else {
+                throw WCError.rpcError("Invalid nonce: \(nonceHex)")
+            }
+            nonce = parsed
+        }
+
+        // Gas limit: use provided or estimate
+        let gasLimit: UInt64
+        if let g = txParams.gas ?? txParams.gasLimit, let parsed = Self.hexToUInt64(g) {
+            gasLimit = parsed
+        } else {
+            let estimated: String = try await rpc.estimateGas(
+                rpcUrl: rpcUrl,
+                from: txParams.from ?? "",
+                to: txParams.to,
+                value: txParams.value ?? "0x0",
+                data: txParams.data
+            )
+            guard let parsed = Self.hexToUInt64(estimated) else {
+                throw WCError.rpcError("Invalid gas estimate: \(estimated)")
+            }
+            gasLimit = parsed + parsed / 5 // 20% buffer
+        }
+
+        // Fee params: EIP-1559 preferred, legacy gasPrice as fallback
+        let maxFeeHex: String
+        let maxPriorityFeeHex: String
+        if let mf = txParams.maxFeePerGas, let mpf = txParams.maxPriorityFeePerGas {
+            maxFeeHex = mf
+            maxPriorityFeeHex = mpf
+        } else if let gp = txParams.gasPrice {
+            maxFeeHex = gp
+            maxPriorityFeeHex = gp
+        } else {
+            let fees = try await rpc.feeHistory(rpcUrl: rpcUrl)
+            maxPriorityFeeHex = fees.priorityFeeHex
+            if let baseFee = Self.hexToUInt64(fees.baseFeeHex),
+               let priority = Self.hexToUInt64(fees.priorityFeeHex) {
+                let maxFee = baseFee * 2 + priority
+                maxFeeHex = "0x" + String(maxFee, radix: 16)
+            } else {
+                maxFeeHex = fees.baseFeeHex
+            }
+        }
+
+        // Build calldata
+        let calldata: Data
+        if let dataHex = txParams.data {
+            let cleaned = dataHex.hasPrefix("0x") ? String(dataHex.dropFirst(2)) : dataHex
+            calldata = Data(strictHexToBytes(cleaned) ?? [])
+        } else {
+            calldata = Data()
+        }
+
+        let ethReq = EthTransactionRequest(
+            chainId: chainId,
+            nonce: nonce,
+            to: txParams.to,
+            valueWeiHex: txParams.value ?? "0x0",
+            data: calldata,
+            maxPriorityFeeHex: maxPriorityFeeHex,
+            maxFeeHex: maxFeeHex,
+            gasLimit: gasLimit
+        )
+
+        // Sign
+        let signedTx = try await walletService.signTransaction(request: .eth(ethReq))
+        let signedTxHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
+
+        // Broadcast and return tx hash
+        let txHash: String = try await rpc.sendRawTransaction(rpcUrl: rpcUrl, signedTx: signedTxHex)
+        return AnyCodable(txHash)
+    }
+
+    // MARK: - eth_signTypedData_v4
+
+    // EIP-712 signing uses sign_eth_raw_hash() FFI which signs a 32-byte hash
+    // directly without applying the EIP-191 "\x19Ethereum Signed Message:\n" prefix.
+
+    /// Parses eth_signTypedData_v4 params: [address, typedDataJSON]
+    private func parseTypedDataParams(from params: Data) -> (address: String, typedData: Data)? {
+        // Common case: params are [String, String] where typedData is a JSON string
+        if let array = try? JSONDecoder().decode([String].self, from: params),
+           array.count >= 2,
+           let typedDataData = array[1].data(using: .utf8) {
+            return (array[0], typedDataData)
+        }
+
+        // Fallback: typedData may be a JSON object instead of a string
+        if let jsonArray = try? JSONSerialization.jsonObject(with: params) as? [Any],
+           jsonArray.count >= 2,
+           let address = jsonArray[0] as? String {
+            if let typedDataStr = jsonArray[1] as? String,
+               let data = typedDataStr.data(using: .utf8) {
+                return (address, data)
+            }
+            if let obj = jsonArray[1] as? [String: Any],
+               let data = try? JSONSerialization.data(withJSONObject: obj) {
+                return (address, data)
+            }
+        }
+
+        return nil
+    }
+
+    /// Handles eth_signTypedData_v4: compute EIP-712 hash and sign.
+    private func handleSignTypedData(
+        _ request: WCSignRequest,
+        walletService: WalletService
+    ) async throws -> AnyCodable {
+        guard let (_, typedDataBytes) = parseTypedDataParams(from: request.params) else {
+            throw WCError.malformedParams("Invalid eth_signTypedData_v4 params")
+        }
+
+        let typedData: EIP712TypedData
+        do {
+            typedData = try JSONDecoder().decode(EIP712TypedData.self, from: typedDataBytes)
+        } catch {
+            throw WCError.malformedParams("Invalid EIP-712 typed data: \(error.localizedDescription)")
+        }
+
+        // Compute EIP-712 hash
+        let domainSeparator = EIP712Hasher.hashStruct(
+            "EIP712Domain", data: typedData.domain, types: typedData.types
+        )
+        let messageHash = EIP712Hasher.hashStruct(
+            typedData.primaryType, data: typedData.message, types: typedData.types
+        )
+
+        // Final hash: keccak256("\x19\x01" || domainSeparator || messageHash)
+        var payload = Data([0x19, 0x01])
+        payload.append(domainSeparator)
+        payload.append(messageHash)
+        let finalHash = keccak256(data: payload)
+
+        let signature = try await walletService.signRawHash([UInt8](finalHash))
+        return AnyCodable("0x" + signature.map { String(format: "%02x", $0) }.joined())
+    }
+
+    // MARK: - EIP-712 Types
+
+    private struct EIP712TypedData: Decodable {
+        let types: [String: [EIP712Field]]
+        let primaryType: String
+        let domain: [String: EIP712Value]
+        let message: [String: EIP712Value]
+    }
+
+    private struct EIP712Field: Decodable {
+        let name: String
+        let type: String
+    }
+
+    /// Flexible JSON value type for decoding EIP-712 domain and message fields.
+    private enum EIP712Value: Decodable {
+        case string(String)
+        case number(Double)
+        case bool(Bool)
+        case object([String: EIP712Value])
+        case array([EIP712Value])
+        case null
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            // Check bool before number — JSON booleans also decode as Double
+            if let b = try? container.decode(Bool.self) {
+                self = .bool(b)
+            } else if let s = try? container.decode(String.self) {
+                self = .string(s)
+            } else if let n = try? container.decode(Double.self) {
+                self = .number(n)
+            } else if let o = try? container.decode([String: EIP712Value].self) {
+                self = .object(o)
+            } else if let a = try? container.decode([EIP712Value].self) {
+                self = .array(a)
+            } else {
+                self = .null
+            }
+        }
+    }
+
+    // MARK: - EIP-712 Hasher
+
+    /// Implements EIP-712 struct hashing per https://eips.ethereum.org/EIPS/eip-712
+    private enum EIP712Hasher {
+
+        /// Computes hashStruct(typeName, data) = keccak256(typeHash || encodeData)
+        static func hashStruct(
+            _ typeName: String,
+            data: [String: EIP712Value],
+            types: [String: [EIP712Field]]
+        ) -> Data {
+            let typeStr = encodeType(typeName, types: types)
+            let typeHash = keccak256(data: Data(typeStr.utf8))
+            let encodedData = encodeData(typeName, data: data, types: types)
+            return keccak256(data: typeHash + encodedData)
+        }
+
+        /// Encodes the type string: "TypeName(type1 name1,...)" + sorted referenced types.
+        static func encodeType(_ typeName: String, types: [String: [EIP712Field]]) -> String {
+            guard let fields = types[typeName] else { return "" }
+            let primary = typeName + "(" +
+                fields.map { "\($0.type) \($0.name)" }.joined(separator: ",") + ")"
+
+            var referenced = Set<String>()
+            findReferencedTypes(typeName, types: types, found: &referenced)
+            referenced.remove(typeName)
+
+            let sortedRefs = referenced.sorted().map { refType -> String in
+                guard let refFields = types[refType] else { return "" }
+                return refType + "(" +
+                    refFields.map { "\($0.type) \($0.name)" }.joined(separator: ",") + ")"
+            }
+
+            return primary + sortedRefs.joined()
+        }
+
+        /// Recursively finds all struct types referenced by a given type.
+        private static func findReferencedTypes(
+            _ typeName: String,
+            types: [String: [EIP712Field]],
+            found: inout Set<String>
+        ) {
+            guard let fields = types[typeName] else { return }
+            for field in fields {
+                let baseType = field.type.replacingOccurrences(of: "[]", with: "")
+                if types[baseType] != nil && !found.contains(baseType) {
+                    found.insert(baseType)
+                    findReferencedTypes(baseType, types: types, found: &found)
+                }
+            }
+        }
+
+        /// Encodes data fields according to their EIP-712 types.
+        static func encodeData(
+            _ typeName: String,
+            data: [String: EIP712Value],
+            types: [String: [EIP712Field]]
+        ) -> Data {
+            guard let fields = types[typeName] else { return Data() }
+            var encoded = Data()
+            for field in fields {
+                let value = data[field.name] ?? .null
+                encoded.append(encodeField(type: field.type, value: value, types: types))
+            }
+            return encoded
+        }
+
+        /// Encodes a single field value according to its EIP-712 type.
+        static func encodeField(
+            type: String,
+            value: EIP712Value,
+            types: [String: [EIP712Field]]
+        ) -> Data {
+            // Array types: T[] -> keccak256(concat(encoded elements))
+            if type.hasSuffix("[]") {
+                let baseType = String(type.dropLast(2))
+                guard case .array(let items) = value else { return Data(count: 32) }
+                var encoded = Data()
+                for item in items {
+                    encoded.append(encodeField(type: baseType, value: item, types: types))
+                }
+                return keccak256(data: encoded)
+            }
+
+            // Struct types: recursively hash
+            if types[type] != nil {
+                guard case .object(let obj) = value else { return Data(count: 32) }
+                return hashStruct(type, data: obj, types: types)
+            }
+
+            // Atomic types
+            return encodeAtomicValue(type: type, value: value)
+        }
+
+        /// Encodes an atomic (non-struct, non-array) EIP-712 value to 32 bytes.
+        static func encodeAtomicValue(type: String, value: EIP712Value) -> Data {
+            if type == "string" {
+                guard case .string(let s) = value else { return Data(count: 32) }
+                return keccak256(data: Data(s.utf8))
+            }
+
+            if type == "bytes" {
+                guard case .string(let s) = value else { return Data(count: 32) }
+                return keccak256(data: Data(hexToBytes(s)))
+            }
+
+            if type == "address" {
+                guard case .string(let s) = value else { return Data(count: 32) }
+                return leftPad32(Data(hexToBytes(s)))
+            }
+
+            if type == "bool" {
+                var result = Data(count: 32)
+                switch value {
+                case .bool(let b): if b { result[31] = 1 }
+                case .number(let n): if n != 0 { result[31] = 1 }
+                default: break
+                }
+                return result
+            }
+
+            // uint<N> and int<N>
+            if type.hasPrefix("uint") || type.hasPrefix("int") {
+                return encodeIntValue(value)
+            }
+
+            // bytes<N> (fixed-size, right-padded)
+            if type.hasPrefix("bytes") {
+                guard case .string(let s) = value else { return Data(count: 32) }
+                let bytes = hexToBytes(s)
+                var result = Data(count: 32)
+                for (i, b) in bytes.prefix(32).enumerated() { result[i] = b }
+                return result
+            }
+
+            return Data(count: 32)
+        }
+
+        /// Encodes a numeric value (uint/int) as a 32-byte left-padded value.
+        private static func encodeIntValue(_ value: EIP712Value) -> Data {
+            switch value {
+            case .string(let s):
+                if s.hasPrefix("0x") || s.hasPrefix("0X") {
+                    return leftPad32(Data(hexToBytes(s)))
+                }
+                if let n = UInt64(s) {
+                    return leftPad32(uint64ToData(n))
+                }
+                // Large decimal — convert via successive division
+                return leftPad32(decimalStringToBytes(s))
+            case .number(let n):
+                if n >= 0, n < Double(UInt64.max) {
+                    return leftPad32(uint64ToData(UInt64(n)))
+                }
+                return Data(count: 32)
+            default:
+                return Data(count: 32)
+            }
+        }
+
+        /// Left-pads data to 32 bytes. Truncates to rightmost 32 bytes if longer.
+        static func leftPad32(_ data: Data) -> Data {
+            if data.count >= 32 { return Data(data.suffix(32)) }
+            return Data(count: 32 - data.count) + data
+        }
+
+        private static func uint64ToData(_ n: UInt64) -> Data {
+            withUnsafeBytes(of: n.bigEndian) { Data($0) }
+        }
+
+        /// Converts a decimal string to minimal big-endian bytes.
+        private static func decimalStringToBytes(_ decimal: String) -> Data {
+            var chars = Array(decimal).compactMap { $0.wholeNumberValue }
+            guard !chars.isEmpty else { return Data([0]) }
+            var result: [UInt8] = []
+            while !chars.isEmpty {
+                var remainder = 0
+                var next: [Int] = []
+                for digit in chars {
+                    let n = remainder * 10 + digit
+                    if !next.isEmpty || n / 256 > 0 {
+                        next.append(n / 256)
+                    }
+                    remainder = n % 256
+                }
+                result.insert(UInt8(remainder), at: 0)
+                chars = next
+            }
+            return Data(result)
+        }
+
+        /// Decodes a hex string (with or without 0x prefix) to bytes.
+        private static func hexToBytes(_ hex: String) -> [UInt8] {
+            let cleaned = hex.hasPrefix("0x") || hex.hasPrefix("0X")
+                ? String(hex.dropFirst(2))
+                : hex
+            guard cleaned.count % 2 == 0 else { return [] }
+            var bytes: [UInt8] = []
+            var index = cleaned.startIndex
+            while index < cleaned.endIndex {
+                let nextIndex = cleaned.index(index, offsetBy: 2)
+                guard let byte = UInt8(String(cleaned[index..<nextIndex]), radix: 16) else { return [] }
+                bytes.append(byte)
+                index = nextIndex
+            }
+            return bytes
+        }
+    }
+
+    // MARK: - Chain Helpers
+
+    /// Extracts the numeric chain ID from a WC chain string (e.g., "eip155:1" -> 1).
+    private static func extractEvmChainId(from chain: String) -> UInt64? {
+        guard chain.hasPrefix("eip155:"),
+              let idStr = chain.split(separator: ":").last else { return nil }
+        return UInt64(idStr)
+    }
+
+    /// Finds the RPC URL for an EVM chain ID by looking up ChainModel configs.
+    private static func rpcUrl(forEvmChainId chainId: UInt64) -> String? {
+        ChainModel.allChains.first { $0.evmChainId == chainId }?.rpcUrl
+    }
+
+    /// Parses a hex string (with or without 0x prefix) to UInt64.
+    private static func hexToUInt64(_ hex: String) -> UInt64? {
+        let cleaned = hex.hasPrefix("0x") || hex.hasPrefix("0X")
+            ? String(hex.dropFirst(2))
+            : hex
+        return UInt64(cleaned, radix: 16)
+    }
+
     // MARK: - Errors
 
     enum WCError: LocalizedError {
         case invalidURI
         case unsupportedMethod(String)
         case malformedParams(String)
+        case chainNotSupported(String)
+        case rpcError(String)
 
         var errorDescription: String? {
             switch self {
@@ -440,6 +922,10 @@ final class WalletConnectService: ObservableObject {
                 return "Unsupported signing method: \(method)"
             case .malformedParams(let detail):
                 return "Malformed request: \(detail)"
+            case .chainNotSupported(let chain):
+                return "Unsupported chain: \(chain)"
+            case .rpcError(let detail):
+                return "RPC error: \(detail)"
             }
         }
     }
