@@ -94,15 +94,7 @@ private struct TokenRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Token icon placeholder
-            Circle()
-                .fill(chainColor(for: token.chain))
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Text(String(token.symbol.prefix(1)))
-                        .font(.headline.bold())
-                        .foregroundColor(.white)
-                )
+            TokenIconView(symbol: token.symbol, chain: token.chain, size: 40)
 
             // Token info
             VStack(alignment: .leading, spacing: 2) {
@@ -131,17 +123,6 @@ private struct TokenRowView: View {
         .padding(.vertical, 12)
     }
 
-    private func chainColor(for chain: String) -> Color {
-        switch chain {
-        case "ethereum": return .chainEthereum
-        case "polygon": return .chainPolygon
-        case "arbitrum": return .chainArbitrum
-        case "base": return .chainBase
-        case "solana": return .chainSolana
-        case "bitcoin": return .chainBitcoin
-        default: return .textTertiary
-        }
-    }
 }
 
 #Preview {

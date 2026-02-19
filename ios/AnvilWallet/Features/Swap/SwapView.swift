@@ -190,14 +190,7 @@ private struct SwapTokenSection: View {
                 Button(action: onTokenTap) {
                     HStack {
                         if let token {
-                            Circle()
-                                .fill(Color.accentGreen.opacity(0.2))
-                                .frame(width: 32, height: 32)
-                                .overlay(
-                                    Text(String(token.symbol.prefix(1)))
-                                        .font(.caption.bold())
-                                        .foregroundColor(.accentGreen)
-                                )
+                            TokenIconView(symbol: token.symbol, chain: token.chain, size: 32)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(token.symbol)
@@ -338,14 +331,7 @@ private struct SwapTokenPickerSheet: View {
                     dismiss()
                 } label: {
                     HStack {
-                        Circle()
-                            .fill(Color.accentGreen.opacity(0.2))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Text(String(token.symbol.prefix(1)))
-                                    .font(.caption.bold())
-                                    .foregroundColor(.accentGreen)
-                            )
+                        TokenIconView(symbol: token.symbol, chain: token.chain, size: 36)
 
                         VStack(alignment: .leading) {
                             Text(token.symbol)

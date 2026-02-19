@@ -50,14 +50,7 @@ struct SendView: View {
                         } label: {
                             HStack {
                                 if let token = selectedToken {
-                                    Circle()
-                                        .fill(Color.accentGreen.opacity(0.2))
-                                        .frame(width: 32, height: 32)
-                                        .overlay(
-                                            Text(String(token.symbol.prefix(1)))
-                                                .font(.caption.bold())
-                                                .foregroundColor(.accentGreen)
-                                        )
+                                    TokenIconView(symbol: token.symbol, chain: token.chain, size: 32)
 
                                     Text(token.symbol)
                                         .foregroundColor(.textPrimary)
@@ -264,14 +257,7 @@ private struct TokenPickerSheet: View {
                     dismiss()
                 } label: {
                     HStack {
-                        Circle()
-                            .fill(Color.accentGreen.opacity(0.2))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Text(String(token.symbol.prefix(1)))
-                                    .font(.caption.bold())
-                                    .foregroundColor(.accentGreen)
-                            )
+                        TokenIconView(symbol: token.symbol, chain: token.chain, size: 36)
 
                         VStack(alignment: .leading) {
                             Text(token.symbol)
