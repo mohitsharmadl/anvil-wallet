@@ -6,6 +6,7 @@ struct TokenListView: View {
     @EnvironmentObject var router: AppRouter
 
     @State private var searchText = ""
+    @State private var showAddToken = false
 
     private var filteredTokens: [TokenModel] {
         if searchText.isEmpty {
@@ -28,7 +29,7 @@ struct TokenListView: View {
                 Spacer()
 
                 Button {
-                    // TODO: Add/manage tokens
+                    showAddToken = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
@@ -91,6 +92,9 @@ struct TokenListView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 48)
             }
+        }
+        .sheet(isPresented: $showAddToken) {
+            AddTokenView()
         }
     }
 }

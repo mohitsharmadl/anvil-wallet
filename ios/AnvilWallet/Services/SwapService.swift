@@ -285,12 +285,12 @@ final class SwapService {
 
         // Fetch nonce and fee params from network
         let rpc = RPCService.shared
-        let nonceHex = try await rpc.getTransactionCount(rpcUrl: chain.rpcUrl, address: fromAddress)
+        let nonceHex = try await rpc.getTransactionCount(rpcUrl: chain.activeRpcUrl, address: fromAddress)
         guard let nonce = UInt64(nonceHex.hasPrefix("0x") ? String(nonceHex.dropFirst(2)) : nonceHex, radix: 16) else {
             throw SwapServiceError.networkError("Invalid nonce: \(nonceHex)")
         }
 
-        let fees = try await rpc.feeHistory(rpcUrl: chain.rpcUrl)
+        let fees = try await rpc.feeHistory(rpcUrl: chain.activeRpcUrl)
         let maxPriorityFeeHex = fees.priorityFeeHex
         let maxFeeHex: String
         if let baseFee = UInt64(fees.baseFeeHex.hasPrefix("0x") ? String(fees.baseFeeHex.dropFirst(2)) : fees.baseFeeHex, radix: 16),
@@ -334,7 +334,7 @@ final class SwapService {
         let signedTxHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
 
         let txHash = try await rpc.sendRawTransaction(
-            rpcUrl: chain.rpcUrl,
+            rpcUrl: chain.activeRpcUrl,
             signedTx: signedTxHex
         )
 

@@ -80,6 +80,33 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
             "kjWU9H91qtu39iBXltykNck8+xWT425ShPW+wFF2WTg=",  // leaf
             "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA
         ],
+        // Multi-chain block explorer APIs (Etherscan family)
+        // All *scan explorers share the same API interface for approval log queries.
+        // Pins extracted via build-scripts/extract-spki-pins.sh — re-run on cert rotation.
+        "api.polygonscan.com": [
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA (Cloudflare)
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // backup CA
+        ],
+        "api.arbiscan.io": [
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA (Cloudflare)
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // backup CA
+        ],
+        "api.basescan.org": [
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA (Cloudflare)
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // backup CA
+        ],
+        "api-optimistic.etherscan.io": [
+            "kjWU9H91qtu39iBXltykNck8+xWT425ShPW+wFF2WTg=",  // leaf (shared with etherscan.io)
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA
+        ],
+        "api.bscscan.com": [
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA (Cloudflare)
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // backup CA
+        ],
+        "api.snowscan.xyz": [
+            "a9khLOZJxlnJyrxstg/P+seiDCm+Yf3OsrXyFocBaI0=",  // intermediate CA (Cloudflare)
+            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // backup CA
+        ],
         "api.coingecko.com": [
             "KeYcPtry8XJxY6pKt44Heq+zSIVxuSBcrqAlWDzNIAE=",  // leaf
             "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA

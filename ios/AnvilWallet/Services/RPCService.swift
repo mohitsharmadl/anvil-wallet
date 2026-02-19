@@ -499,9 +499,31 @@ final class RPCService {
         }
     }
 
+    /// Tiered Bitcoin fee rates (sat/vB) for user selection.
+    struct BitcoinFeeRates {
+        /// ~10 min confirmation (next 1 block target)
+        let fast: UInt64
+        /// ~30 min confirmation (3-block target)
+        let medium: UInt64
+        /// ~60 min confirmation (6-block target)
+        let slow: UInt64
+
+        /// Human-readable labels for display.
+        static let fastLabel = "Fast (~10 min)"
+        static let mediumLabel = "Medium (~30 min)"
+        static let slowLabel = "Slow (~60 min)"
+    }
+
     /// Fetches recommended fee rates from Blockstream/Mempool API.
     /// Returns the recommended fee rate in sat/vbyte for medium-priority confirmation.
     func getBitcoinFeeRate(apiUrl: String) async throws -> UInt64 {
+        let rates = try await getBitcoinFeeRates(apiUrl: apiUrl)
+        return rates.medium
+    }
+
+    /// Fetches tiered fee rates (fast/medium/slow) from Blockstream/Mempool REST API.
+    /// Response format: { "1": 50.5, "3": 30.2, "6": 15.1, ... } (sat/vB per block target).
+    func getBitcoinFeeRates(apiUrl: String) async throws -> BitcoinFeeRates {
         let url = try httpsURL("\(apiUrl)/fee-estimates")
 
         let (data, response) = try await session.data(from: url)
@@ -511,12 +533,18 @@ final class RPCService {
             throw RPCServiceError.invalidResponse
         }
 
-        // Response is { "1": 50.5, "3": 30.2, "6": 15.1, ... } (sat/vbyte per block target)
         let estimates = try JSONDecoder().decode([String: Double].self, from: data)
 
-        // Use 6-block target (~1 hour) as medium priority, fallback to 3-block or 1 sat/vbyte
-        let feeRate = estimates["6"] ?? estimates["3"] ?? 1.0
-        return UInt64(feeRate.rounded(.up))
+        // Map block targets to fee tiers; fall back gracefully
+        let fast = estimates["1"] ?? estimates["2"] ?? 10.0
+        let medium = estimates["3"] ?? estimates["6"] ?? fast
+        let slow = estimates["6"] ?? estimates["12"] ?? medium
+
+        return BitcoinFeeRates(
+            fast: max(1, UInt64(fast.rounded(.up))),
+            medium: max(1, UInt64(medium.rounded(.up))),
+            slow: max(1, UInt64(slow.rounded(.up)))
+        )
     }
 
     /// Broadcasts a signed Bitcoin transaction via Blockstream/Mempool API.
@@ -545,34 +573,7 @@ final class RPCService {
         return txid
     }
 
-    // MARK: - Base58 Decoder (for Solana blockhash)
-
-    private enum Base58 {
-        private static let alphabet = Array("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
-
-        static func decode(_ string: String) -> Data? {
-            var result: [UInt8] = [0]
-            for char in string {
-                guard let charIndex = alphabet.firstIndex(of: char) else { return nil }
-                var carry = Int(charIndex - alphabet.startIndex)
-                for j in stride(from: result.count - 1, through: 0, by: -1) {
-                    carry += 58 * Int(result[j])
-                    result[j] = UInt8(carry % 256)
-                    carry /= 256
-                }
-                while carry > 0 {
-                    result.insert(UInt8(carry % 256), at: 0)
-                    carry /= 256
-                }
-            }
-            // Add leading zeros
-            let leadingZeros = string.prefix(while: { $0 == "1" }).count
-            let zeros = [UInt8](repeating: 0, count: leadingZeros)
-            // Remove leading zero from bignum result
-            let stripped = result.drop(while: { $0 == 0 })
-            return Data(zeros + stripped)
-        }
-    }
+    // Base58 is now provided by the shared Base58 enum in Extensions/Base58.swift
 
     /// Gets Bitcoin address info via Blockstream/Mempool REST API.
     func getBitcoinBalance(apiUrl: String, address: String) async throws -> Int {

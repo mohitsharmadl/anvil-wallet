@@ -1,93 +1,104 @@
 import SwiftUI
 
-/// Displays token approvals and allows revoking them.
+/// Displays token approvals across all EVM chains and allows revoking them.
 struct ApprovalTrackerView: View {
     @EnvironmentObject var walletService: WalletService
 
+    @State private var selectedChain: ChainModel = .ethereum
     @State private var approvals: [ApprovalService.TokenApproval] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var revokingIds: Set<String> = []
     @State private var revokeError: String?
 
-    var body: some View {
-        Group {
-            if isLoading {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .tint(.accentGreen)
-                    Text("Scanning approvals...")
-                        .font(.subheadline)
-                        .foregroundColor(.textSecondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = errorMessage {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.largeTitle)
-                        .foregroundColor(.warning)
-                    Text(error)
-                        .font(.subheadline)
-                        .foregroundColor(.textSecondary)
-                        .multilineTextAlignment(.center)
-                    Button("Retry") {
-                        Task { await loadApprovals() }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.accentGreen)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if approvals.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(.success)
-                    Text("No Active Approvals")
-                        .font(.headline)
-                        .foregroundColor(.textPrimary)
-                    Text("You haven't approved any contracts to spend your tokens.")
-                        .font(.subheadline)
-                        .foregroundColor(.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
-                    if let revokeError {
-                        Section {
-                            Text(revokeError)
-                                .font(.caption)
-                                .foregroundColor(.error)
-                        }
-                        .listRowBackground(Color.error.opacity(0.1))
-                    }
+    private var supportedChains: [ChainModel] {
+        ChainModel.approvalSupportedChains
+    }
 
-                    Section {
-                        Text("\(approvals.count) active approval\(approvals.count == 1 ? "" : "s") found on Ethereum")
-                            .font(.caption)
+    var body: some View {
+        VStack(spacing: 0) {
+            // Chain picker - horizontal scrolling pills
+            chainPicker
+
+            // Content
+            Group {
+                if isLoading {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(.accentGreen)
+                        Text("Scanning approvals on \(selectedChain.name)...")
+                            .font(.subheadline)
                             .foregroundColor(.textSecondary)
                     }
-                    .listRowBackground(Color.clear)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = errorMessage {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundColor(.warning)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task { await loadApprovals() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.accentGreen)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if approvals.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.success)
+                        Text("No Active Approvals")
+                            .font(.headline)
+                            .foregroundColor(.textPrimary)
+                        Text("No active token approvals found on \(selectedChain.name).")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        if let revokeError {
+                            Section {
+                                Text(revokeError)
+                                    .font(.caption)
+                                    .foregroundColor(.error)
+                            }
+                            .listRowBackground(Color.error.opacity(0.1))
+                        }
 
-                    ForEach(groupedApprovals, id: \.key) { group in
-                        Section(group.key) {
-                            ForEach(group.value) { approval in
-                                ApprovalRow(
-                                    approval: approval,
-                                    isRevoking: revokingIds.contains(approval.id)
-                                ) {
-                                    await revokeApproval(approval)
+                        Section {
+                            Text("\(approvals.count) active approval\(approvals.count == 1 ? "" : "s") found on \(selectedChain.name)")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+                        .listRowBackground(Color.clear)
+
+                        ForEach(groupedApprovals, id: \.key) { group in
+                            Section(group.key) {
+                                ForEach(group.value) { approval in
+                                    ApprovalRow(
+                                        approval: approval,
+                                        isRevoking: revokingIds.contains(approval.id)
+                                    ) {
+                                        await revokeApproval(approval)
+                                    }
                                 }
                             }
+                            .listRowBackground(Color.backgroundCard)
                         }
-                        .listRowBackground(Color.backgroundCard)
                     }
-                }
-                .scrollContentBackground(.hidden)
-                .refreshable {
-                    await loadApprovals()
+                    .scrollContentBackground(.hidden)
+                    .refreshable {
+                        await loadApprovals()
+                    }
                 }
             }
         }
@@ -96,6 +107,50 @@ struct ApprovalTrackerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await loadApprovals()
+        }
+    }
+
+    // MARK: - Chain Picker
+
+    private var chainPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(supportedChains) { chain in
+                    Button {
+                        guard chain.id != selectedChain.id else { return }
+                        withAnimation {
+                            selectedChain = chain
+                            approvals = []
+                            revokeError = nil
+                        }
+                        Task { await loadApprovals() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(chainColor(chain.id).opacity(0.3))
+                                .frame(width: 20, height: 20)
+                                .overlay(
+                                    Text(chain.symbol.prefix(1))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(chainColor(chain.id))
+                                )
+                            Text(chain.name)
+                                .font(.subheadline.bold())
+                        }
+                        .foregroundColor(selectedChain.id == chain.id ? .white : .textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            selectedChain.id == chain.id
+                                ? Color.accentGreen
+                                : Color.backgroundCard
+                        )
+                        .cornerRadius(20)
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
     }
 
@@ -112,14 +167,30 @@ struct ApprovalTrackerView: View {
         isLoading = true
         errorMessage = nil
 
-        guard let address = walletService.addresses["ethereum"] else {
-            errorMessage = "No Ethereum address found."
+        guard let address = walletService.addresses[selectedChain.id]
+                ?? walletService.addresses["ethereum"] else {
+            errorMessage = "No address found for \(selectedChain.name)."
             isLoading = false
             return
         }
 
         do {
-            approvals = try await ApprovalService.shared.fetchApprovals(for: address)
+            approvals = try await ApprovalService.shared.fetchApprovals(
+                for: address,
+                chain: selectedChain
+            )
+
+            // Trigger notifications for any new unlimited approvals
+            let notifier = NotificationService.shared
+            for approval in approvals where approval.isUnlimited {
+                notifier.notifyUnlimitedApproval(
+                    txHash: approval.id,
+                    tokenSymbol: approval.tokenSymbol,
+                    spender: approval.spender,
+                    chain: selectedChain.name
+                )
+            }
+
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -133,9 +204,10 @@ struct ApprovalTrackerView: View {
         revokeError = nil
         revokingIds.insert(approval.id)
 
-        guard let ethChain = ChainModel.allChains.first(where: { $0.id == "ethereum" }),
-              let chainId = ethChain.evmChainId,
-              let address = walletService.addresses["ethereum"] else {
+        guard let chain = ChainModel.allChains.first(where: { $0.id == approval.chainId }),
+              let chainId = chain.evmChainId,
+              let address = walletService.addresses[chain.id]
+                ?? walletService.addresses["ethereum"] else {
             revokeError = "Missing chain configuration."
             revokingIds.remove(approval.id)
             return
@@ -144,12 +216,12 @@ struct ApprovalTrackerView: View {
         do {
             // Get nonce and gas params
             let nonceHex = try await RPCService.shared.getTransactionCount(
-                rpcUrl: ethChain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 address: address
             )
             let nonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
 
-            let feeData = try await RPCService.shared.feeHistory(rpcUrl: ethChain.rpcUrl)
+            let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
             let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
             let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
             let maxFee = baseFee * 2 + priorityFee
@@ -160,7 +232,7 @@ struct ApprovalTrackerView: View {
 
             // Estimate gas
             let gasHex = try await RPCService.shared.estimateGas(
-                rpcUrl: ethChain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 from: address,
                 to: approval.tokenAddress,
                 value: "0x0",
@@ -182,7 +254,7 @@ struct ApprovalTrackerView: View {
             let signedTx = try await walletService.signTransaction(request: .eth(ethReq))
             let signedHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
             _ = try await RPCService.shared.sendRawTransaction(
-                rpcUrl: ethChain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 signedTx: signedHex
             )
 
@@ -192,6 +264,21 @@ struct ApprovalTrackerView: View {
         } catch {
             revokeError = "Revoke failed: \(error.localizedDescription)"
             revokingIds.remove(approval.id)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func chainColor(_ chainId: String) -> Color {
+        switch chainId {
+        case "ethereum": return .blue
+        case "polygon": return .purple
+        case "arbitrum": return .blue
+        case "base": return .blue
+        case "optimism": return .red
+        case "bsc": return .yellow
+        case "avalanche": return .red
+        default: return .accentGreen
         }
     }
 }
@@ -257,7 +344,7 @@ private struct ApprovalRow: View {
 // MARK: - Data hex helper
 
 private extension Data {
-    /// Strict hex decoder — returns empty Data if any byte pair is invalid.
+    /// Strict hex decoder -- returns empty Data if any byte pair is invalid.
     init(hexString: String) {
         let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         var chars = Array(hex)

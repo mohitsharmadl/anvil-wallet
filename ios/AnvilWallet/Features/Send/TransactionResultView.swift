@@ -9,6 +9,14 @@ struct TransactionResultView: View {
 
     let txHash: String
     let success: Bool
+    let chain: String
+
+    /// Resolves the block explorer URL for this transaction's chain.
+    private var explorerUrl: URL? {
+        ChainModel.allChains
+            .first { $0.id == chain }?
+            .explorerTransactionUrl(hash: txHash)
+    }
 
     var body: some View {
         VStack(spacing: 32) {
@@ -68,15 +76,19 @@ struct TransactionResultView: View {
                 .padding(.horizontal, 24)
 
                 // View on explorer
-                Button {
-                    // TODO: Open block explorer URL
-                    // if let url = ChainModel.ethereum.explorerTransactionUrl(hash: txHash) {
-                    //     UIApplication.shared.open(url)
-                    // }
-                } label: {
-                    Label("View on Explorer", systemImage: "arrow.up.right.square")
-                        .font(.subheadline)
-                        .foregroundColor(.accentGreen)
+                if let explorerUrl {
+                    Button {
+                        UIApplication.shared.open(explorerUrl)
+                    } label: {
+                        Label("View on Explorer", systemImage: "arrow.up.right.square")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.accentGreen)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.accentGreen.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 24)
                 }
             }
 
@@ -113,7 +125,8 @@ struct TransactionResultView: View {
 #Preview {
     TransactionResultView(
         txHash: "0xabc123def456789012345678901234567890abcdef123456",
-        success: true
+        success: true,
+        chain: "ethereum"
     )
     .environmentObject(AppRouter())
 }

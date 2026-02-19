@@ -73,7 +73,7 @@ final class TransactionSimulator {
         do {
             let callData = data ?? "0x"
             _ = try await rpcService.ethCall(
-                rpcUrl: chain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 to: to,
                 data: callData
             )
@@ -93,7 +93,7 @@ final class TransactionSimulator {
         let gasHex: String
         do {
             gasHex = try await rpcService.estimateGas(
-                rpcUrl: chain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 from: from,
                 to: to,
                 value: value,
@@ -112,7 +112,7 @@ final class TransactionSimulator {
         }
 
         // Step 3: Get current gas price
-        let gasPriceHex = try await rpcService.gasPrice(rpcUrl: chain.rpcUrl)
+        let gasPriceHex = try await rpcService.gasPrice(rpcUrl: chain.activeRpcUrl)
 
         // Parse hex values
         let estimatedGas = UInt64(gasHex.dropFirst(2), radix: 16) ?? 21000

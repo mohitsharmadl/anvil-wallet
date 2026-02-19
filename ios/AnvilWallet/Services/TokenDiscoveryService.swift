@@ -50,7 +50,7 @@ actor TokenDiscoveryService {
 
             do {
                 let hexBalance: String = try await RPCService.shared.ethCall(
-                    rpcUrl: ethChain.rpcUrl,
+                    rpcUrl: ethChain.activeRpcUrl,
                     to: transfer.contractAddress,
                     data: callData
                 )

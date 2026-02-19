@@ -17,21 +17,29 @@ actor ApprovalService {
         let allowance: String  // hex
         let isUnlimited: Bool
         let blockNumber: String
+        let chainId: String    // ChainModel.id — which chain this approval is on
     }
 
     // MARK: - Fetch Approvals
 
-    /// Fetches current token approvals for the given address on Ethereum mainnet.
-    /// 1. Gets Approval event logs from Etherscan
+    /// Fetches current token approvals for the given address on the specified EVM chain.
+    /// 1. Gets Approval event logs from the chain's block explorer API
     /// 2. Deduplicates by (token, spender) — keeps latest block
     /// 3. Checks current on-chain allowance via RPC
     /// 4. Filters out zero (already revoked) approvals
-    func fetchApprovals(for address: String) async throws -> [TokenApproval] {
-        let logs = try await EtherscanService.shared.fetchApprovalLogs(owner: address)
-
-        guard let ethChain = ChainModel.allChains.first(where: { $0.id == "ethereum" }) else {
+    ///
+    /// - Parameters:
+    ///   - address: The wallet address to check approvals for.
+    ///   - chain: The EVM chain to query. Must have an `explorerApiUrl`.
+    func fetchApprovals(for address: String, chain: ChainModel) async throws -> [TokenApproval] {
+        guard let explorerApiUrl = chain.explorerApiUrl else {
             return []
         }
+
+        let logs = try await EtherscanService.shared.fetchApprovalLogs(
+            owner: address,
+            explorerApiUrl: explorerApiUrl
+        )
 
         // Deduplicate: keep latest approval per (token, spender)
         var latestByPair: [String: EtherscanService.ApprovalLog] = [:]
@@ -69,7 +77,7 @@ actor ApprovalService {
 
             do {
                 let hexAllowance: String = try await RPCService.shared.ethCall(
-                    rpcUrl: ethChain.rpcUrl,
+                    rpcUrl: chain.activeRpcUrl,
                     to: tokenAddress,
                     data: callData
                 )
@@ -82,8 +90,8 @@ actor ApprovalService {
                 let trimmed = cleanHex.drop(while: { $0 == "0" })
                 let isUnlimited = !trimmed.isEmpty && trimmed.allSatisfy { $0 == "f" || $0 == "F" }
 
-                // Try to get token symbol via Etherscan transfer data
-                let symbol = await resolveTokenSymbol(for: tokenAddress, chain: ethChain)
+                // Try to get token symbol via on-chain symbol() call
+                let symbol = await resolveTokenSymbol(for: tokenAddress, chain: chain)
 
                 approvals.append(TokenApproval(
                     id: log.transactionHash,
@@ -92,7 +100,8 @@ actor ApprovalService {
                     spender: spender,
                     allowance: hexAllowance,
                     isUnlimited: isUnlimited,
-                    blockNumber: log.blockNumber
+                    blockNumber: log.blockNumber,
+                    chainId: chain.id
                 ))
             } catch {
                 continue
@@ -121,7 +130,7 @@ actor ApprovalService {
         // symbol() selector = 0x95d89b41
         do {
             let result: String = try await RPCService.shared.ethCall(
-                rpcUrl: chain.rpcUrl,
+                rpcUrl: chain.activeRpcUrl,
                 to: tokenAddress,
                 data: "0x95d89b41"
             )

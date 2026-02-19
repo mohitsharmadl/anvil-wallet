@@ -22,14 +22,19 @@ struct SettingsView: View {
                             .cornerRadius(12)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(walletService.currentWallet?.name ?? "My Wallet")
+                            Text(walletService.currentWallet?.displayName ?? "Account 0")
                                 .font(.headline)
                                 .foregroundColor(.textPrimary)
 
-                            Text("\(walletService.addresses.count) chains connected")
+                            Text("\(walletService.accounts.count) accounts \u{2022} \(walletService.addresses.count) chains")
                                 .font(.caption)
                                 .foregroundColor(.textSecondary)
                         }
+                    }
+                    .listRowBackground(Color.backgroundCard)
+
+                    NavigationLink(destination: AccountManagerView()) {
+                        SettingsRow(icon: "person.2.fill", title: "Manage Accounts", color: .chainSolana)
                     }
                     .listRowBackground(Color.backgroundCard)
                 }
@@ -46,6 +51,10 @@ struct SettingsView: View {
 
                     NavigationLink(destination: ApprovalTrackerView()) {
                         SettingsRow(icon: "checkmark.seal.fill", title: "Token Approvals", color: .warning)
+                    }
+
+                    NavigationLink(destination: NotificationSettingsView()) {
+                        SettingsRow(icon: "bell.badge.fill", title: "Notifications", color: .chainSolana)
                     }
                 }
                 .listRowBackground(Color.backgroundCard)

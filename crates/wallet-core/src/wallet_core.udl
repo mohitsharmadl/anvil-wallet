@@ -181,6 +181,22 @@ namespace wallet_core {
         bytes recent_blockhash
     );
 
+    /// Sign an arbitrary message with Solana Ed25519 key (returns 64-byte signature)
+    [Throws=WalletError]
+    bytes sign_sol_message(
+        bytes seed,
+        u32 account,
+        bytes message
+    );
+
+    /// Sign a pre-built Solana transaction (e.g. from Jupiter or WalletConnect)
+    [Throws=WalletError]
+    bytes sign_sol_raw_transaction(
+        bytes seed,
+        u32 account,
+        bytes raw_tx
+    );
+
     /// Derive the associated token account address for a wallet + mint pair
     [Throws=WalletError]
     string derive_sol_token_address(

@@ -20,7 +20,7 @@ pub use spl_token::{
     TOKEN_PROGRAM_ID,
 };
 pub use transaction::{
-    build_sol_transfer, compile_transaction, encode_compact_u16, serialize_message,
-    sign_transaction, CompiledInstruction, SolAccountMeta, SolInstruction, SolTransaction,
-    SYSTEM_PROGRAM_ID,
+    build_sol_transfer, compile_transaction, decode_compact_u16, encode_compact_u16,
+    serialize_message, sign_sol_raw_transaction, sign_transaction, CompiledInstruction,
+    SolAccountMeta, SolInstruction, SolTransaction, SYSTEM_PROGRAM_ID,
 };

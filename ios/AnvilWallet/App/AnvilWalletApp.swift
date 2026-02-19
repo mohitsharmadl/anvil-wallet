@@ -1,4 +1,39 @@
 import SwiftUI
+import UserNotifications
+
+// MARK: - Notification Delegate
+
+/// Handles notification delivery when the app is in the foreground,
+/// and notification tap actions.
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    /// Called when a notification arrives while the app is in the foreground.
+    /// We show it as a banner so the user sees it even while using the app.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    /// Called when the user taps on a notification.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // Navigate to activity/notifications by posting to the router.
+        // The app picks this up in onAppear/onChange as needed.
+        NotificationCenter.default.post(name: .didTapNotification, object: nil)
+        completionHandler()
+    }
+}
+
+extension Notification.Name {
+    static let didTapNotification = Notification.Name("com.anvilwallet.didTapNotification")
+}
 
 // MARK: - App Theme
 
@@ -26,6 +61,9 @@ struct AnvilWalletApp: App {
 
     init() {
         SecurityBootstrap.performChecks()
+
+        // Register notification delegate for foreground delivery and tap handling
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
 
         // Initialize WalletConnect (Reown SDK)
         // Project ID is injected via Secrets.xcconfig -> Info.plist at build time.
@@ -56,6 +94,12 @@ struct AnvilWalletApp: App {
                         showSecurityWarning = true
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .didTapNotification)) { _ in
+                    // Navigate to wallet tab -> notifications when a notification is tapped
+                    guard router.isOnboarded else { return }
+                    router.selectedTab = .wallet
+                    router.walletPath.append(AppRouter.WalletDestination.notifications)
+                }
                 .sheet(isPresented: $showSecurityWarning) {
                     if let message = SecurityBootstrap.securityWarningMessage {
                         SecurityWarningView(message: message) {
@@ -69,6 +113,9 @@ struct AnvilWalletApp: App {
                     guard walletService.isWalletCreated else { return }
                     try? await walletService.refreshBalances()
                     try? await walletService.refreshPrices()
+
+                    // Request notification permissions if wallet exists and not yet asked
+                    await NotificationService.shared.requestPermission()
                 }
         }
         .onChange(of: scenePhase) { _, newPhase in

@@ -6,9 +6,19 @@ struct WalletHomeView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var router: AppRouter
 
+    @ObservedObject private var notificationService = NotificationService.shared
+
     @State private var isRefreshing = false
     @State private var showSwap = false
+    @State private var showBuy = false
     @State private var isBalanceHidden = false
+    @State private var showAccountPicker = false
+    @State private var selectedSegment: WalletSegment = .tokens
+
+    enum WalletSegment: String, CaseIterable {
+        case tokens = "Tokens"
+        case nfts = "NFTs"
+    }
 
     private var totalBalanceUsd: Double {
         walletService.tokens.reduce(0) { $0 + $1.balanceUsd }
@@ -18,18 +28,32 @@ struct WalletHomeView: View {
         NavigationStack(path: $router.walletPath) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
+                    // Account switcher chip
+                    accountSwitcher
+                        .padding(.top, 4)
+
                     // Hero balance section
                     balanceSection
-                        .padding(.top, 8)
+                        .padding(.top, 4)
                         .padding(.bottom, 28)
 
                     // Quick actions
                     actionButtons
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, 24)
 
-                    // Token list
-                    TokenListView()
+                    // Tokens / NFTs segment picker
+                    segmentPicker
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
+                    // Content based on selected segment
+                    switch selectedSegment {
+                    case .tokens:
+                        TokenListView()
+                    case .nfts:
+                        NFTListView()
+                    }
                 }
             }
             .background(Color.backgroundPrimary)
@@ -37,20 +61,37 @@ struct WalletHomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // TODO: Navigate to notifications
-                    } label: {
-                        Image(systemName: "bell")
-                            .font(.body.weight(.medium))
-                            .foregroundColor(.textSecondary)
-                            .frame(width: 36, height: 36)
-                            .background(Color.backgroundCard)
-                            .clipShape(Circle())
+                    NavigationLink(value: AppRouter.WalletDestination.notifications) {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell")
+                                .font(.body.weight(.medium))
+                                .foregroundColor(.textSecondary)
+                                .frame(width: 36, height: 36)
+                                .background(Color.backgroundCard)
+                                .clipShape(Circle())
+
+                            if notificationService.unreadCount > 0 {
+                                Text("\(min(notificationService.unreadCount, 99))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(minWidth: 16, minHeight: 16)
+                                    .background(Color.error)
+                                    .clipShape(Circle())
+                                    .offset(x: 4, y: -4)
+                            }
+                        }
                     }
                 }
             }
             .sheet(isPresented: $showSwap) {
                 SwapView()
+            }
+            .sheet(isPresented: $showBuy) {
+                BuyView()
+            }
+            .sheet(isPresented: $showAccountPicker) {
+                AccountPickerView()
+                    .presentationDetents([.medium, .large])
             }
             .refreshable {
                 await refreshData()
@@ -59,12 +100,16 @@ struct WalletHomeView: View {
                 switch destination {
                 case .tokenDetail(let token):
                     TokenDetailView(token: token)
+                case .nftDetail(let nft):
+                    NFTDetailView(nft: nft)
                 case .chainPicker:
                     ChainPickerView()
                 case .receive(let chain, let address):
                     ReceiveView(chain: chain, address: address)
                 case .activity:
                     ActivityView()
+                case .notifications:
+                    NotificationHistoryView()
                 }
             }
         }
@@ -112,6 +157,9 @@ struct WalletHomeView: View {
 
     private var actionButtons: some View {
         HStack(spacing: 12) {
+            ActionPill(icon: "plus.circle", label: "Buy", color: .accentGreen) {
+                showBuy = true
+            }
             ActionPill(icon: "arrow.up.right", label: "Send", color: .accentGreen) {
                 router.navigateToTab(.send)
             }
@@ -125,6 +173,61 @@ struct WalletHomeView: View {
                 router.walletPath.append(AppRouter.WalletDestination.activity)
             }
         }
+    }
+
+    // MARK: - Account Switcher
+
+    private var accountSwitcher: some View {
+        Button {
+            showAccountPicker = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "person.circle.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.accentGreen)
+
+                Text(walletService.currentWallet?.displayName ?? "Account 0")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.textPrimary)
+
+                Image(systemName: "chevron.down")
+                    .font(.caption2.bold())
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.backgroundCard)
+            .clipShape(Capsule())
+        }
+    }
+
+    // MARK: - Segment Picker
+
+    private var segmentPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(WalletSegment.allCases, id: \.self) { segment in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedSegment = segment
+                    }
+                } label: {
+                    Text(segment.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(selectedSegment == segment ? .textPrimary : .textTertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            selectedSegment == segment
+                                ? Color.backgroundCard
+                                : Color.clear
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .padding(3)
+        .background(Color.backgroundSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var formattedBalance: String {

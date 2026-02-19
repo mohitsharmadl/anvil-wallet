@@ -399,6 +399,22 @@ fileprivate class UniffiHandleMap<T> {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -1097,6 +1113,17 @@ public func deriveAllAddressesFromMnemonic(mnemonic: String, passphrase: String,
 })
 }
 /**
+ * Derive the associated token account address for a wallet + mint pair
+ */
+public func deriveSolTokenAddress(walletAddress: String, mintAddress: String)throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_derive_sol_token_address(
+        FfiConverterString.lower(walletAddress),
+        FfiConverterString.lower(mintAddress),$0
+    )
+})
+}
+/**
  * Encrypt a seed with a password (Argon2id + AES-256-GCM)
  */
 public func encryptSeedWithPassword(seed: Data, password: String)throws  -> EncryptedSeedData {
@@ -1177,6 +1204,27 @@ public func signBtcTransaction(seed: Data, account: UInt32, index: UInt32, utxos
 })
 }
 /**
+ * Sign an ERC-20 token transfer (returns raw signed tx bytes)
+ */
+public func signErc20Transfer(seed: Data, passphrase: String, account: UInt32, index: UInt32, chainId: UInt64, nonce: UInt64, tokenContract: String, toAddress: String, amountHex: String, maxPriorityFeeHex: String, maxFeeHex: String, gasLimit: UInt64)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_erc20_transfer(
+        FfiConverterData.lower(seed),
+        FfiConverterString.lower(passphrase),
+        FfiConverterUInt32.lower(account),
+        FfiConverterUInt32.lower(index),
+        FfiConverterUInt64.lower(chainId),
+        FfiConverterUInt64.lower(nonce),
+        FfiConverterString.lower(tokenContract),
+        FfiConverterString.lower(toAddress),
+        FfiConverterString.lower(amountHex),
+        FfiConverterString.lower(maxPriorityFeeHex),
+        FfiConverterString.lower(maxFeeHex),
+        FfiConverterUInt64.lower(gasLimit),$0
+    )
+})
+}
+/**
  * Sign an arbitrary message with EIP-191 personal_sign (returns 65-byte signature)
  */
 public func signEthMessage(seed: Data, account: UInt32, index: UInt32, message: Data)throws  -> Data {
@@ -1186,6 +1234,19 @@ public func signEthMessage(seed: Data, account: UInt32, index: UInt32, message: 
         FfiConverterUInt32.lower(account),
         FfiConverterUInt32.lower(index),
         FfiConverterData.lower(message),$0
+    )
+})
+}
+/**
+ * Sign a raw 32-byte hash (no EIP-191 prefix). Used for EIP-712.
+ */
+public func signEthRawHash(seed: Data, account: UInt32, index: UInt32, hash: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_eth_raw_hash(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterUInt32.lower(index),
+        FfiConverterData.lower(hash),$0
     )
 })
 }
@@ -1211,6 +1272,30 @@ public func signEthTransaction(seed: Data, passphrase: String, account: UInt32, 
 })
 }
 /**
+ * Sign an arbitrary message with Solana Ed25519 key (returns 64-byte signature)
+ */
+public func signSolMessage(seed: Data, account: UInt32, message: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_sol_message(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterData.lower(message),$0
+    )
+})
+}
+/**
+ * Sign a pre-built Solana transaction (e.g. from Jupiter or WalletConnect)
+ */
+public func signSolRawTransaction(seed: Data, account: UInt32, rawTx: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_sol_raw_transaction(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterData.lower(rawTx),$0
+    )
+})
+}
+/**
  * Sign a Solana transaction (returns serialized signed tx)
  */
 public func signSolTransfer(seed: Data, account: UInt32, toAddress: String, lamports: UInt64, recentBlockhash: Data)throws  -> Data {
@@ -1220,6 +1305,22 @@ public func signSolTransfer(seed: Data, account: UInt32, toAddress: String, lamp
         FfiConverterUInt32.lower(account),
         FfiConverterString.lower(toAddress),
         FfiConverterUInt64.lower(lamports),
+        FfiConverterData.lower(recentBlockhash),$0
+    )
+})
+}
+/**
+ * Sign an SPL token transfer (returns serialized signed tx bytes)
+ */
+public func signSplTransfer(seed: Data, account: UInt32, toAddress: String, mintAddress: String, amount: UInt64, decimals: UInt8, recentBlockhash: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
+    uniffi_wallet_core_fn_func_sign_spl_transfer(
+        FfiConverterData.lower(seed),
+        FfiConverterUInt32.lower(account),
+        FfiConverterString.lower(toAddress),
+        FfiConverterString.lower(mintAddress),
+        FfiConverterUInt64.lower(amount),
+        FfiConverterUInt8.lower(decimals),
         FfiConverterData.lower(recentBlockhash),$0
     )
 })
@@ -1270,6 +1371,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_wallet_core_checksum_func_derive_all_addresses_from_mnemonic() != 53848) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wallet_core_checksum_func_derive_sol_token_address() != 45971) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wallet_core_checksum_func_encrypt_seed_with_password() != 35575) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1291,13 +1395,28 @@ private var initializationResult: InitializationResult = {
     if (uniffi_wallet_core_checksum_func_sign_btc_transaction() != 52378) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wallet_core_checksum_func_sign_erc20_transfer() != 2168) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wallet_core_checksum_func_sign_eth_message() != 57108) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wallet_core_checksum_func_sign_eth_raw_hash() != 25819) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_sign_eth_transaction() != 65117) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_wallet_core_checksum_func_sign_sol_message() != 1329) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wallet_core_checksum_func_sign_sol_raw_transaction() != 17948) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_wallet_core_checksum_func_sign_sol_transfer() != 45267) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_wallet_core_checksum_func_sign_spl_transfer() != 54905) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_validate_address() != 57593) {

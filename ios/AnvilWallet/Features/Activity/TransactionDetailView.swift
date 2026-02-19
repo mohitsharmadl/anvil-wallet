@@ -4,6 +4,16 @@ import SwiftUI
 struct TransactionDetailView: View {
     let transaction: TransactionModel
 
+    /// The native fee symbol for this transaction's chain (ETH, BTC, SOL, MATIC, etc.)
+    private var feeSymbol: String {
+        ChainModel.allChains.first(where: { $0.id == transaction.chain })?.symbol ?? transaction.tokenSymbol
+    }
+
+    /// Human-readable chain name for display.
+    private var chainDisplayName: String {
+        ChainModel.allChains.first(where: { $0.id == transaction.chain })?.name ?? transaction.chain.capitalized
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -36,11 +46,11 @@ struct TransactionDetailView: View {
 
                     Divider().background(Color.separator)
 
-                    TransactionDetailRow(label: "Network", value: transaction.chain.capitalized)
+                    TransactionDetailRow(label: "Network", value: chainDisplayName)
 
                     Divider().background(Color.separator)
 
-                    TransactionDetailRow(label: "Fee", value: transaction.formattedFee + " ETH")
+                    TransactionDetailRow(label: "Fee", value: transaction.formattedFee + " " + feeSymbol)
 
                     Divider().background(Color.separator)
 

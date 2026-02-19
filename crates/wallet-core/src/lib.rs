@@ -364,6 +364,41 @@ pub fn sign_spl_transfer(
     Ok(signed)
 }
 
+/// Sign an arbitrary message with the Solana Ed25519 key.
+/// Used by WalletConnect `solana_signMessage` — signs raw bytes, returns 64-byte Ed25519 signature.
+pub fn sign_sol_message(
+    mut seed: Vec<u8>,
+    account: u32,
+    message: Vec<u8>,
+) -> Result<Vec<u8>, WalletError> {
+    use ed25519_dalek::Signer;
+
+    let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, account)?;
+
+    let mut private_key = key.private_key;
+    let signing_key = ed25519_dalek::SigningKey::from_bytes(&private_key);
+    private_key.zeroize();
+
+    let signature = signing_key.sign(&message);
+    seed.zeroize();
+    Ok(signature.to_bytes().to_vec())
+}
+
+/// Sign a pre-built Solana transaction (e.g. from Jupiter or WalletConnect).
+/// Takes raw transaction bytes and signs with the wallet's Ed25519 key.
+/// Returns the signed transaction bytes ready for submission.
+pub fn sign_sol_raw_transaction(
+    mut seed: Vec<u8>,
+    account: u32,
+    raw_tx: Vec<u8>,
+) -> Result<Vec<u8>, WalletError> {
+    let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, account)?;
+
+    let signed = chain_sol::transaction::sign_sol_raw_transaction(&key.private_key, &raw_tx)?;
+    seed.zeroize();
+    Ok(signed)
+}
+
 /// Derive the associated token account address for a wallet + mint pair
 pub fn derive_sol_token_address(
     wallet_address: String,
@@ -727,6 +762,134 @@ mod tests {
             "11111111111111111111111111111112".into(),
             "not-a-mint".into(),
         );
+        assert!(result.is_err());
+    }
+
+    // ─── sign_sol_message ───────────────────────────────────────────────
+
+    #[test]
+    fn sign_sol_message_returns_64_bytes() {
+        let seed = test_seed();
+        let msg = b"Hello, Solana!".to_vec();
+        let sig = sign_sol_message(seed, 0, msg).unwrap();
+        assert_eq!(sig.len(), 64);
+    }
+
+    #[test]
+    fn sign_sol_message_deterministic() {
+        let msg = b"test message".to_vec();
+        let sig1 = sign_sol_message(test_seed(), 0, msg.clone()).unwrap();
+        let sig2 = sign_sol_message(test_seed(), 0, msg).unwrap();
+        assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn sign_sol_message_verifies() {
+        use ed25519_dalek::{Signature, VerifyingKey};
+
+        let seed = test_seed();
+        let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, 0).unwrap();
+        let msg = b"verify me".to_vec();
+        let sig_bytes = sign_sol_message(test_seed(), 0, msg.clone()).unwrap();
+
+        let sig = Signature::from_bytes(sig_bytes.as_slice().try_into().unwrap());
+        let vk = VerifyingKey::from_bytes(&key.public_key).unwrap();
+        assert!(vk.verify_strict(&msg, &sig).is_ok());
+    }
+
+    #[test]
+    fn sign_sol_message_different_accounts_differ() {
+        let msg = b"same message".to_vec();
+        let sig0 = sign_sol_message(test_seed(), 0, msg.clone()).unwrap();
+        let sig1 = sign_sol_message(test_seed(), 1, msg).unwrap();
+        assert_ne!(sig0, sig1);
+    }
+
+    #[test]
+    fn sign_sol_message_empty_message() {
+        let sig = sign_sol_message(test_seed(), 0, vec![]).unwrap();
+        assert_eq!(sig.len(), 64);
+    }
+
+    // ─── sign_sol_raw_transaction ──────────────────────────────────────
+
+    #[test]
+    fn sign_sol_raw_transaction_roundtrip() {
+        let seed = test_seed();
+        let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, 0).unwrap();
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xCC; 32];
+
+        // Build a normal SOL transfer and sign it.
+        let tx = chain_sol::transaction::build_sol_transfer(
+            &key.public_key, &to, 1_000_000, &blockhash,
+        ).unwrap();
+        let wire_normal = chain_sol::transaction::sign_transaction(&tx, &key.private_key).unwrap();
+
+        // Zero out the signature to simulate an unsigned raw tx from a dApp.
+        let mut raw_unsigned = wire_normal.clone();
+        for b in &mut raw_unsigned[1..65] {
+            *b = 0;
+        }
+
+        // Sign via the FFI function.
+        let wire_raw = sign_sol_raw_transaction(test_seed(), 0, raw_unsigned).unwrap();
+
+        // Should produce the exact same signed transaction.
+        assert_eq!(wire_normal, wire_raw);
+    }
+
+    #[test]
+    fn sign_sol_raw_transaction_deterministic() {
+        let seed = test_seed();
+        let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, 0).unwrap();
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xAA; 32];
+
+        let tx = chain_sol::transaction::build_sol_transfer(
+            &key.public_key, &to, 500, &blockhash,
+        ).unwrap();
+        let wire = chain_sol::transaction::sign_transaction(&tx, &key.private_key).unwrap();
+
+        let mut raw = wire;
+        for b in &mut raw[1..65] {
+            *b = 0;
+        }
+
+        let signed1 = sign_sol_raw_transaction(test_seed(), 0, raw.clone()).unwrap();
+        let signed2 = sign_sol_raw_transaction(test_seed(), 0, raw).unwrap();
+        assert_eq!(signed1, signed2);
+    }
+
+    #[test]
+    fn sign_sol_raw_transaction_wrong_account_fails() {
+        let seed = test_seed();
+        let key = hd_derivation::derive_ed25519_key(&seed, Chain::Solana, 0).unwrap();
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xCC; 32];
+
+        let tx = chain_sol::transaction::build_sol_transfer(
+            &key.public_key, &to, 1000, &blockhash,
+        ).unwrap();
+        let wire = chain_sol::transaction::sign_transaction(&tx, &key.private_key).unwrap();
+
+        // Use account=1 (different key) -- should fail.
+        let result = sign_sol_raw_transaction(test_seed(), 1, wire);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn sign_sol_raw_transaction_empty_tx_fails() {
+        let result = sign_sol_raw_transaction(test_seed(), 0, vec![]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn sign_sol_raw_transaction_truncated_tx_fails() {
+        let result = sign_sol_raw_transaction(test_seed(), 0, vec![0x01, 0x00]);
         assert!(result.is_err());
     }
 }

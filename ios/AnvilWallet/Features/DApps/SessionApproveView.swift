@@ -56,7 +56,7 @@ struct SessionApproveView: View {
                             HStack {
                                 Image(systemName: "link")
                                     .foregroundColor(.accentGreen)
-                                Text(chain)
+                                Text(Self.friendlyChainName(chain))
                                     .foregroundColor(.textPrimary)
                             }
                         }
@@ -119,7 +119,12 @@ struct SessionApproveView: View {
                                     isProcessing = false
                                     return
                                 }
-                                try await walletConnect.approveSession(proposal, ethAddress: ethAddress)
+                                let solAddress = walletService.addresses["solana"]
+                                try await walletConnect.approveSession(
+                                    proposal,
+                                    ethAddress: ethAddress,
+                                    solAddress: solAddress
+                                )
                                 dismiss()
                             } catch {
                                 errorMessage = error.localizedDescription
@@ -154,6 +159,33 @@ struct SessionApproveView: View {
             .navigationBarTitleDisplayMode(.inline)
             .loadingOverlay(isLoading: isProcessing, message: "Processing...")
         }
+    }
+
+    /// Maps WC chain identifiers to human-readable names.
+    private static func friendlyChainName(_ chain: String) -> String {
+        // EVM chains
+        if chain.hasPrefix("eip155:") {
+            guard let idStr = chain.split(separator: ":").last,
+                  let chainId = UInt64(idStr) else { return chain }
+            if let model = ChainModel.allChains.first(where: { $0.evmChainId == chainId }) {
+                return model.name
+            }
+            return chain
+        }
+
+        // Solana chains (WC uses genesis hash as chain reference)
+        if chain.hasPrefix("solana:") {
+            if chain.contains("5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp") {
+                return "Solana Mainnet"
+            } else if chain.contains("4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z") {
+                return "Solana Testnet"
+            } else if chain.contains("EtWTRABZaYq6iMfeYKouRu166VU2xqa1") {
+                return "Solana Devnet"
+            }
+            return "Solana"
+        }
+
+        return chain
     }
 }
 

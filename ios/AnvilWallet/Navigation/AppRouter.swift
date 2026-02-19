@@ -24,14 +24,16 @@ final class AppRouter: ObservableObject {
 
     enum WalletDestination: Hashable {
         case tokenDetail(token: TokenModel)
+        case nftDetail(nft: NFTModel)
         case chainPicker
         case receive(chain: String, address: String)
         case activity
+        case notifications
     }
 
     enum SendDestination: Hashable {
         case confirmTransaction(transaction: TransactionModel)
-        case transactionResult(txHash: String, success: Bool)
+        case transactionResult(txHash: String, success: Bool, chain: String)
         case qrScanner
     }
 

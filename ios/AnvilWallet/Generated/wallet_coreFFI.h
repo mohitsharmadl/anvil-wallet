@@ -266,6 +266,11 @@ RustBuffer uniffi_wallet_core_fn_func_derive_address_from_mnemonic(RustBuffer mn
 RustBuffer uniffi_wallet_core_fn_func_derive_all_addresses_from_mnemonic(RustBuffer mnemonic, RustBuffer passphrase, uint32_t account, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_DERIVE_SOL_TOKEN_ADDRESS
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_DERIVE_SOL_TOKEN_ADDRESS
+RustBuffer uniffi_wallet_core_fn_func_derive_sol_token_address(RustBuffer wallet_address, RustBuffer mint_address, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_ENCRYPT_SEED_WITH_PASSWORD
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_ENCRYPT_SEED_WITH_PASSWORD
 RustBuffer uniffi_wallet_core_fn_func_encrypt_seed_with_password(RustBuffer seed, RustBuffer password, RustCallStatus *_Nonnull out_status
@@ -302,9 +307,19 @@ RustBuffer uniffi_wallet_core_fn_func_recover_eth_pubkey(RustBuffer signature, R
 RustBuffer uniffi_wallet_core_fn_func_sign_btc_transaction(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer utxos, RustBuffer recipient_address, uint64_t amount_sat, RustBuffer change_address, uint64_t fee_rate_sat_vbyte, int8_t is_testnet, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ERC20_TRANSFER
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ERC20_TRANSFER
+RustBuffer uniffi_wallet_core_fn_func_sign_erc20_transfer(RustBuffer seed, RustBuffer passphrase, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer token_contract, RustBuffer to_address, RustBuffer amount_hex, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_MESSAGE
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_MESSAGE
 RustBuffer uniffi_wallet_core_fn_func_sign_eth_message(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer message, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_RAW_HASH
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_RAW_HASH
+RustBuffer uniffi_wallet_core_fn_func_sign_eth_raw_hash(RustBuffer seed, uint32_t account, uint32_t index, RustBuffer hash, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_TRANSACTION
@@ -312,9 +327,24 @@ RustBuffer uniffi_wallet_core_fn_func_sign_eth_message(RustBuffer seed, uint32_t
 RustBuffer uniffi_wallet_core_fn_func_sign_eth_transaction(RustBuffer seed, RustBuffer passphrase, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer to_address, RustBuffer value_wei_hex, RustBuffer data, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_MESSAGE
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_MESSAGE
+RustBuffer uniffi_wallet_core_fn_func_sign_sol_message(RustBuffer seed, uint32_t account, RustBuffer message, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_RAW_TRANSACTION
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_RAW_TRANSACTION
+RustBuffer uniffi_wallet_core_fn_func_sign_sol_raw_transaction(RustBuffer seed, uint32_t account, RustBuffer raw_tx, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_TRANSFER
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_TRANSFER
 RustBuffer uniffi_wallet_core_fn_func_sign_sol_transfer(RustBuffer seed, uint32_t account, RustBuffer to_address, uint64_t lamports, RustBuffer recent_blockhash, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SPL_TRANSFER
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SPL_TRANSFER
+RustBuffer uniffi_wallet_core_fn_func_sign_spl_transfer(RustBuffer seed, uint32_t account, RustBuffer to_address, RustBuffer mint_address, uint64_t amount, uint8_t decimals, RustBuffer recent_blockhash, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_VALIDATE_ADDRESS
@@ -625,6 +655,12 @@ uint16_t uniffi_wallet_core_checksum_func_derive_all_addresses_from_mnemonic(voi
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_DERIVE_SOL_TOKEN_ADDRESS
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_DERIVE_SOL_TOKEN_ADDRESS
+uint16_t uniffi_wallet_core_checksum_func_derive_sol_token_address(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_ENCRYPT_SEED_WITH_PASSWORD
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_ENCRYPT_SEED_WITH_PASSWORD
 uint16_t uniffi_wallet_core_checksum_func_encrypt_seed_with_password(void
@@ -667,9 +703,21 @@ uint16_t uniffi_wallet_core_checksum_func_sign_btc_transaction(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ERC20_TRANSFER
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ERC20_TRANSFER
+uint16_t uniffi_wallet_core_checksum_func_sign_erc20_transfer(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_MESSAGE
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_MESSAGE
 uint16_t uniffi_wallet_core_checksum_func_sign_eth_message(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_RAW_HASH
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_ETH_RAW_HASH
+uint16_t uniffi_wallet_core_checksum_func_sign_eth_raw_hash(void
     
 );
 #endif
@@ -679,9 +727,27 @@ uint16_t uniffi_wallet_core_checksum_func_sign_eth_transaction(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_MESSAGE
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_MESSAGE
+uint16_t uniffi_wallet_core_checksum_func_sign_sol_message(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_RAW_TRANSACTION
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_RAW_TRANSACTION
+uint16_t uniffi_wallet_core_checksum_func_sign_sol_raw_transaction(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_TRANSFER
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SOL_TRANSFER
 uint16_t uniffi_wallet_core_checksum_func_sign_sol_transfer(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SPL_TRANSFER
+#define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_CHECKSUM_FUNC_SIGN_SPL_TRANSFER
+uint16_t uniffi_wallet_core_checksum_func_sign_spl_transfer(void
     
 );
 #endif

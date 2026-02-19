@@ -1,16 +1,18 @@
 import Foundation
 
-/// Shared Etherscan API client with rate limiting (5 calls/sec).
-/// Uses the existing CertificatePinner — api.etherscan.io is already pinned.
+/// Shared Etherscan-compatible API client with rate limiting (5 calls/sec).
+/// Works with any *scan block explorer API (Etherscan, Polygonscan, Arbiscan, etc.)
+/// since they all share the same query interface.
+/// Uses the existing CertificatePinner — all explorer API hosts must be pinned.
 actor EtherscanService {
 
     static let shared = EtherscanService()
 
     private let session: URLSession
-    private let baseUrl = "https://api.etherscan.io/api"
+    private let defaultBaseUrl = "https://api.etherscan.io/api"
     private let apiKey: String
 
-    // Rate limiter: max 5 calls per second
+    // Rate limiter: max 5 calls per second (shared across all chains)
     private var callTimestamps: [Date] = []
     private let maxCallsPerSecond = 5
 
@@ -48,19 +50,24 @@ actor EtherscanService {
 
     // MARK: - Generic Request
 
-    private func request(params: [String: String]) async throws -> Data {
+    private func request(params: [String: String], baseUrl: String? = nil) async throws -> Data {
         await waitForRateLimit()
 
-        var components = URLComponents(string: baseUrl)!
+        let url = baseUrl ?? defaultBaseUrl
+        var components = URLComponents(string: url)!
         var queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        queryItems.append(URLQueryItem(name: "apikey", value: apiKey))
+        // Only attach the Etherscan API key for Etherscan-hosted domains.
+        // Other *scan explorers work without a key (lower rate limit but functional).
+        if !apiKey.isEmpty && isEtherscanDomain(url) {
+            queryItems.append(URLQueryItem(name: "apikey", value: apiKey))
+        }
         components.queryItems = queryItems
 
-        guard let url = components.url else {
+        guard let requestUrl = components.url else {
             throw EtherscanError.invalidURL
         }
 
-        let (data, response) = try await session.data(from: url)
+        let (data, response) = try await session.data(from: requestUrl)
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
@@ -68,6 +75,12 @@ actor EtherscanService {
         }
 
         return data
+    }
+
+    /// Returns true if the URL belongs to an etherscan.io domain where our API key works.
+    private func isEtherscanDomain(_ url: String) -> Bool {
+        guard let host = URLComponents(string: url)?.host else { return false }
+        return host.hasSuffix("etherscan.io") || host.hasSuffix("etherscan.com")
     }
 
     // MARK: - Token Transfers
@@ -81,7 +94,8 @@ actor EtherscanService {
 
     /// Fetches ERC-20 token transfer events for an address.
     /// Returns unique token contracts that have interacted with the address.
-    func fetchTokenTransfers(address: String) async throws -> [TokenTransfer] {
+    /// - Parameter explorerApiUrl: Optional *scan API base URL. Defaults to Etherscan mainnet.
+    func fetchTokenTransfers(address: String, explorerApiUrl: String? = nil) async throws -> [TokenTransfer] {
         let data = try await request(params: [
             "module": "account",
             "action": "tokentx",
@@ -91,7 +105,7 @@ actor EtherscanService {
             "sort": "desc",
             "page": "1",
             "offset": "100",
-        ])
+        ], baseUrl: explorerApiUrl)
 
         struct Response: Decodable {
             let status: String
@@ -121,7 +135,8 @@ actor EtherscanService {
     /// Fetches Approval event logs where the given address is the token owner.
     /// topic0 = keccak256("Approval(address,address,uint256)")
     /// topic1 = owner address (left-padded to 32 bytes)
-    func fetchApprovalLogs(owner: String) async throws -> [ApprovalLog] {
+    /// - Parameter explorerApiUrl: Optional *scan API base URL. Defaults to Etherscan mainnet.
+    func fetchApprovalLogs(owner: String, explorerApiUrl: String? = nil) async throws -> [ApprovalLog] {
         let cleanOwner = owner.hasPrefix("0x") ? String(owner.dropFirst(2)) : owner
         let paddedOwner = "0x" + String(repeating: "0", count: 24) + cleanOwner.lowercased()
 
@@ -138,7 +153,7 @@ actor EtherscanService {
             "topic0_1_opr": "and",
             "page": "1",
             "offset": "200",
-        ])
+        ], baseUrl: explorerApiUrl)
 
         struct Response: Decodable {
             let status: String

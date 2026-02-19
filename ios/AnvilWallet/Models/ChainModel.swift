@@ -209,6 +209,12 @@ struct ChainModel: Identifiable, Codable, Hashable {
         .polygonAmoy,
     ]
 
+    /// Returns the active RPC URL for this chain — custom override if set, otherwise the default.
+    /// All code that needs the RPC URL should use this instead of `rpcUrl` directly.
+    var activeRpcUrl: String {
+        CustomRPCStore.shared.activeRpcUrl(for: self)
+    }
+
     /// EIP-155 chain ID for EVM chains. Returns nil for non-EVM chains or unknown chains.
     var evmChainId: UInt64? {
         switch id {
@@ -224,4 +230,23 @@ struct ChainModel: Identifiable, Codable, Hashable {
         default: return nil
         }
     }
+
+    /// Block explorer API base URL for EVM chains.
+    /// All *scan explorers share the same API interface, so we can use the same
+    /// query patterns across chains. Returns nil for non-EVM or unsupported chains.
+    var explorerApiUrl: String? {
+        switch id {
+        case "ethereum":    return "https://api.etherscan.io/api"
+        case "polygon":     return "https://api.polygonscan.com/api"
+        case "arbitrum":    return "https://api.arbiscan.io/api"
+        case "base":        return "https://api.basescan.org/api"
+        case "optimism":    return "https://api-optimistic.etherscan.io/api"
+        case "bsc":         return "https://api.bscscan.com/api"
+        case "avalanche":   return "https://api.snowscan.xyz/api"
+        default:            return nil
+        }
+    }
+
+    /// All mainnet EVM chains that support the approval tracker.
+    static let approvalSupportedChains: [ChainModel] = defaults.filter { $0.explorerApiUrl != nil }
 }

@@ -225,8 +225,8 @@ struct SendView: View {
                 switch destination {
                 case .confirmTransaction(let tx):
                     ConfirmTransactionView(transaction: tx)
-                case .transactionResult(let hash, let success):
-                    TransactionResultView(txHash: hash, success: success)
+                case .transactionResult(let hash, let success, let chain):
+                    TransactionResultView(txHash: hash, success: success, chain: chain)
                 case .qrScanner:
                     QRScannerView { address in
                         recipientAddress = address

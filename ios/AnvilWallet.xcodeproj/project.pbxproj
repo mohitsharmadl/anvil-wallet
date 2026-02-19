@@ -78,6 +78,10 @@
 		AA01BB02CC03DD04EE05FF06 /* TransactionRiskEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF07 /* TransactionRiskEngineTests.swift */; };
 		AA01BB02CC03DD04EE05FF08 /* BalanceChangeSimulatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */; };
 		AA01BB02CC03DD04EE05FF0B /* TokenDiscoveryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF0C /* TokenDiscoveryServiceTests.swift */; };
+		AB01CD02EF03010405060708 /* AccountPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33010405060709 /* AccountPickerView.swift */; };
+		AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33010405060711 /* AccountManagerView.swift */; };
+		BA01AA02BB03CC04DD05EE01 /* BuyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE01 /* BuyView.swift */; };
+		BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -156,6 +160,10 @@
 		AA11BB22CC33DD44EE55FF09 /* BalanceChangeSimulatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceChangeSimulatorTests.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF0C /* TokenDiscoveryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenDiscoveryServiceTests.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF10 /* AnvilWalletTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnvilWalletTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB11CD22EF33010405060709 /* AccountPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPickerView.swift; sourceTree = "<group>"; };
+		AB11CD22EF33010405060711 /* AccountManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountManagerView.swift; sourceTree = "<group>"; };
+		BA11AA22BB33CC44DD55EE01 /* BuyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuyView.swift; sourceTree = "<group>"; };
+		BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonPayWebView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -355,6 +363,7 @@
 		D2F5900A9405B6D40CC9ECF2 /* Wallet */ = {
 			isa = PBXGroup;
 			children = (
+				AB11CD22EF33010405060709 /* AccountPickerView.swift */,
 				2E9F51E5866FF46FFD9F7F02 /* ChainPickerView.swift */,
 				870D01C593148616D0BE89B2 /* ReceiveView.swift */,
 				1D56C315A34F049854265ADC /* TokenDetailView.swift */,
@@ -385,6 +394,7 @@
 		E36045F00381652B371BC921 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				AB11CD22EF33010405060711 /* AccountManagerView.swift */,
 				830E3B8CD5D238ABF08207B9 /* ApprovalTrackerView.swift */,
 				F2C2FF7E6882A1960C24E6A2 /* BackupSettingsView.swift */,
 				0211E06D53277076763E8D5F /* NetworkSettingsView.swift */,
@@ -394,10 +404,20 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		BA11AA22BB33CC44DD55EE03 /* Buy */ = {
+			isa = PBXGroup;
+			children = (
+				BA11AA22BB33CC44DD55EE01 /* BuyView.swift */,
+				BA11AA22BB33CC44DD55EE02 /* MoonPayWebView.swift */,
+			);
+			path = Buy;
+			sourceTree = "<group>";
+		};
 		E6FAD91C64BD5D27D7340C21 /* Features */ = {
 			isa = PBXGroup;
 			children = (
 				21F28E278E14546D3F9E74F0 /* Activity */,
+				BA11AA22BB33CC44DD55EE03 /* Buy */,
 				63FB3DAC54868680D64C4ACD /* DApps */,
 				D04194508266BED54F119A6C /* Onboarding */,
 				574D312D6527BB0C97599D48 /* Send */,
@@ -542,6 +562,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB01CD02EF03010405060708 /* AccountPickerView.swift in Sources */,
+				AB01CD02EF03010405060710 /* AccountManagerView.swift in Sources */,
 				EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */,
 				FF8F0F4714BF57350B6A98FE /* AntiDebugger.swift in Sources */,
 				BC838802FC67DE97F36806D0 /* AnvilWalletApp.swift in Sources */,
@@ -555,6 +577,7 @@
 				F131F7C0C3E4D35B6A72F5D1 /* BalanceChangeSimulator.swift in Sources */,
 				C0676203BBE51E352C463925 /* BinaryHash.swift in Sources */,
 				76549807F785FA96A2FA975A /* BiometricService.swift in Sources */,
+				BA01AA02BB03CC04DD05EE01 /* BuyView.swift in Sources */,
 				755ED579F9B40C05D37A84C1 /* CertificatePinner.swift in Sources */,
 				52C09D2B64B9D56CB39A9069 /* ChainModel.swift in Sources */,
 				7CF25A9D6BFA036DDA605910 /* ChainPickerView.swift in Sources */,
@@ -568,6 +591,7 @@
 				AE4A7B2341291F7BF9E58AFC /* ImportWalletView.swift in Sources */,
 				0960920730A37C2E3801CB90 /* JailbreakDetector.swift in Sources */,
 				1746DB767479E7E994F3A4FE /* KeychainService.swift in Sources */,
+				BA01AA02BB03CC04DD05EE02 /* MoonPayWebView.swift in Sources */,
 				88823B7741780DC2E6D28F1A /* NetworkSettingsView.swift in Sources */,
 				97D03AB2A5566FBAF3C06F44 /* PriceService.swift in Sources */,
 				01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */,

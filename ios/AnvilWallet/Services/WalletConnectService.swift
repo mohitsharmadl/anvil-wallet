@@ -105,10 +105,10 @@ struct AnvilCryptoProvider: CryptoProvider {
 ///   - Approving/rejecting session proposals
 ///   - personal_sign message signing
 ///   - eth_sendTransaction (sign + broadcast EIP-1559 transactions)
-///   - eth_signTypedData_v4 (EIP-712 typed data — pending raw hash FFI)
+///   - eth_signTypedData_v4 (EIP-712 typed data)
+///   - solana_signTransaction (sign pre-built Solana transactions)
+///   - solana_signMessage (Ed25519 message signing)
 ///   - Session management (list, disconnect)
-///
-/// Future: Solana signing
 final class WalletConnectService: ObservableObject {
 
     static let shared = WalletConnectService()
@@ -192,15 +192,26 @@ final class WalletConnectService: ObservableObject {
                 var methods: [String] = []
                 var events: [String] = []
 
+                // Collect EVM chains
                 if let eip155 = proposal.requiredNamespaces["eip155"] {
-                    requiredChains = eip155.chains?.map { $0.absoluteString } ?? []
-                    methods = eip155.methods.sorted()
-                    events = eip155.events.sorted()
+                    requiredChains += eip155.chains?.map { $0.absoluteString } ?? []
+                    methods += eip155.methods.sorted()
+                    events += eip155.events.sorted()
+                }
+
+                // Collect Solana chains
+                if let solana = proposal.requiredNamespaces["solana"] {
+                    requiredChains += solana.chains?.map { $0.absoluteString } ?? []
+                    methods += solana.methods.sorted()
+                    events += solana.events.sorted()
                 }
 
                 var optionalChains: [String] = []
                 if let optEip155 = proposal.optionalNamespaces?["eip155"] {
-                    optionalChains = optEip155.chains?.map { $0.absoluteString } ?? []
+                    optionalChains += optEip155.chains?.map { $0.absoluteString } ?? []
+                }
+                if let optSolana = proposal.optionalNamespaces?["solana"] {
+                    optionalChains += optSolana.chains?.map { $0.absoluteString } ?? []
                 }
 
                 self?.pendingProposal = WCSessionProposal(
@@ -288,27 +299,57 @@ final class WalletConnectService: ObservableObject {
     // MARK: - Session Management
 
     /// Approves a pending session proposal.
-    /// Builds eip155 namespaces from the wallet's ETH address for all requested EVM chains.
-    func approveSession(_ proposal: WCSessionProposal, ethAddress: String) async throws {
-        // Build the account list for all requested EVM chains
+    /// Builds eip155 and solana namespaces from the wallet's addresses for all requested chains.
+    func approveSession(
+        _ proposal: WCSessionProposal,
+        ethAddress: String,
+        solAddress: String? = nil
+    ) async throws {
+        // Separate chains by namespace
         var allChains = proposal.requiredChains + proposal.optionalChains
-        if allChains.isEmpty {
-            allChains = ["eip155:1"] // Default to Ethereum mainnet
+
+        let evmChains = allChains.filter { $0.hasPrefix("eip155:") }
+        let solanaChains = allChains.filter { $0.hasPrefix("solana:") }
+
+        var sessionNamespaces: [String: SessionNamespace] = [:]
+
+        // EVM namespace
+        var evmChainList = evmChains
+        if evmChainList.isEmpty && solanaChains.isEmpty {
+            // Default to Ethereum mainnet if no chains requested at all
+            evmChainList = ["eip155:1"]
         }
 
-        let accounts = allChains.compactMap { chainString -> Account? in
-            guard let blockchain = Blockchain(chainString) else { return nil }
-            return Account(blockchain: blockchain, address: ethAddress)
-        }
+        if !evmChainList.isEmpty {
+            let evmAccounts = evmChainList.compactMap { chainString -> Account? in
+                guard let blockchain = Blockchain(chainString) else { return nil }
+                return Account(blockchain: blockchain, address: ethAddress)
+            }
 
-        let sessionNamespaces: [String: SessionNamespace] = [
-            "eip155": SessionNamespace(
-                chains: accounts.map { $0.blockchain },
-                accounts: accounts,
-                methods: Self.supportedMethods,
+            sessionNamespaces["eip155"] = SessionNamespace(
+                chains: evmAccounts.map { $0.blockchain },
+                accounts: evmAccounts,
+                methods: Self.supportedEvmMethods,
                 events: Set(["chainChanged", "accountsChanged"])
             )
-        ]
+        }
+
+        // Solana namespace
+        if let solAddr = solAddress, !solanaChains.isEmpty {
+            let solAccounts = solanaChains.compactMap { chainString -> Account? in
+                guard let blockchain = Blockchain(chainString) else { return nil }
+                return Account(blockchain: blockchain, address: solAddr)
+            }
+
+            if !solAccounts.isEmpty {
+                sessionNamespaces["solana"] = SessionNamespace(
+                    chains: solAccounts.map { $0.blockchain },
+                    accounts: solAccounts,
+                    methods: Self.supportedSolanaMethods,
+                    events: Set<String>()
+                )
+            }
+        }
 
         _ = try await WalletKit.instance.approve(
             proposalId: proposal.id,
@@ -342,20 +383,25 @@ final class WalletConnectService: ObservableObject {
 
     // MARK: - Request Handling
 
-    /// Supported signing methods — only sign methods we actually implement.
-    private static let supportedMethods: Set<String> = [
+    /// Supported EVM signing methods.
+    private static let supportedEvmMethods: Set<String> = [
         "personal_sign",
         "eth_sendTransaction",
         "eth_signTypedData_v4",
     ]
 
+    /// Supported Solana signing methods.
+    private static let supportedSolanaMethods: Set<String> = [
+        "solana_signTransaction",
+        "solana_signMessage",
+    ]
+
+    /// All supported methods across all namespaces.
+    private static let supportedMethods: Set<String> =
+        supportedEvmMethods.union(supportedSolanaMethods)
+
     /// Approves a pending sign request by signing the message data.
     func approveRequest(_ request: WCSignRequest, walletService: WalletService) async throws {
-        // Validate chain is EVM (eip155:*)
-        guard request.chain.hasPrefix("eip155:") else {
-            throw WCError.unsupportedMethod("Non-EVM chain: \(request.chain)")
-        }
-
         // Validate method is one we actually support
         guard Self.supportedMethods.contains(request.method) else {
             throw WCError.unsupportedMethod(request.method)
@@ -363,55 +409,80 @@ final class WalletConnectService: ObservableObject {
 
         let responseValue: AnyCodable
 
-        // Active wallet ETH address for account validation (fail-closed).
-        // All EVM chains share the same address, so grab the first EVM entry.
-        // If unavailable, reject all signing requests rather than signing blindly.
-        guard let activeAddress = ChainModel.defaults
-            .first(where: { $0.chainType == .evm })
-            .flatMap({ walletService.addresses[$0.id] })?
-            .lowercased()
-        else {
-            throw WCError.malformedParams("No active EVM wallet address available")
-        }
-
-        switch request.method {
-        case "personal_sign":
-            // personal_sign params: [message_hex, address]
-            // Validate that the requested address matches our active wallet
-            if let requestedAddress = parsePersonalSignAddress(from: request.params),
-               requestedAddress.lowercased() != activeAddress {
-                throw WCError.accountMismatch(requested: requestedAddress)
-            }
-            guard let messageHex = parsePersonalSignMessage(from: request.params) else {
-                throw WCError.malformedParams("Malformed personal_sign params")
-            }
-            guard let messageBytes = strictHexToBytes(messageHex), !messageBytes.isEmpty else {
-                throw WCError.malformedParams("Invalid hex in personal_sign message")
+        if request.chain.hasPrefix("solana:") {
+            // --- Solana methods ---
+            guard Self.supportedSolanaMethods.contains(request.method) else {
+                throw WCError.unsupportedMethod(request.method)
             }
 
-            // Sign using the wallet service (requires biometric auth)
-            let signature = try await walletService.signMessage(messageBytes)
-            responseValue = AnyCodable("0x" + signature.map { String(format: "%02x", $0) }.joined())
+            switch request.method {
+            case "solana_signTransaction":
+                responseValue = try await handleSolanaSignTransaction(request, walletService: walletService)
 
-        case "eth_sendTransaction":
-            // Validate 'from' address matches active wallet
-            if let txParams = parseTransactionParams(from: request.params),
-               let from = txParams.from,
-               from.lowercased() != activeAddress {
-                throw WCError.accountMismatch(requested: from)
+            case "solana_signMessage":
+                responseValue = try await handleSolanaSignMessage(request, walletService: walletService)
+
+            default:
+                throw WCError.unsupportedMethod(request.method)
             }
-            responseValue = try await handleSendTransaction(request, walletService: walletService)
-
-        case "eth_signTypedData_v4":
-            // Validate requested address matches active wallet
-            if let (requestedAddr, _) = parseTypedDataParams(from: request.params),
-               requestedAddr.lowercased() != activeAddress {
-                throw WCError.accountMismatch(requested: requestedAddr)
+        } else if request.chain.hasPrefix("eip155:") {
+            // --- EVM methods ---
+            guard Self.supportedEvmMethods.contains(request.method) else {
+                throw WCError.unsupportedMethod(request.method)
             }
-            responseValue = try await handleSignTypedData(request, walletService: walletService)
 
-        default:
-            throw WCError.unsupportedMethod(request.method)
+            // Active wallet ETH address for account validation (fail-closed).
+            // All EVM chains share the same address, so grab the first EVM entry.
+            // If unavailable, reject all signing requests rather than signing blindly.
+            guard let activeAddress = ChainModel.defaults
+                .first(where: { $0.chainType == .evm })
+                .flatMap({ walletService.addresses[$0.id] })?
+                .lowercased()
+            else {
+                throw WCError.malformedParams("No active EVM wallet address available")
+            }
+
+            switch request.method {
+            case "personal_sign":
+                // personal_sign params: [message_hex, address]
+                // Validate that the requested address matches our active wallet
+                if let requestedAddress = parsePersonalSignAddress(from: request.params),
+                   requestedAddress.lowercased() != activeAddress {
+                    throw WCError.accountMismatch(requested: requestedAddress)
+                }
+                guard let messageHex = parsePersonalSignMessage(from: request.params) else {
+                    throw WCError.malformedParams("Malformed personal_sign params")
+                }
+                guard let messageBytes = strictHexToBytes(messageHex), !messageBytes.isEmpty else {
+                    throw WCError.malformedParams("Invalid hex in personal_sign message")
+                }
+
+                // Sign using the wallet service (requires biometric auth)
+                let signature = try await walletService.signMessage(messageBytes)
+                responseValue = AnyCodable("0x" + signature.map { String(format: "%02x", $0) }.joined())
+
+            case "eth_sendTransaction":
+                // Validate 'from' address matches active wallet
+                if let txParams = parseTransactionParams(from: request.params),
+                   let from = txParams.from,
+                   from.lowercased() != activeAddress {
+                    throw WCError.accountMismatch(requested: from)
+                }
+                responseValue = try await handleSendTransaction(request, walletService: walletService)
+
+            case "eth_signTypedData_v4":
+                // Validate requested address matches active wallet
+                if let (requestedAddr, _) = parseTypedDataParams(from: request.params),
+                   requestedAddr.lowercased() != activeAddress {
+                    throw WCError.accountMismatch(requested: requestedAddr)
+                }
+                responseValue = try await handleSignTypedData(request, walletService: walletService)
+
+            default:
+                throw WCError.unsupportedMethod(request.method)
+            }
+        } else {
+            throw WCError.chainNotSupported(request.chain)
         }
 
         let rpcId = RPCID(request.id)
@@ -976,6 +1047,92 @@ final class WalletConnectService: ObservableObject {
         }
     }
 
+    // MARK: - solana_signTransaction
+
+    /// WalletConnect `solana_signTransaction` request params.
+    ///
+    /// The WC spec sends a JSON object with a `transaction` field containing
+    /// the serialized transaction as a base58 string.
+    private struct WCSolanaSignTransactionParams: Decodable {
+        let transaction: String
+    }
+
+    /// Handles solana_signTransaction: decode raw tx, sign with Ed25519, return signed tx.
+    private func handleSolanaSignTransaction(
+        _ request: WCSignRequest,
+        walletService: WalletService
+    ) async throws -> AnyCodable {
+        // Parse params — WC sends { transaction: "<base58-encoded-tx>" }
+        let txBase58: String
+        if let params = try? JSONDecoder().decode(
+            WCSolanaSignTransactionParams.self, from: request.params
+        ) {
+            txBase58 = params.transaction
+        } else if let dict = try? JSONSerialization.jsonObject(with: request.params) as? [String: Any],
+                  let tx = dict["transaction"] as? String {
+            txBase58 = tx
+        } else {
+            throw WCError.malformedParams("Invalid solana_signTransaction params: expected { transaction: string }")
+        }
+
+        // Decode base58 transaction to raw bytes
+        guard let rawTxData = Base58.decode(txBase58), !rawTxData.isEmpty else {
+            throw WCError.malformedParams("Invalid base58 in solana_signTransaction")
+        }
+
+        // Sign with wallet service (biometric auth + Ed25519 signing)
+        let signedTx = try await walletService.signSolanaRawTransaction(rawTxData)
+
+        // Return the signed transaction as base58 in a JSON object
+        // per WC Solana spec: { signature: "<base58>", transaction: "<base58>" }
+        // Some dApps only expect { transaction: "<base58>" }
+        let signedBase58 = Base58.encode(signedTx)
+        return AnyCodable(["transaction": signedBase58])
+    }
+
+    // MARK: - solana_signMessage
+
+    /// WalletConnect `solana_signMessage` request params.
+    ///
+    /// The WC spec sends a JSON object with a `message` field containing
+    /// the message as a base58-encoded string, and optionally `pubkey`.
+    private struct WCSolanaSignMessageParams: Decodable {
+        let message: String
+        let pubkey: String?
+    }
+
+    /// Handles solana_signMessage: decode message, sign with Ed25519, return signature.
+    private func handleSolanaSignMessage(
+        _ request: WCSignRequest,
+        walletService: WalletService
+    ) async throws -> AnyCodable {
+        // Parse params — WC sends { message: "<base58-encoded-msg>", pubkey: "<optional>" }
+        let messageBase58: String
+        if let params = try? JSONDecoder().decode(
+            WCSolanaSignMessageParams.self, from: request.params
+        ) {
+            messageBase58 = params.message
+        } else if let dict = try? JSONSerialization.jsonObject(with: request.params) as? [String: Any],
+                  let msg = dict["message"] as? String {
+            messageBase58 = msg
+        } else {
+            throw WCError.malformedParams("Invalid solana_signMessage params: expected { message: string }")
+        }
+
+        // Decode base58 message to raw bytes
+        guard let messageData = Base58.decode(messageBase58) else {
+            throw WCError.malformedParams("Invalid base58 in solana_signMessage")
+        }
+
+        // Sign with wallet service (biometric auth + Ed25519 signing)
+        let signature = try await walletService.signSolanaMessage([UInt8](messageData))
+
+        // Return the signature as base58 in a JSON object
+        // per WC Solana spec: { signature: "<base58>" }
+        let signatureBase58 = Base58.encode(Data(signature))
+        return AnyCodable(["signature": signatureBase58])
+    }
+
     // MARK: - Chain Helpers
 
     /// Extracts the numeric chain ID from a WC chain string (e.g., "eip155:1" -> 1).
@@ -986,8 +1143,9 @@ final class WalletConnectService: ObservableObject {
     }
 
     /// Finds the RPC URL for an EVM chain ID by looking up ChainModel configs.
+    /// Returns the custom override if set, otherwise the default URL.
     private static func rpcUrl(forEvmChainId chainId: UInt64) -> String? {
-        ChainModel.allChains.first { $0.evmChainId == chainId }?.rpcUrl
+        ChainModel.allChains.first { $0.evmChainId == chainId }?.activeRpcUrl
     }
 
     /// Parses a hex string (with or without 0x prefix) to UInt64.

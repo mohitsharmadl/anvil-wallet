@@ -98,16 +98,20 @@ struct SecuritySettingsView: View {
             }
             .listRowBackground(Color.backgroundCard)
 
-            // Advanced
-            Section("Advanced") {
+            // Encrypted Backup
+            Section("Encrypted Backup") {
                 NavigationLink {
-                    // TODO: Export encrypted backup
-                    Text("Export Backup")
-                        .foregroundColor(.textPrimary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.backgroundPrimary)
+                    ExportBackupView()
+                        .environmentObject(walletService)
                 } label: {
                     SettingsRow(icon: "arrow.up.doc.fill", title: "Export Encrypted Backup", color: .info)
+                }
+
+                NavigationLink {
+                    ImportBackupView()
+                        .environmentObject(walletService)
+                } label: {
+                    SettingsRow(icon: "arrow.down.doc.fill", title: "Import Backup", color: .accentGreen)
                 }
             }
             .listRowBackground(Color.backgroundCard)

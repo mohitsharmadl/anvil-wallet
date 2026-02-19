@@ -6,6 +6,8 @@ import SwiftUI
 ///   - personal_sign (message signing)
 ///   - eth_signTypedData (EIP-712)
 ///   - eth_sendTransaction (transaction signing)
+///   - solana_signTransaction (Solana transaction signing)
+///   - solana_signMessage (Solana message signing)
 struct SignRequestView: View {
     @StateObject private var walletConnect = WalletConnectService.shared
     @EnvironmentObject var walletService: WalletService
@@ -35,9 +37,7 @@ struct SignRequestView: View {
                         .font(.headline)
                         .foregroundColor(.textPrimary)
 
-                    Text(request.method == "eth_sendTransaction"
-                         ? "requests a transaction"
-                         : "requests a signature")
+                    Text(requestDescription)
                         .font(.body)
                         .foregroundColor(.textSecondary)
                 }
@@ -103,7 +103,7 @@ struct SignRequestView: View {
                             isProcessing = false
                         }
                     } label: {
-                        Text(request.method == "eth_sendTransaction" ? "Sign & Send" : "Sign")
+                        Text(approveButtonLabel)
                     }
                     .buttonStyle(.primary)
                     .disabled(isProcessing || riskAssessment?.overallLevel == .danger)
@@ -165,6 +165,32 @@ struct SignRequestView: View {
 
 extension SignRequestView {
 
+    /// Human-readable description for the request action.
+    private var requestDescription: String {
+        switch request.method {
+        case "eth_sendTransaction":
+            return "requests a transaction"
+        case "solana_signTransaction":
+            return "requests a Solana transaction"
+        case "solana_signMessage":
+            return "requests a Solana message signature"
+        default:
+            return "requests a signature"
+        }
+    }
+
+    /// Approve button label varies by method.
+    private var approveButtonLabel: String {
+        switch request.method {
+        case "eth_sendTransaction":
+            return "Sign & Send"
+        case "solana_signTransaction":
+            return "Sign Transaction"
+        default:
+            return "Sign"
+        }
+    }
+
     /// Returns a view appropriate for the request method.
     @ViewBuilder
     var requestDataView: some View {
@@ -173,6 +199,10 @@ extension SignRequestView {
             transactionDataView
         case "eth_signTypedData_v4":
             typedDataView
+        case "solana_signTransaction":
+            solanaTransactionDataView
+        case "solana_signMessage":
+            solanaMessageDataView
         default:
             rawDataView
         }
@@ -256,7 +286,106 @@ extension SignRequestView {
         }
     }
 
-    // MARK: - Parsing helpers
+    // MARK: - Solana data display
+
+    private var solanaTransactionDataView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let txBase58 = parsedSolanaTransaction {
+                DetailItem(label: "Network", value: solanaNetworkName)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Transaction")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.textSecondary)
+                    ScrollView {
+                        Text(txBase58.prefix(120) + (txBase58.count > 120 ? "..." : ""))
+                            .font(.caption.monospaced())
+                            .foregroundColor(.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 120)
+                    .padding(12)
+                    .background(Color.backgroundElevated)
+                    .cornerRadius(8)
+                }
+                if let rawBytes = Base58.decode(txBase58) {
+                    DetailItem(label: "Size", value: "\(rawBytes.count) bytes")
+                }
+            } else {
+                rawDataView
+            }
+        }
+    }
+
+    private var solanaMessageDataView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            DetailItem(label: "Network", value: solanaNetworkName)
+            if let messageBase58 = parsedSolanaMessage {
+                // Try to display the message as UTF-8 text if it decodes cleanly
+                if let messageData = Base58.decode(messageBase58),
+                   let utf8 = String(data: messageData, encoding: .utf8),
+                   utf8.allSatisfy({ !$0.isNewline || $0 == "\n" }) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Message")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.textSecondary)
+                        ScrollView {
+                            Text(utf8)
+                                .font(.body.monospaced())
+                                .foregroundColor(.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 200)
+                        .padding(12)
+                        .background(Color.backgroundElevated)
+                        .cornerRadius(8)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Message (base58)")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.textSecondary)
+                        Text(messageBase58.prefix(200) + (messageBase58.count > 200 ? "..." : ""))
+                            .font(.caption.monospaced())
+                            .foregroundColor(.textPrimary)
+                    }
+                }
+            } else {
+                rawDataView
+            }
+        }
+    }
+
+    /// Solana network name from the WC chain ID.
+    private var solanaNetworkName: String {
+        if request.chain.contains("5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp") {
+            return "Solana Mainnet"
+        } else if request.chain.contains("4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z") {
+            return "Solana Testnet"
+        } else if request.chain.contains("EtWTRABZaYq6iMfeYKouRu166VU2xqa1") {
+            return "Solana Devnet"
+        }
+        return request.chain
+    }
+
+    /// Parses the base58 transaction string from solana_signTransaction params.
+    private var parsedSolanaTransaction: String? {
+        guard let dict = try? JSONSerialization.jsonObject(with: request.params) as? [String: Any],
+              let tx = dict["transaction"] as? String else {
+            return nil
+        }
+        return tx
+    }
+
+    /// Parses the base58 message string from solana_signMessage params.
+    private var parsedSolanaMessage: String? {
+        guard let dict = try? JSONSerialization.jsonObject(with: request.params) as? [String: Any],
+              let msg = dict["message"] as? String else {
+            return nil
+        }
+        return msg
+    }
+
+    // MARK: - EVM Parsing helpers
 
     private struct ParsedTransaction {
         let to: String

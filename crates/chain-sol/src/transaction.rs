@@ -344,6 +344,150 @@ pub fn sign_transaction(
 }
 
 // ---------------------------------------------------------------------------
+// Raw transaction signing (for pre-built transactions from dApps / Jupiter)
+// ---------------------------------------------------------------------------
+
+/// Decode a compact-u16 value from a byte slice.
+///
+/// Returns `(value, bytes_consumed)` or an error if the data is truncated.
+pub fn decode_compact_u16(data: &[u8]) -> Result<(u16, usize), SolError> {
+    if data.is_empty() {
+        return Err(SolError::SerializationError(
+            "unexpected end of data while decoding compact-u16".into(),
+        ));
+    }
+
+    let mut value: u32 = 0;
+    let mut shift = 0u32;
+    let mut consumed = 0usize;
+
+    loop {
+        if consumed >= data.len() {
+            return Err(SolError::SerializationError(
+                "unexpected end of data while decoding compact-u16".into(),
+            ));
+        }
+        let byte = data[consumed];
+        consumed += 1;
+
+        value |= ((byte & 0x7f) as u32) << shift;
+        shift += 7;
+
+        if byte & 0x80 == 0 {
+            break;
+        }
+        if consumed >= 3 {
+            break;
+        }
+    }
+
+    if value > u16::MAX as u32 {
+        return Err(SolError::SerializationError(
+            "compact-u16 value overflow".into(),
+        ));
+    }
+
+    Ok((value as u16, consumed))
+}
+
+/// Sign a pre-built Solana transaction with the given Ed25519 private key.
+///
+/// The `raw_tx` must be a valid Solana wire-format transaction (as produced by
+/// `sign_transaction` or by a dApp/Jupiter). The function:
+///
+/// 1. Parses the wire format to locate the signature slots and the message.
+/// 2. Finds which signature slot corresponds to our public key (derived from
+///    `private_key`).
+/// 3. Signs the message bytes and writes the signature into the correct slot.
+/// 4. Returns the fully-signed transaction bytes.
+///
+/// This supports both single-signer and multi-signer transactions. If our
+/// pubkey is not in the transaction's signer list, an error is returned.
+pub fn sign_sol_raw_transaction(
+    private_key: &[u8; 32],
+    raw_tx: &[u8],
+) -> Result<Vec<u8>, SolError> {
+    // Derive the public key from the private key.
+    let mut seed = *private_key;
+    let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+    seed.zeroize();
+    let our_pubkey = signing_key.verifying_key().to_bytes();
+
+    // Parse the wire format.
+    // Layout: compact-u16(num_signatures) | 64-byte signatures * N | message
+    let (num_sigs, compact_len) = decode_compact_u16(raw_tx)?;
+
+    if num_sigs == 0 {
+        return Err(SolError::TransactionBuildError(
+            "transaction has zero signatures".into(),
+        ));
+    }
+
+    let sigs_start = compact_len;
+    let sigs_end = sigs_start + (num_sigs as usize) * 64;
+
+    if sigs_end > raw_tx.len() {
+        return Err(SolError::SerializationError(
+            "transaction too short: signature slots exceed length".into(),
+        ));
+    }
+
+    // The message starts right after the signature slots.
+    let message_bytes = &raw_tx[sigs_end..];
+
+    if message_bytes.len() < 4 {
+        return Err(SolError::SerializationError(
+            "transaction message too short".into(),
+        ));
+    }
+
+    // Parse the message header to find account keys.
+    // Message header: num_required_signatures(u8) | num_readonly_signed(u8) | num_readonly_unsigned(u8)
+    let num_required_sigs = message_bytes[0] as u16;
+    // bytes [1] and [2] are readonly counts, skip them
+
+    // Decode the number of account keys.
+    let (num_accounts, accounts_compact_len) = decode_compact_u16(&message_bytes[3..])?;
+
+    let accounts_start = 3 + accounts_compact_len;
+    let accounts_end = accounts_start + (num_accounts as usize) * 32;
+
+    if accounts_end > message_bytes.len() {
+        return Err(SolError::SerializationError(
+            "transaction message too short for account keys".into(),
+        ));
+    }
+
+    // The first `num_required_sigs` accounts are the signers.
+    // Find which signer slot matches our pubkey.
+    let mut signer_index: Option<usize> = None;
+    for i in 0..(num_required_sigs as usize).min(num_accounts as usize) {
+        let key_start = accounts_start + i * 32;
+        let key_end = key_start + 32;
+        if message_bytes[key_start..key_end] == our_pubkey {
+            signer_index = Some(i);
+            break;
+        }
+    }
+
+    let signer_idx = signer_index.ok_or_else(|| {
+        SolError::SigningError(
+            "wallet pubkey not found in transaction signers".into(),
+        )
+    })?;
+
+    // Sign the message.
+    let signature = signing_key.sign(message_bytes);
+
+    // Build the output: copy the raw tx and overwrite our signature slot.
+    let mut signed_tx = raw_tx.to_vec();
+    let sig_offset = sigs_start + signer_idx * 64;
+    signed_tx[sig_offset..sig_offset + 64].copy_from_slice(&signature.to_bytes());
+
+    Ok(signed_tx)
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -613,5 +757,182 @@ mod tests {
         // Accounts: key (signer+writable), system_program (read-only).
         assert_eq!(tx.account_keys.len(), 2);
         assert_eq!(tx.num_required_signatures, 1);
+    }
+
+    // -- compact-u16 decoding -----------------------------------------------
+
+    #[test]
+    fn decode_compact_u16_zero() {
+        let (val, len) = decode_compact_u16(&[0x00]).unwrap();
+        assert_eq!(val, 0);
+        assert_eq!(len, 1);
+    }
+
+    #[test]
+    fn decode_compact_u16_one_byte_max() {
+        let (val, len) = decode_compact_u16(&[0x7f]).unwrap();
+        assert_eq!(val, 127);
+        assert_eq!(len, 1);
+    }
+
+    #[test]
+    fn decode_compact_u16_two_bytes() {
+        let (val, len) = decode_compact_u16(&[0x80, 0x01]).unwrap();
+        assert_eq!(val, 128);
+        assert_eq!(len, 2);
+    }
+
+    #[test]
+    fn decode_compact_u16_three_bytes() {
+        let (val, len) = decode_compact_u16(&[0x80, 0x80, 0x01]).unwrap();
+        assert_eq!(val, 16384);
+        assert_eq!(len, 3);
+    }
+
+    #[test]
+    fn decode_compact_u16_roundtrip() {
+        for value in [0u16, 1, 127, 128, 255, 256, 16383, 16384, 65535] {
+            let encoded = encode_compact_u16(value);
+            let (decoded, len) = decode_compact_u16(&encoded).unwrap();
+            assert_eq!(decoded, value, "roundtrip failed for {value}");
+            assert_eq!(len, encoded.len());
+        }
+    }
+
+    #[test]
+    fn decode_compact_u16_empty_input_fails() {
+        assert!(decode_compact_u16(&[]).is_err());
+    }
+
+    // -- sign_sol_raw_transaction -------------------------------------------
+
+    #[test]
+    fn sign_raw_transaction_roundtrip() {
+        // Build a transaction using the normal path, then re-sign it using
+        // sign_sol_raw_transaction and verify the output matches.
+        use ed25519_dalek::{Signature as DalekSig, VerifyingKey};
+
+        let private_key = [0x42u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&private_key);
+        let from_pubkey = signing_key.verifying_key().to_bytes();
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xCC; 32];
+
+        // Build and sign normally.
+        let tx = build_sol_transfer(&from_pubkey, &to, 1_000_000, &blockhash).unwrap();
+        let wire_normal = sign_transaction(&tx, &private_key).unwrap();
+
+        // Now create the same wire format but with a zeroed signature slot
+        // (simulating what a dApp would provide).
+        let mut raw_unsigned = wire_normal.clone();
+        // Zero out the signature (bytes 1..65 for a single-signer tx).
+        for b in &mut raw_unsigned[1..65] {
+            *b = 0;
+        }
+
+        // Re-sign using the raw transaction signer.
+        let wire_raw = sign_sol_raw_transaction(&private_key, &raw_unsigned).unwrap();
+
+        // The results should be identical.
+        assert_eq!(wire_normal, wire_raw);
+
+        // Verify the signature is valid.
+        let sig_bytes: [u8; 64] = wire_raw[1..65].try_into().unwrap();
+        let signature = DalekSig::from_bytes(&sig_bytes);
+        let message_bytes = &wire_raw[65..];
+        let vk = VerifyingKey::from_bytes(&from_pubkey).unwrap();
+        assert!(vk.verify_strict(message_bytes, &signature).is_ok());
+    }
+
+    #[test]
+    fn sign_raw_transaction_deterministic() {
+        let private_key = [0x55u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&private_key);
+        let from_pubkey = signing_key.verifying_key().to_bytes();
+
+        let to = [0x77u8; 32];
+        let blockhash = [0x99; 32];
+
+        let tx = build_sol_transfer(&from_pubkey, &to, 42, &blockhash).unwrap();
+        let wire = sign_transaction(&tx, &private_key).unwrap();
+
+        // Zero the signature to simulate an unsigned raw tx.
+        let mut raw = wire.clone();
+        for b in &mut raw[1..65] {
+            *b = 0;
+        }
+
+        let signed1 = sign_sol_raw_transaction(&private_key, &raw).unwrap();
+        let signed2 = sign_sol_raw_transaction(&private_key, &raw).unwrap();
+        assert_eq!(signed1, signed2);
+    }
+
+    #[test]
+    fn sign_raw_transaction_wrong_key_fails() {
+        // Build a transaction for one keypair, try to sign with a different one.
+        let private_key_a = [0x11u8; 32];
+        let signing_key_a = ed25519_dalek::SigningKey::from_bytes(&private_key_a);
+        let pubkey_a = signing_key_a.verifying_key().to_bytes();
+
+        let private_key_b = [0x22u8; 32];
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xCC; 32];
+
+        let tx = build_sol_transfer(&pubkey_a, &to, 1000, &blockhash).unwrap();
+        let wire = sign_transaction(&tx, &private_key_a).unwrap();
+
+        // Try to sign with key B -- should fail because pubkey B is not a signer.
+        let result = sign_sol_raw_transaction(&private_key_b, &wire);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[test]
+    fn sign_raw_transaction_truncated_input_fails() {
+        // A truncated transaction should fail gracefully.
+        let result = sign_sol_raw_transaction(&[0x42u8; 32], &[0x01]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn sign_raw_transaction_empty_input_fails() {
+        let result = sign_sol_raw_transaction(&[0x42u8; 32], &[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn sign_raw_transaction_zero_signatures_fails() {
+        // compact-u16(0) = 0x00, then some message bytes.
+        let result = sign_sol_raw_transaction(&[0x42u8; 32], &[0x00, 0x01, 0x00, 0x00]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("zero signatures"));
+    }
+
+    #[test]
+    fn sign_raw_transaction_preserves_message() {
+        // Verify that signing does not alter the message portion.
+        let private_key = [0x42u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&private_key);
+        let from_pubkey = signing_key.verifying_key().to_bytes();
+
+        let to = [0xBBu8; 32];
+        let blockhash = [0xDD; 32];
+
+        let tx = build_sol_transfer(&from_pubkey, &to, 500_000, &blockhash).unwrap();
+        let wire = sign_transaction(&tx, &private_key).unwrap();
+
+        // Zero signature to get "unsigned" tx.
+        let mut raw = wire.clone();
+        for b in &mut raw[1..65] {
+            *b = 0;
+        }
+
+        let signed = sign_sol_raw_transaction(&private_key, &raw).unwrap();
+
+        // Message portion (after compact-u16(1) + 64-byte sig) must be identical.
+        assert_eq!(&signed[65..], &raw[65..]);
+        assert_eq!(&signed[65..], &wire[65..]);
     }
 }

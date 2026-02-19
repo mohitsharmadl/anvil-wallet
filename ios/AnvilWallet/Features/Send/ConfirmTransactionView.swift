@@ -39,6 +39,30 @@ struct ConfirmTransactionView: View {
     @State private var fetchedBtcFeeRate: UInt64 = 0
     @State private var fetchedBtcUtxos: [UtxoData] = []
     @State private var fetchedBtcAmountSat: UInt64 = 0
+    @State private var fetchedBtcFeeRates: RPCService.BitcoinFeeRates?
+    @State private var selectedBtcFeeSpeed: BtcFeeSpeed = .medium
+    @State private var btcFeeSat: UInt64 = 0
+
+    enum BtcFeeSpeed: String, CaseIterable, Identifiable {
+        case fast, medium, slow
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .fast: return RPCService.BitcoinFeeRates.fastLabel
+            case .medium: return RPCService.BitcoinFeeRates.mediumLabel
+            case .slow: return RPCService.BitcoinFeeRates.slowLabel
+            }
+        }
+
+        func rate(from rates: RPCService.BitcoinFeeRates) -> UInt64 {
+            switch self {
+            case .fast: return rates.fast
+            case .medium: return rates.medium
+            case .slow: return rates.slow
+            }
+        }
+    }
 
     // Risk assessment
     @State private var riskAssessment: RiskAssessment?
@@ -196,6 +220,24 @@ struct ConfirmTransactionView: View {
                             }
                         } else if let error = simulationError {
                             DetailRow(label: "Fee Error", value: error, valueColor: .error)
+                        } else if chainModel?.chainType == .bitcoin {
+                            // BTC: show fee in sats and BTC
+                            VStack(spacing: 4) {
+                                HStack {
+                                    Text("Fee")
+                                        .foregroundColor(.textSecondary)
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("\(estimatedFee) BTC")
+                                            .foregroundColor(.textPrimary)
+                                            .monospacedDigit()
+                                        Text("\(btcFeeSat) sats (\(fetchedBtcFeeRate) sat/vB)")
+                                            .font(.caption)
+                                            .foregroundColor(.textTertiary)
+                                            .monospacedDigit()
+                                    }
+                                }
+                            }
                         } else {
                             DetailRow(
                                 label: "Estimated Fee",
@@ -209,6 +251,20 @@ struct ConfirmTransactionView: View {
                     .cornerRadius(16)
                     .padding(.horizontal, 20)
 
+                    // BTC fee speed picker
+                    if chainModel?.chainType == .bitcoin && !isSimulating && simulationError == nil,
+                       let rates = fetchedBtcFeeRates {
+                        BtcFeeSpeedPicker(
+                            selectedSpeed: $selectedBtcFeeSpeed,
+                            feeRates: rates
+                        )
+                        .padding(.horizontal, 20)
+                        .onChange(of: selectedBtcFeeSpeed) {
+                            // Recalculate fee when speed changes
+                            Task { await recalculateBtcFee() }
+                        }
+                    }
+
                     // Total
                     if !isSimulating && simulationError == nil {
                         HStack {
@@ -219,10 +275,18 @@ struct ConfirmTransactionView: View {
                             Spacer()
 
                             VStack(alignment: .trailing) {
-                                let total = (Decimal(string: transaction.amount) ?? 0) + (Decimal(string: estimatedFee) ?? 0)
-                                Text("\(NSDecimalNumber(decimal: total).stringValue) \(transaction.tokenSymbol)")
-                                    .font(.headline.monospacedDigit())
-                                    .foregroundColor(.textPrimary)
+                                if chainModel?.chainType == .bitcoin {
+                                    // BTC: amount + fee are both in BTC
+                                    let total = (Decimal(string: transaction.amount) ?? 0) + (Decimal(string: estimatedFee) ?? 0)
+                                    Text("\(NSDecimalNumber(decimal: total).stringValue) BTC")
+                                        .font(.headline.monospacedDigit())
+                                        .foregroundColor(.textPrimary)
+                                } else {
+                                    let total = (Decimal(string: transaction.amount) ?? 0) + (Decimal(string: estimatedFee) ?? 0)
+                                    Text("\(NSDecimalNumber(decimal: total).stringValue) \(transaction.tokenSymbol)")
+                                        .font(.headline.monospacedDigit())
+                                        .foregroundColor(.textPrimary)
+                                }
                             }
                         }
                         .padding()
@@ -342,13 +406,13 @@ struct ConfirmTransactionView: View {
             case .evm:
                 // Fetch nonce and EIP-1559 fee data
                 let nonceHex: String = try await RPCService.shared.getTransactionCount(
-                    rpcUrl: chain.rpcUrl,
+                    rpcUrl: chain.activeRpcUrl,
                     address: transaction.from
                 )
                 fetchedNonce = UInt64(nonceHex.dropFirst(2), radix: 16) ?? 0
 
                 // Use eth_feeHistory for robust EIP-1559 fee estimation
-                let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.rpcUrl)
+                let feeData = try await RPCService.shared.feeHistory(rpcUrl: chain.activeRpcUrl)
                 let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
                 let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
 
@@ -388,7 +452,7 @@ struct ConfirmTransactionView: View {
                 }
 
                 let gasEstimateHex: String = try await RPCService.shared.estimateGas(
-                    rpcUrl: chain.rpcUrl,
+                    rpcUrl: chain.activeRpcUrl,
                     from: transaction.from,
                     to: estimateTo,
                     value: estimateValue,
@@ -411,23 +475,57 @@ struct ConfirmTransactionView: View {
                 estimatedFee = "0.000005"
 
             case .bitcoin:
-                // Fetch UTXOs and fee rate for estimation
-                let utxos = try await RPCService.shared.getBitcoinUtxos(
-                    apiUrl: chain.rpcUrl,
+                // Fetch UTXOs and fee rates for estimation
+                let allUtxos = try await RPCService.shared.getBitcoinUtxos(
+                    apiUrl: chain.activeRpcUrl,
                     address: transaction.from
                 )
-                let feeRate = try await RPCService.shared.getBitcoinFeeRate(apiUrl: chain.rpcUrl)
+                let feeRates = try await RPCService.shared.getBitcoinFeeRates(apiUrl: chain.activeRpcUrl)
                 let amountSat = amountToSmallestUnit(transaction.amount, decimals: 8)
+                let feeRate = selectedBtcFeeSpeed.rate(from: feeRates)
 
-                // Estimate vsize: ~68 per input + ~31 per output + 10 overhead
-                let numInputs = max(utxos.count, 1)
-                let estimatedVsize = UInt64(numInputs * 68 + 2 * 31 + 10)
-                let feeSat = feeRate * estimatedVsize
+                // Greedy UTXO selection: sort by value descending, pick until amount + estimated fee is covered
+                let sorted = allUtxos.sorted { $0.amountSat > $1.amountSat }
+                var selected: [UtxoData] = []
+                var totalSelected: UInt64 = 0
+
+                // Initial fee estimate with 1 input to bootstrap selection
+                var currentInputCount = 1
+                var estimatedVsize = UInt64(currentInputCount * 68 + 2 * 31 + 10)
+                var feeSat = feeRate * estimatedVsize
+
+                for utxo in sorted {
+                    selected.append(utxo)
+                    totalSelected += utxo.amountSat
+
+                    // Recalculate fee with actual input count
+                    // P2WPKH vsize: ~110 + 68*inputs + 31*outputs (2 outputs: recipient + change)
+                    currentInputCount = selected.count
+                    estimatedVsize = UInt64(currentInputCount * 68 + 2 * 31 + 10)
+                    feeSat = feeRate * estimatedVsize
+
+                    if totalSelected >= amountSat + feeSat {
+                        break
+                    }
+                }
+
+                // Check if we have enough funds
+                guard totalSelected >= amountSat + feeSat else {
+                    let totalAvailable = allUtxos.reduce(UInt64(0)) { $0 + $1.amountSat }
+                    let availableBtc = String(format: "%.8f", Double(totalAvailable) / 1e8)
+                    let neededBtc = String(format: "%.8f", Double(amountSat + feeSat) / 1e8)
+                    simulationError = "Insufficient funds. Available: \(availableBtc) BTC, needed: \(neededBtc) BTC (including fee)"
+                    isSimulating = false
+                    return
+                }
+
+                btcFeeSat = feeSat
                 estimatedFee = String(format: "%.8g", Double(feeSat) / 1e8)
 
-                // Store fee rate for signing
+                // Store for signing
                 fetchedBtcFeeRate = feeRate
-                fetchedBtcUtxos = utxos
+                fetchedBtcFeeRates = feeRates
+                fetchedBtcUtxos = selected
                 fetchedBtcAmountSat = amountSat
             }
 
@@ -435,6 +533,64 @@ struct ConfirmTransactionView: View {
         } catch {
             simulationError = error.localizedDescription
             isSimulating = false
+        }
+    }
+
+    /// Recalculates BTC fee after user changes the fee speed picker.
+    /// Re-runs UTXO selection with the new fee rate since different rates
+    /// may require different numbers of inputs.
+    private func recalculateBtcFee() async {
+        guard let rates = fetchedBtcFeeRates,
+              let chain = chainModel,
+              chain.chainType == .bitcoin else { return }
+
+        let newRate = selectedBtcFeeSpeed.rate(from: rates)
+
+        // Re-fetch UTXOs to re-run selection (use stored amount)
+        do {
+            let allUtxos = try await RPCService.shared.getBitcoinUtxos(
+                apiUrl: chain.activeRpcUrl,
+                address: transaction.from
+            )
+
+            let sorted = allUtxos.sorted { $0.amountSat > $1.amountSat }
+            var selected: [UtxoData] = []
+            var totalSelected: UInt64 = 0
+            var feeSat: UInt64 = 0
+
+            for utxo in sorted {
+                selected.append(utxo)
+                totalSelected += utxo.amountSat
+
+                let estimatedVsize = UInt64(selected.count * 68 + 2 * 31 + 10)
+                feeSat = newRate * estimatedVsize
+
+                if totalSelected >= fetchedBtcAmountSat + feeSat {
+                    break
+                }
+            }
+
+            guard totalSelected >= fetchedBtcAmountSat + feeSat else {
+                let totalAvailable = allUtxos.reduce(UInt64(0)) { $0 + $1.amountSat }
+                let availableBtc = String(format: "%.8f", Double(totalAvailable) / 1e8)
+                let neededBtc = String(format: "%.8f", Double(fetchedBtcAmountSat + feeSat) / 1e8)
+                await MainActor.run {
+                    simulationError = "Insufficient funds at this fee rate. Available: \(availableBtc) BTC, needed: \(neededBtc) BTC"
+                }
+                return
+            }
+
+            await MainActor.run {
+                simulationError = nil
+                btcFeeSat = feeSat
+                estimatedFee = String(format: "%.8g", Double(feeSat) / 1e8)
+                fetchedBtcFeeRate = newRate
+                fetchedBtcUtxos = selected
+            }
+        } catch {
+            await MainActor.run {
+                simulationError = error.localizedDescription
+            }
         }
     }
 
@@ -493,13 +649,13 @@ struct ConfirmTransactionView: View {
                 signedTx = try await walletService.signTransaction(request: .eth(ethReq))
                 let signedHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
                 txHash = try await RPCService.shared.sendRawTransaction(
-                    rpcUrl: chain.rpcUrl,
+                    rpcUrl: chain.activeRpcUrl,
                     signedTx: signedHex
                 )
 
             case .solana:
                 let lamports = amountToSmallestUnit(transaction.amount, decimals: 9)
-                let blockhash = try await RPCService.shared.getRecentBlockhash(rpcUrl: chain.rpcUrl)
+                let blockhash = try await RPCService.shared.getRecentBlockhash(rpcUrl: chain.activeRpcUrl)
 
                 let solReq = SolTransactionRequest(
                     to: transaction.to,
@@ -509,7 +665,7 @@ struct ConfirmTransactionView: View {
 
                 signedTx = try await walletService.signTransaction(request: .sol(solReq))
                 txHash = try await RPCService.shared.sendSolanaTransaction(
-                    rpcUrl: chain.rpcUrl,
+                    rpcUrl: chain.activeRpcUrl,
                     signedTx: signedTx.base64EncodedString()
                 )
 
@@ -529,15 +685,34 @@ struct ConfirmTransactionView: View {
                 signedTx = try await walletService.signTransaction(request: .btc(btcReq))
                 let txHexStr = signedTx.map { String(format: "%02x", $0) }.joined()
                 txHash = try await RPCService.shared.broadcastBitcoinTransaction(
-                    apiUrl: chain.rpcUrl,
+                    apiUrl: chain.activeRpcUrl,
                     txHex: txHexStr
                 )
             }
 
+            // Record the transaction locally so it appears immediately in ActivityView
+            let sentTx = TransactionModel(
+                hash: txHash,
+                chain: transaction.chain,
+                from: transaction.from,
+                to: transaction.to,
+                amount: transaction.amount,
+                fee: estimatedFee,
+                status: .pending,
+                timestamp: Date(),
+                tokenSymbol: transaction.tokenSymbol,
+                tokenDecimals: transaction.tokenDecimals,
+                contractAddress: transaction.contractAddress
+            )
+            walletService.recordLocalTransaction(sentTx)
+
+            // Invalidate cache for this chain so next refresh fetches fresh data
+            TransactionHistoryService.shared.invalidateCache(for: transaction.chain)
+
             await MainActor.run {
                 isSigning = false
                 router.sendPath.append(
-                    AppRouter.SendDestination.transactionResult(txHash: txHash, success: true)
+                    AppRouter.SendDestination.transactionResult(txHash: txHash, success: true, chain: transaction.chain)
                 )
             }
         } catch let error as AppWalletError where error == .passwordRequired {
@@ -658,6 +833,50 @@ extension AppWalletError: Equatable {
             return a == b
         default:
             return false
+        }
+    }
+}
+
+// MARK: - BTC Fee Speed Picker
+
+private struct BtcFeeSpeedPicker: View {
+    @Binding var selectedSpeed: ConfirmTransactionView.BtcFeeSpeed
+    let feeRates: RPCService.BitcoinFeeRates
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Fee Priority")
+                .font(.subheadline.bold())
+                .foregroundColor(.textSecondary)
+
+            HStack(spacing: 8) {
+                ForEach(ConfirmTransactionView.BtcFeeSpeed.allCases) { speed in
+                    let rate = speed.rate(from: feeRates)
+                    let isSelected = selectedSpeed == speed
+
+                    Button {
+                        selectedSpeed = speed
+                    } label: {
+                        VStack(spacing: 4) {
+                            Text(speed.rawValue.capitalized)
+                                .font(.subheadline.bold())
+                                .foregroundColor(isSelected ? .white : .textPrimary)
+
+                            Text("\(rate) sat/vB")
+                                .font(.caption.monospacedDigit())
+                                .foregroundColor(isSelected ? .white.opacity(0.8) : .textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? Color.accentGreen : Color.backgroundCard)
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(isSelected ? Color.clear : Color.border, lineWidth: 1)
+                        )
+                    }
+                }
+            }
         }
     }
 }
