@@ -12,6 +12,11 @@ struct AccountPickerView: View {
     @State private var newAccountName = ""
     @State private var showNameInput = false
     @State private var errorMessage: String?
+    @State private var showPasswordPrompt = false
+    @State private var reenteredPassword = ""
+    @State private var passwordError: String?
+    @State private var isVerifyingPassword = false
+    @State private var pendingAccountNameForRetry: String?
 
     var body: some View {
         NavigationStack {
@@ -151,25 +156,130 @@ struct AccountPickerView: View {
                 }
             }
         }
+        .sheet(isPresented: $showPasswordPrompt) {
+            accountUnlockSheet
+                .presentationDetents([.medium])
+        }
     }
 
     private func createNewAccount() async {
         isCreating = true
         errorMessage = nil
+        let name = newAccountName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedName = name.isEmpty ? nil : name
+        pendingAccountNameForRetry = normalizedName
 
         do {
-            let name = newAccountName.trimmingCharacters(in: .whitespacesAndNewlines)
-            try await walletService.createAccount(name: name.isEmpty ? nil : name)
+            try await walletService.createAccount(name: normalizedName)
             await MainActor.run {
                 isCreating = false
                 showNameInput = false
                 newAccountName = ""
+                pendingAccountNameForRetry = nil
             }
             dismiss()
+        } catch let error as AppWalletError where error == .passwordRequired {
+            await MainActor.run {
+                isCreating = false
+                reenteredPassword = ""
+                passwordError = nil
+                showPasswordPrompt = true
+            }
         } catch {
             await MainActor.run {
                 isCreating = false
                 errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func verifyAndRetryCreateAccount() async {
+        isVerifyingPassword = true
+        passwordError = nil
+
+        do {
+            try await walletService.setSessionPassword(reenteredPassword)
+            let pendingName = pendingAccountNameForRetry
+            try await walletService.createAccount(name: pendingName)
+            await MainActor.run {
+                isVerifyingPassword = false
+                showPasswordPrompt = false
+                reenteredPassword = ""
+                pendingAccountNameForRetry = nil
+                isCreating = false
+                showNameInput = false
+                newAccountName = ""
+                errorMessage = nil
+            }
+            dismiss()
+        } catch {
+            await MainActor.run {
+                isVerifyingPassword = false
+                passwordError = "Incorrect password. Please try again."
+            }
+        }
+    }
+
+    private var accountUnlockSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Image(systemName: "lock.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.accentGreen)
+
+                Text("Unlock Wallet")
+                    .font(.title3.bold())
+                    .foregroundColor(.textPrimary)
+
+                Text("Your session expired. Re-enter your wallet password to create another account.")
+                    .font(.body)
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                SecureField("Password", text: $reenteredPassword)
+                    .font(.body)
+                    .padding(12)
+                    .background(Color.backgroundCard)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(passwordError != nil ? Color.error : Color.border, lineWidth: 1)
+                    )
+
+                if let passwordError {
+                    Text(passwordError)
+                        .font(.caption)
+                        .foregroundColor(.error)
+                }
+
+                Button {
+                    Task { await verifyAndRetryCreateAccount() }
+                } label: {
+                    if isVerifyingPassword {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Unlock & Create")
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle(isEnabled: !reenteredPassword.isEmpty))
+                .disabled(reenteredPassword.isEmpty || isVerifyingPassword)
+
+                Spacer()
+            }
+            .padding(24)
+            .background(Color.backgroundPrimary)
+            .navigationTitle("Session Locked")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        showPasswordPrompt = false
+                        reenteredPassword = ""
+                        passwordError = nil
+                    }
+                    .foregroundColor(.textSecondary)
+                }
             }
         }
     }
