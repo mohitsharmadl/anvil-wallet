@@ -10,12 +10,12 @@ struct TokenListView: View {
 
     private var filteredTokens: [TokenModel] {
         if searchText.isEmpty {
-            return walletService.tokens
+            return walletService.tokens.sorted { $0.balanceUsd > $1.balanceUsd }
         }
         return walletService.tokens.filter { token in
             token.name.localizedCaseInsensitiveContains(searchText) ||
             token.symbol.localizedCaseInsensitiveContains(searchText)
-        }
+        }.sorted { $0.balanceUsd > $1.balanceUsd }
     }
 
     var body: some View {
@@ -84,13 +84,21 @@ struct TokenListView: View {
 
             if filteredTokens.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
+                    Image(systemName: searchText.isEmpty ? "tray" : "magnifyingglass")
                         .font(.largeTitle)
                         .foregroundColor(.textTertiary)
 
-                    Text("No tokens found")
+                    Text(searchText.isEmpty ? "No tokens yet" : "No tokens found")
                         .font(.subheadline)
                         .foregroundColor(.textSecondary)
+
+                    if searchText.isEmpty {
+                        Text("Add a custom token or receive assets to see balances here.")
+                            .font(.caption)
+                            .foregroundColor(.textTertiary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 48)

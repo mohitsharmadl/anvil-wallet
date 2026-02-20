@@ -43,6 +43,27 @@ struct BackupSettingsView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
 
+                if walletService.hasBip39Passphrase {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "key.fill")
+                            .foregroundColor(.warning)
+                            .padding(.top, 2)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("BIP-39 Passphrase Enabled")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.textPrimary)
+                            Text("This wallet uses an extra passphrase (25th word). You must back it up with your recovery phrase to restore funds.")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.warning.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                }
+
                 // View recovery phrase
                 VStack(spacing: 12) {
                     Text("Recovery Phrase")

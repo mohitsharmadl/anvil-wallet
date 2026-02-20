@@ -34,6 +34,9 @@ struct ConfirmTransactionView: View {
     @State private var fetchedGasLimit: UInt64 = 21000
     @State private var fetchedMaxFeeHex: String = "0x0"
     @State private var fetchedMaxPriorityFeeHex: String = "0x0"
+    @State private var evmBaseFeeWei: UInt64 = 0
+    @State private var evmPriorityFeeWei: UInt64 = 0
+    @State private var evmFeePreset: EvmFeePreset = .standard
 
     // Fetched params for BTC signing
     @State private var fetchedBtcFeeRate: UInt64 = 0
@@ -64,6 +67,21 @@ struct ConfirmTransactionView: View {
             case .fast: return rates.fast
             case .medium: return rates.medium
             case .slow: return rates.slow
+            }
+        }
+    }
+
+    enum EvmFeePreset: String, CaseIterable, Identifiable {
+        case slow = "Slow"
+        case standard = "Standard"
+        case fast = "Fast"
+        var id: String { rawValue }
+
+        var multiplier: Double {
+            switch self {
+            case .slow: return 1.0
+            case .standard: return 1.2
+            case .fast: return 1.5
             }
         }
     }
@@ -255,6 +273,34 @@ struct ConfirmTransactionView: View {
                     .cornerRadius(16)
                     .padding(.horizontal, 20)
 
+                    if chainModel?.chainType == .evm && !isSimulating && simulationError == nil {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Network Speed")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.textSecondary)
+
+                            HStack(spacing: 8) {
+                                ForEach(EvmFeePreset.allCases) { preset in
+                                    Button {
+                                        evmFeePreset = preset
+                                        recalculateEvmFee()
+                                    } label: {
+                                        Text(preset.rawValue)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundColor(evmFeePreset == preset ? .white : .textSecondary)
+                                            .padding(.vertical, 8)
+                                            .frame(maxWidth: .infinity)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .fill(evmFeePreset == preset ? Color.accentGreen : Color.backgroundCard)
+                                            )
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
                     // BTC fee speed picker
                     if chainModel?.chainType == .bitcoin && !isSimulating && simulationError == nil,
                        let rates = fetchedBtcFeeRates {
@@ -425,18 +471,11 @@ struct ConfirmTransactionView: View {
                 let baseFee = UInt64(feeData.baseFeeHex.dropFirst(2), radix: 16) ?? 0
                 let priorityFee = UInt64(feeData.priorityFeeHex.dropFirst(2), radix: 16) ?? 1_500_000_000
 
+                evmBaseFeeWei = baseFee
+                evmPriorityFeeWei = priorityFee
                 fetchedMaxPriorityFeeHex = feeData.priorityFeeHex
 
-                // maxFeePerGas = 2 * baseFee + priorityFee (2x multiplier absorbs 1 block of base fee increase)
-                // Use checked arithmetic to guard against adversarial/buggy RPC values.
-                let (doubled, mulOverflow) = baseFee.multipliedReportingOverflow(by: 2)
-                let (maxFee, addOverflow) = doubled.addingReportingOverflow(priorityFee)
-                guard !mulOverflow && !addOverflow else {
-                    simulationError = "Fee estimate overflow — RPC returned unreasonable values"
-                    isSimulating = false
-                    return
-                }
-                fetchedMaxFeeHex = "0x" + String(maxFee, radix: 16)
+                recalculateEvmFee()
 
                 // For ERC-20: gas estimation must target the contract with transfer calldata
                 // For native: gas estimation targets the recipient with the value
@@ -469,15 +508,8 @@ struct ConfirmTransactionView: View {
                 )
                 fetchedGasLimit = UInt64(gasEstimateHex.dropFirst(2), radix: 16) ?? 21000
 
-                // Fee estimate uses maxFee (worst-case), actual cost may be lower.
-                // Double has 53-bit mantissa — sufficient precision for display purposes.
-                let feeWei = Double(maxFee) * Double(fetchedGasLimit)
-                guard feeWei.isFinite else {
-                    simulationError = "Fee estimate overflow"
-                    isSimulating = false
-                    return
-                }
-                estimatedFee = String(format: "%.18g", feeWei / 1e18)
+                // Fee estimate is recomputed from preset-adjusted max fee.
+                recalculateEvmFee()
 
             case .solana:
                 // Solana fees are fixed (~5000 lamports)
@@ -585,6 +617,26 @@ struct ConfirmTransactionView: View {
         } catch {
             simulationError = error.localizedDescription
             isSimulating = false
+        }
+    }
+
+    /// Recomputes EVM fee fields based on selected speed preset.
+    private func recalculateEvmFee() {
+        guard evmBaseFeeWei > 0 || evmPriorityFeeWei > 0 else { return }
+        let scaledPriority = UInt64(Double(evmPriorityFeeWei) * evmFeePreset.multiplier)
+        let scaledBase = UInt64(Double(evmBaseFeeWei) * evmFeePreset.multiplier)
+        let (doubled, mulOverflow) = scaledBase.multipliedReportingOverflow(by: 2)
+        let (maxFee, addOverflow) = doubled.addingReportingOverflow(scaledPriority)
+        guard !mulOverflow && !addOverflow else { return }
+
+        fetchedMaxPriorityFeeHex = "0x" + String(scaledPriority, radix: 16)
+        fetchedMaxFeeHex = "0x" + String(maxFee, radix: 16)
+
+        if fetchedGasLimit > 0 {
+            let feeWei = Double(maxFee) * Double(fetchedGasLimit)
+            if feeWei.isFinite {
+                estimatedFee = String(format: "%.18g", feeWei / 1e18)
+            }
         }
     }
 

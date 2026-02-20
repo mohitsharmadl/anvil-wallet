@@ -47,6 +47,16 @@ struct ZecTransactionRequest {
     let isTestnet: Bool
 }
 
+struct WatchPortfolioEntry: Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let chainId: String
+    let address: String
+    let nativeSymbol: String
+    let balanceNative: Double
+    let balanceUsd: Double
+}
+
 // MARK: - WalletService
 
 /// WalletService is the central orchestrator for all wallet operations.
@@ -70,6 +80,8 @@ final class WalletService: ObservableObject {
     @Published var currentWallet: WalletModel?
     @Published var tokens: [TokenModel] = []
     @Published var transactions: [TransactionModel] = []
+    @Published var watchPortfolio: [WatchPortfolioEntry] = []
+    @Published var watchTransactions: [TransactionModel] = []
 
     /// All HD accounts derived from the same seed.
     @Published var accounts: [WalletModel] = []
@@ -100,6 +112,11 @@ final class WalletService: ObservableObject {
     /// Whether the session password is currently cached in memory.
     var hasSessionPassword: Bool {
         sessionPasswordBytes != nil
+    }
+
+    /// Whether an optional BIP-39 passphrase is configured for this wallet.
+    var hasBip39Passphrase: Bool {
+        keychain.exists(key: encryptedPassphraseKey)
     }
 
     /// Clears the cached session password. Zeros all bytes in-place before releasing.
@@ -582,6 +599,9 @@ final class WalletService: ObservableObject {
         // Update widget with latest balances
         updateWidgetData()
 
+        // Refresh watch-only balances (best-effort)
+        try? await refreshWatchOnlyData()
+
         // Re-discover tokens on each refresh (picks up newly received ERC-20s)
         await runTokenDiscovery()
     }
@@ -615,6 +635,84 @@ final class WalletService: ObservableObject {
 
         // Update widget with latest prices
         updateWidgetData()
+
+        // Recompute watch-only USD values after price refresh
+        try? await refreshWatchOnlyData()
+    }
+
+    /// Refreshes balances and recent history for watch-only addresses.
+    func refreshWatchOnlyData() async throws {
+        let watches = WatchAddressService.shared.watchAddresses
+        guard !watches.isEmpty else {
+            await MainActor.run {
+                self.watchPortfolio = []
+                self.watchTransactions = []
+            }
+            return
+        }
+
+        let rpc = RPCService.shared
+        var nativeBalances: [(watch: WatchAddress, chain: ChainModel, balance: Double)] = []
+
+        for watch in watches {
+            guard let chain = ChainModel.allChains.first(where: { $0.id == watch.chainId }) else { continue }
+            do {
+                let balance: Double
+                switch chain.chainType {
+                case .evm:
+                    let hexBalance = try await rpc.getBalance(rpcUrl: chain.activeRpcUrl, address: watch.address)
+                    balance = Self.hexToDouble(hexBalance) / 1e18
+                case .solana:
+                    let lamports = try await rpc.getSolanaBalance(rpcUrl: chain.activeRpcUrl, address: watch.address)
+                    balance = Double(lamports) / 1e9
+                case .bitcoin:
+                    let sat = try await rpc.getBitcoinBalance(apiUrl: chain.activeRpcUrl, address: watch.address)
+                    balance = Double(sat) / 1e8
+                case .zcash:
+                    let zat = try await rpc.getZcashBalance(address: watch.address)
+                    balance = Double(zat) / 1e8
+                }
+                nativeBalances.append((watch: watch, chain: chain, balance: balance))
+            } catch {
+                continue
+            }
+        }
+
+        let symbols = Array(Set(nativeBalances.map { $0.chain.symbol.lowercased() }))
+        let prices = (try? await PriceService.shared.fetchPrices(for: symbols)) ?? [:]
+
+        let entries = nativeBalances.map { item in
+            let price = prices[item.chain.symbol.lowercased()] ?? 0
+            return WatchPortfolioEntry(
+                id: item.watch.id,
+                name: item.watch.name,
+                chainId: item.chain.id,
+                address: item.watch.address,
+                nativeSymbol: item.chain.symbol,
+                balanceNative: item.balance,
+                balanceUsd: item.balance * price
+            )
+        }
+        .sorted { $0.balanceUsd > $1.balanceUsd }
+
+        // Fetch per-watch recent transactions and merge
+        var mergedWatchTxs: [TransactionModel] = []
+        let txService = TransactionHistoryService.shared
+        for watch in watches {
+            let txs = (try? await txService.fetchAllTransactions(addresses: [watch.chainId: watch.address])) ?? []
+            mergedWatchTxs.append(contentsOf: txs.prefix(20))
+        }
+
+        var seen = Set<String>()
+        let deduped = mergedWatchTxs.filter { tx in
+            seen.insert("\(tx.chain.lowercased())_\(tx.hash.lowercased())").inserted
+        }
+        .sorted { $0.timestamp > $1.timestamp }
+
+        await MainActor.run {
+            self.watchPortfolio = entries
+            self.watchTransactions = deduped
+        }
     }
 
     // MARK: - Wallet Deletion
@@ -653,6 +751,8 @@ final class WalletService: ObservableObject {
         addresses = [:]
         tokens = []
         transactions = []
+        watchPortfolio = []
+        watchTransactions = []
         accounts = []
         activeAccountIndex = 0
         isWalletCreated = false

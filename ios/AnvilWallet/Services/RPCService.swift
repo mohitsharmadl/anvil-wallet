@@ -274,6 +274,21 @@ final class RPCService {
         )
     }
 
+    /// Returns true if an EVM transaction has a mined receipt.
+    func isEvmTransactionConfirmed(rpcUrl: String, txHash: String) async throws -> Bool {
+        struct Receipt: Decodable {
+            let blockNumber: String?
+        }
+
+        let receipt: Receipt? = try await call(
+            url: rpcUrl,
+            method: "eth_getTransactionReceipt",
+            params: [.string(txHash)]
+        )
+
+        return receipt?.blockNumber != nil
+    }
+
     /// Calls a contract function without sending a transaction (read-only).
     func ethCall(rpcUrl: String, to: String, data: String) async throws -> String {
         try await call(
@@ -375,6 +390,40 @@ final class RPCService {
         return hashData
     }
 
+    /// Returns the minimum lamports required for rent exemption for given account size.
+    func getSolanaRentExemption(rpcUrl: String, dataSize: Int) async throws -> UInt64 {
+        let result: UInt64 = try await call(
+            url: rpcUrl,
+            method: "getMinimumBalanceForRentExemption",
+            params: [.int(dataSize)]
+        )
+        return result
+    }
+
+    /// Returns a high-stake, low-commission validator vote account for delegation.
+    func getTopSolanaValidatorVoteAccount(rpcUrl: String) async throws -> String {
+        struct VoteAccounts: Decodable {
+            struct Vote: Decodable {
+                let votePubkey: String
+                let activatedStake: String?
+                let commission: Int?
+            }
+            let current: [Vote]
+        }
+
+        let result: VoteAccounts = try await call(
+            url: rpcUrl,
+            method: "getVoteAccounts",
+            params: []
+        )
+
+        let filtered = result.current.filter { ($0.commission ?? 100) <= 10 }
+        let sorted = filtered.sorted {
+            (UInt64($0.activatedStake ?? "0") ?? 0) > (UInt64($1.activatedStake ?? "0") ?? 0)
+        }
+        return sorted.first?.votePubkey ?? result.current.first?.votePubkey ?? ""
+    }
+
     /// Sends a signed Solana transaction. Returns the transaction signature.
     func sendSolanaTransaction(rpcUrl: String, signedTx: String) async throws -> String {
         try await call(
@@ -385,6 +434,28 @@ final class RPCService {
                 .dictionary(["encoding": .string("base64")])
             ]
         )
+    }
+
+    /// Returns true if a Solana signature is confirmed/finalized.
+    func isSolanaTransactionConfirmed(rpcUrl: String, signature: String) async throws -> Bool {
+        struct SignatureStatuses: Decodable {
+            struct Status: Decodable {
+                let confirmationStatus: String?
+            }
+            let value: [Status?]
+        }
+
+        let statuses: SignatureStatuses = try await call(
+            url: rpcUrl,
+            method: "getSignatureStatuses",
+            params: [
+                .array([.string(signature)]),
+                .dictionary(["searchTransactionHistory": .bool(true)])
+            ]
+        )
+
+        guard let status = statuses.value.first ?? nil else { return false }
+        return status.confirmationStatus == "confirmed" || status.confirmationStatus == "finalized"
     }
 
     /// Validates a URL string is well-formed and uses HTTPS.
@@ -633,6 +704,22 @@ final class RPCService {
         return txid
     }
 
+    /// Returns true if a Bitcoin transaction is confirmed.
+    func isBitcoinTransactionConfirmed(apiUrl: String, txid: String) async throws -> Bool {
+        let url = try httpsURL("\(apiUrl)/tx/\(txid)/status")
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            return false
+        }
+
+        struct TxStatus: Decodable {
+            let confirmed: Bool
+        }
+        let parsed = try JSONDecoder().decode(TxStatus.self, from: data)
+        return parsed.confirmed
+    }
+
     // MARK: - Zcash-specific Methods (REST API via Blockchair)
 
     /// Fetches the ZEC balance for a transparent Zcash address (in zatoshi).
@@ -742,6 +829,30 @@ final class RPCService {
 
         let pushResult = try JSONDecoder().decode(PushResponse.self, from: data)
         return pushResult.data.transaction_hash
+    }
+
+    /// Returns true if a Zcash transaction is confirmed (has a block id on Blockchair).
+    func isZcashTransactionConfirmed(txHash: String) async throws -> Bool {
+        let url = try httpsURL("https://api.blockchair.com/zcash/dashboards/transaction/\(txHash)")
+        let (data, response) = try await withRetry { [self] in try await session.data(from: url) }
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            return false
+        }
+
+        struct TxResponse: Decodable {
+            struct TxContainer: Decodable {
+                struct TxCore: Decodable {
+                    let block_id: Int?
+                }
+                let transaction: TxCore
+            }
+            let data: [String: TxContainer]
+        }
+
+        let parsed = try JSONDecoder().decode(TxResponse.self, from: data)
+        guard let tx = parsed.data.values.first else { return false }
+        return (tx.transaction.block_id ?? 0) > 0
     }
 
     /// Fetches latest Zcash tip height from Blockchair stats endpoint.

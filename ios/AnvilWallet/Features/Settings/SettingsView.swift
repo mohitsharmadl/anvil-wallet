@@ -65,6 +65,10 @@ struct SettingsView: View {
                     NavigationLink(destination: AddressBookView()) {
                         SettingsRow(icon: "person.crop.rectangle.stack", title: "Address Book", color: .accentGreen)
                     }
+
+                    NavigationLink(destination: WatchAddressesView()) {
+                        SettingsRow(icon: "eye.fill", title: "Watch Addresses", color: .info)
+                    }
                 }
                 .listRowBackground(Color.backgroundCard)
 

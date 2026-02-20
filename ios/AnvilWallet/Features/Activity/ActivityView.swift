@@ -24,14 +24,25 @@ struct ActivityView: View {
         case failed = "Failed"
     }
 
+    private var allTransactions: [TransactionModel] {
+        (walletService.transactions + walletService.watchTransactions)
+            .sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private var allKnownAddresses: Set<String> {
+        let walletAddresses = walletService.addresses.values.map { $0.lowercased() }
+        let watchedAddresses = WatchAddressService.shared.watchAddresses.map { $0.address.lowercased() }
+        return Set(walletAddresses + watchedAddresses)
+    }
+
     /// Chains that have at least one transaction, for the chain filter picker.
     private var chainsWithTransactions: [ChainModel] {
-        let chainIds = Set(walletService.transactions.map { $0.chain })
+        let chainIds = Set(allTransactions.map { $0.chain })
         return ChainModel.defaults.filter { chainIds.contains($0.id) }
     }
 
     private var filteredTransactions: [TransactionModel] {
-        var txs = walletService.transactions
+        var txs = allTransactions
 
         // Chain filter
         if selectedChain != "all" {
@@ -44,11 +55,11 @@ struct ActivityView: View {
             return txs
         case .sent:
             return txs.filter { tx in
-                walletService.addresses.values.contains(where: { $0.lowercased() == tx.from.lowercased() })
+                allKnownAddresses.contains(tx.from.lowercased())
             }
         case .received:
             return txs.filter { tx in
-                walletService.addresses.values.contains(where: { $0.lowercased() == tx.to.lowercased() })
+                allKnownAddresses.contains(tx.to.lowercased())
             }
         case .failed:
             return txs.filter { $0.status == .failed }
@@ -109,7 +120,7 @@ struct ActivityView: View {
                 }
 
                 // Content
-                if isLoading && walletService.transactions.isEmpty {
+                if isLoading && allTransactions.isEmpty {
                     // Initial loading state (no cached data yet)
                     VStack(spacing: 16) {
                         Spacer()
@@ -155,9 +166,7 @@ struct ActivityView: View {
                         NavigationLink(destination: TransactionDetailView(transaction: transaction)) {
                             TransactionRowView(
                                 transaction: transaction,
-                                isSent: walletService.addresses.values.contains(where: {
-                                    $0.lowercased() == transaction.from.lowercased()
-                                })
+                                isSent: allKnownAddresses.contains(transaction.from.lowercased())
                             )
                         }
                         .listRowBackground(Color.backgroundPrimary)
@@ -195,7 +204,7 @@ struct ActivityView: View {
             .navigationTitle("Activity")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                if isLoading && !walletService.transactions.isEmpty {
+                if isLoading && !allTransactions.isEmpty {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         ProgressView()
                             .tint(.accentGreen)

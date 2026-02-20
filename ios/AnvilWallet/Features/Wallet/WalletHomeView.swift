@@ -26,6 +26,17 @@ struct WalletHomeView: View {
         walletService.tokens.reduce(0) { $0 + $1.balanceUsd }
     }
 
+    private var chainBreakdown: [(chain: String, total: Double)] {
+        var totals: [String: Double] = [:]
+        for token in walletService.tokens {
+            totals[token.chain, default: 0] += token.balanceUsd
+        }
+        let sorted = totals
+            .map { (chain: $0.key, total: $0.value) }
+            .sorted { $0.total > $1.total }
+        return Array(sorted.prefix(3))
+    }
+
     var body: some View {
         NavigationStack(path: $router.walletPath) {
             ScrollView(showsIndicators: false) {
@@ -37,7 +48,11 @@ struct WalletHomeView: View {
                     // Hero balance section
                     balanceSection
                         .padding(.top, 4)
-                        .padding(.bottom, 28)
+                        .padding(.bottom, 18)
+
+                    chainAllocation
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
 
                     // Quick actions
                     actionButtons
@@ -53,6 +68,11 @@ struct WalletHomeView: View {
                     switch selectedSegment {
                     case .tokens:
                         TokenListView()
+                        if !walletService.watchPortfolio.isEmpty {
+                            watchOnlySection
+                                .padding(.horizontal, 20)
+                                .padding(.top, 14)
+                        }
                     case .nfts:
                         NFTListView()
                     }
@@ -124,6 +144,32 @@ struct WalletHomeView: View {
                     NotificationHistoryView()
                 }
             }
+        }
+    }
+
+    private var chainAllocation: some View {
+        HStack(spacing: 8) {
+            if chainBreakdown.isEmpty {
+                Label("No balances yet", systemImage: "sparkles")
+                    .font(.caption)
+                    .foregroundColor(.textTertiary)
+            } else {
+                ForEach(chainBreakdown, id: \.chain) { item in
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.accentGreen.opacity(0.2))
+                            .frame(width: 8, height: 8)
+                        Text("\(item.chain.capitalized): $\(String(format: "%.2f", item.total))")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundColor(.textSecondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.backgroundCard)
+                    .clipShape(Capsule())
+                }
+            }
+            Spacer()
         }
     }
 
@@ -288,7 +334,49 @@ struct WalletHomeView: View {
         isRefreshing = true
         try? await walletService.refreshBalances()
         try? await walletService.refreshPrices()
+        try? await walletService.refreshWatchOnlyData()
         isRefreshing = false
+    }
+
+    private var watchOnlySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Watch-Only Portfolio")
+                    .font(.headline)
+                    .foregroundColor(.textPrimary)
+                Spacer()
+                NavigationLink(destination: WatchAddressesView()) {
+                    Text("Manage")
+                        .font(.caption.bold())
+                        .foregroundColor(.accentGreen)
+                }
+            }
+
+            ForEach(walletService.watchPortfolio.prefix(4)) { item in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.name)
+                            .font(.subheadline.bold())
+                            .foregroundColor(.textPrimary)
+                        Text("\(item.chainId.capitalized) • \(item.address.prefix(8))...\(item.address.suffix(6))")
+                            .font(.caption.monospaced())
+                            .foregroundColor(.textTertiary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(String(format: "%.6f %@", item.balanceNative, item.nativeSymbol))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundColor(.textPrimary)
+                        Text(String(format: "$%.2f", item.balanceUsd))
+                            .font(.caption.monospacedDigit())
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+                .padding(12)
+                .background(Color.backgroundCard)
+                .cornerRadius(12)
+            }
+        }
     }
 }
 
