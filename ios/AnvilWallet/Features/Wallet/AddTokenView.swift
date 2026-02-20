@@ -418,6 +418,7 @@ struct AddTokenView: View {
         case "bsc": return .yellow
         case "avalanche": return .red
         case "solana": return .chainSolana
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .accentGreen
         }
     }

@@ -74,6 +74,7 @@ struct ChainPickerView: View {
         case "avalanche": return .red
         case "solana": return .purple
         case "bitcoin": return .orange
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .accentGreen
         }
     }

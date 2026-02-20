@@ -137,6 +137,7 @@ struct AddressBookView: View {
         case "ethereum": return .chainEthereum
         case "solana": return .chainSolana
         case "bitcoin": return .chainBitcoin
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .textTertiary
         }
     }
@@ -217,6 +218,7 @@ struct ChainBadge: View {
         case "ethereum": return .chainEthereum
         case "solana": return .chainSolana
         case "bitcoin": return .chainBitcoin
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .textTertiary
         }
     }

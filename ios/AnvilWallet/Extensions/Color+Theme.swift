@@ -110,6 +110,9 @@ extension Color {
     /// Bitcoin orange (#F7931A)
     static let chainBitcoin = Color(red: 0.969, green: 0.576, blue: 0.102)
 
+    /// Zcash gold (#F4B728)
+    static let chainZcash = Color(red: 0.957, green: 0.718, blue: 0.157)
+
     // MARK: - Border & Separator
 
     /// Border color

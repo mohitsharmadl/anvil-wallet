@@ -135,6 +135,7 @@ private struct NetworkRow: View {
         case "base": return .chainBase
         case "solana", "solana_devnet": return .chainSolana
         case "bitcoin", "bitcoin_testnet": return .chainBitcoin
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .textTertiary
         }
     }

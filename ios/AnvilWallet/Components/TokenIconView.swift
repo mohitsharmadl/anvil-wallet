@@ -14,6 +14,7 @@ struct TokenIconView: View {
         case "ETH": return "Tokens/token-eth"
         case "BTC": return "Tokens/token-btc"
         case "SOL": return "Tokens/token-sol"
+        case "ZEC": return "Tokens/token-zec"
         case "USDC": return "Tokens/token-usdc"
         case "USDT": return "Tokens/token-usdt"
         default: return nil
@@ -32,10 +33,19 @@ struct TokenIconView: View {
                 .fill(chainColor(for: chain))
                 .frame(width: size, height: size)
                 .overlay(
-                    Text(String(symbol.prefix(1)))
+                    Text(fallbackLabel)
                         .font(size >= 36 ? .headline.bold() : .caption.bold())
                         .foregroundColor(.white)
                 )
+        }
+    }
+
+    private var fallbackLabel: String {
+        switch symbol.uppercased() {
+        case "ZEC":
+            return "Z"
+        default:
+            return String(symbol.prefix(1))
         }
     }
 
@@ -47,6 +57,7 @@ struct TokenIconView: View {
         case "base": return .chainBase
         case "solana": return .chainSolana
         case "bitcoin": return .chainBitcoin
+        case "zcash", "zcash_testnet": return .chainZcash
         default: return .textTertiary
         }
     }
