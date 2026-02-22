@@ -79,8 +79,13 @@ struct AnvilWalletApp: App {
     }
 
     @State private var backgroundedAt: Date?
+    @State private var inactivatedAt: Date?
     @State private var showSecurityWarning = false
     @State private var securityWarningDismissed = false
+    @State private var showSessionUnlock = false
+    @State private var unlockPassword = ""
+    @State private var unlockError: String?
+    @State private var isUnlocking = false
 
     var body: some Scene {
         WindowGroup {
@@ -123,29 +128,52 @@ struct AnvilWalletApp: App {
                 // Screen protection blur overlay for app switcher
                 if securityService.isScreenProtectionActive {
                     Rectangle()
-                        .fill(.ultraThinMaterial)
+                        .fill(Color.backgroundPrimary)
                         .ignoresSafeArea()
-                        .transition(.opacity)
+                }
+
+                if showSessionUnlock {
+                    Rectangle()
+                        .fill(Color.backgroundPrimary.opacity(0.96))
+                        .ignoresSafeArea()
+
+                    SessionUnlockOverlay(
+                        password: $unlockPassword,
+                        errorMessage: $unlockError,
+                        isUnlocking: $isUnlocking
+                    ) {
+                        await unlockSession()
+                    }
+                    .padding(24)
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: securityService.isScreenProtectionActive)
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
+            case .inactive:
+                // iOS captures app-switcher snapshots during the inactive transition.
+                inactivatedAt = Date()
+                securityService.activateScreenProtection()
             case .background:
                 backgroundedAt = Date()
                 securityService.activateScreenProtection()
             case .active:
                 securityService.deactivateScreenProtection()
-                if let backgroundedAt {
-                    let elapsed = Date().timeIntervalSince(backgroundedAt)
+                if let leftAppAt = backgroundedAt ?? inactivatedAt {
+                    let elapsed = Date().timeIntervalSince(leftAppAt)
                     let interval = autoLockSeconds
                     if interval >= 0, elapsed >= interval {
                         walletService.clearSessionPassword()
+                        if walletService.isWalletCreated {
+                            showSessionUnlock = true
+                            unlockPassword = ""
+                            unlockError = nil
+                        }
                     }
                     // interval < 0 means "never" -- don't clear
                 }
                 self.backgroundedAt = nil
+                self.inactivatedAt = nil
             default:
                 break
             }
@@ -155,5 +183,82 @@ struct AnvilWalletApp: App {
     private var autoLockSeconds: TimeInterval {
         let raw = UserDefaults.standard.string(forKey: "autoLockInterval") ?? AutoLockInterval.fiveMinutes.rawValue
         return (AutoLockInterval(rawValue: raw) ?? .fiveMinutes).seconds
+    }
+
+    private func unlockSession() async {
+        await MainActor.run {
+            isUnlocking = true
+            unlockError = nil
+        }
+        do {
+            try await walletService.setSessionPassword(unlockPassword)
+            await MainActor.run {
+                isUnlocking = false
+                showSessionUnlock = false
+                unlockPassword = ""
+                unlockError = nil
+            }
+        } catch {
+            await MainActor.run {
+                isUnlocking = false
+                unlockError = "Incorrect password. Please try again."
+            }
+        }
+    }
+}
+
+private struct SessionUnlockOverlay: View {
+    @Binding var password: String
+    @Binding var errorMessage: String?
+    @Binding var isUnlocking: Bool
+    let onUnlock: () async -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "lock.circle.fill")
+                .font(.system(size: 52))
+                .foregroundColor(.accentGreen)
+
+            Text("Session Locked")
+                .font(.title3.bold())
+                .foregroundColor(.textPrimary)
+
+            Text("Re-enter your wallet password to continue.")
+                .font(.body)
+                .foregroundColor(.textSecondary)
+                .multilineTextAlignment(.center)
+
+            SecureField("Password", text: $password)
+                .font(.body)
+                .padding(12)
+                .background(Color.backgroundCard)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(errorMessage != nil ? Color.error : Color.border, lineWidth: 1)
+                )
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundColor(.error)
+            }
+
+            Button {
+                Task { await onUnlock() }
+            } label: {
+                if isUnlocking {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text("Unlock")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle(isEnabled: !password.isEmpty))
+            .disabled(password.isEmpty || isUnlocking)
+        }
+        .padding(24)
+        .background(Color.backgroundCard)
+        .cornerRadius(16)
     }
 }

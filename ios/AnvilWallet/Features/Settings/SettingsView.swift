@@ -4,7 +4,6 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var walletService: WalletService
     @EnvironmentObject var router: AppRouter
-    @Environment(\.openURL) private var openURL
     @AppStorage("appTheme") private var appTheme = AppTheme.system
 
     @State private var showDeleteConfirmation = false
@@ -103,19 +102,11 @@ struct SettingsView: View {
                             .foregroundColor(.textTertiary)
                     }
 
-                    Button {
-                        if let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "SupportURL") as? String ?? "") {
-                            openURL(url)
-                        }
-                    } label: {
+                    NavigationLink(destination: HelpSupportView()) {
                         SettingsRow(icon: "questionmark.circle.fill", title: "Help & Support", color: .warning)
                     }
 
-                    Button {
-                        if let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "PrivacyPolicyURL") as? String ?? "") {
-                            openURL(url)
-                        }
-                    } label: {
+                    NavigationLink(destination: PrivacyPolicyView()) {
                         SettingsRow(icon: "hand.raised.fill", title: "Privacy Policy", color: .textSecondary)
                     }
                 }
@@ -162,6 +153,170 @@ struct SettingsView: View {
 }
 
 // MARK: - Settings Row
+
+struct HelpSupportView: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        List {
+            Section("Get Help") {
+                supportLinkRow(
+                    icon: "envelope.fill",
+                    title: "Email Support",
+                    subtitle: "support@anvilwallet.com",
+                    urlString: "mailto:support@anvilwallet.com",
+                    iconColor: .chainSolana
+                )
+
+                supportLinkRow(
+                    icon: "globe",
+                    title: "Support Center",
+                    subtitle: "anvilwallet.com/support",
+                    urlString: Bundle.main.object(forInfoDictionaryKey: "SupportURL") as? String ?? "https://anvilwallet.com/support",
+                    iconColor: .info
+                )
+            }
+            .listRowBackground(Color.backgroundCard)
+
+            Section("Quick Tips") {
+                tipRow(
+                    icon: "externaldrive.badge.checkmark",
+                    title: "Back up your recovery phrase",
+                    body: "Store your recovery phrase offline and never share it with anyone."
+                )
+
+                tipRow(
+                    icon: "hand.raised.slash.fill",
+                    title: "Never share private keys",
+                    body: "Anvil support will never ask for your recovery phrase or private keys."
+                )
+
+                tipRow(
+                    icon: "checkmark.shield.fill",
+                    title: "Report suspicious activity",
+                    body: "If you see an unknown transaction or token approval, contact support immediately."
+                )
+            }
+            .listRowBackground(Color.backgroundCard)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.backgroundPrimary)
+        .navigationTitle("Help & Support")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func supportLinkRow(icon: String, title: String, subtitle: String, urlString: String, iconColor: Color) -> some View {
+        Button {
+            if let url = URL(string: urlString) {
+                openURL(url)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundColor(iconColor)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .foregroundColor(.textPrimary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.caption)
+                    .foregroundColor(.textTertiary)
+            }
+            .frame(minHeight: 44)
+        }
+    }
+
+    private func tipRow(icon: String, title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundColor(.warning)
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(.textPrimary)
+            }
+            Text(body)
+                .font(.caption)
+                .foregroundColor(.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct PrivacyPolicyView: View {
+    var body: some View {
+        List {
+            Section {
+                Text("Your privacy and control over your wallet data are core design principles of Anvil Wallet.")
+                    .font(.body)
+                    .foregroundColor(.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .listRowBackground(Color.backgroundCard)
+
+            Section("Information We Store") {
+                policyRow(
+                    title: "On-device wallet data",
+                    body: "Wallet accounts and related settings are stored locally on your device."
+                )
+                policyRow(
+                    title: "Usage diagnostics",
+                    body: "We may collect limited diagnostics to improve reliability and app quality."
+                )
+            }
+            .listRowBackground(Color.backgroundCard)
+
+            Section("How We Use Data") {
+                policyRow(
+                    title: "App functionality",
+                    body: "Data is used to provide wallet features such as account management, signing, and settings."
+                )
+                policyRow(
+                    title: "Security",
+                    body: "Security checks may use device-level signals to protect against tampering or abuse."
+                )
+            }
+            .listRowBackground(Color.backgroundCard)
+
+            Section("Your Choices") {
+                policyRow(
+                    title: "Delete wallet",
+                    body: "You can delete your wallet anytime from Settings. Keep your recovery phrase backed up first."
+                )
+                policyRow(
+                    title: "Contact us",
+                    body: "For privacy questions, contact support@anvilwallet.com."
+                )
+            }
+            .listRowBackground(Color.backgroundCard)
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.backgroundPrimary)
+        .navigationTitle("Privacy Policy")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func policyRow(title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.body)
+                .foregroundColor(.textPrimary)
+            Text(body)
+                .font(.caption)
+                .foregroundColor(.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 4)
+    }
+}
 
 struct SettingsRow: View {
     let icon: String

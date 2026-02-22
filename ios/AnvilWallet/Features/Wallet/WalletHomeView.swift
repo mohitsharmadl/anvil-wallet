@@ -103,6 +103,7 @@ struct WalletHomeView: View {
                             }
                         }
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(notificationService.unreadCount > 0
                         ? "Notifications, \(notificationService.unreadCount) unread"
                         : "Notifications")
