@@ -30,8 +30,12 @@ struct SwapView: View {
                     SwapTokenSection(
                         label: "From",
                         token: viewModel.fromToken,
-                        amount: $viewModel.amount,
+                        amount: Binding(
+                            get: { viewModel.fromAmount },
+                            set: { viewModel.setFromAmount($0) }
+                        ),
                         isEditable: true,
+                        showMaxButton: true,
                         onTokenTap: { showFromTokenPicker = true }
                     )
                     .padding(.horizontal, 20)
@@ -54,8 +58,12 @@ struct SwapView: View {
                     SwapTokenSection(
                         label: "To",
                         token: viewModel.toToken,
-                        amount: .constant(viewModel.formattedOutputAmount ?? ""),
-                        isEditable: false,
+                        amount: Binding(
+                            get: { viewModel.toAmount },
+                            set: { viewModel.setToAmount($0) }
+                        ),
+                        isEditable: true,
+                        showMaxButton: false,
                         onTokenTap: { showToTokenPicker = true }
                     )
                     .padding(.horizontal, 20)
@@ -109,12 +117,13 @@ struct SwapView: View {
                         .padding(.horizontal, 20)
                     } else if viewModel.txHash == nil {
                         Button {
+                            viewModel.cancelAutoQuote()
                             Task { await viewModel.fetchQuote() }
                         } label: {
-                            Text("Get Quote")
+                            Text("Swap")
                         }
-                        .buttonStyle(PrimaryButtonStyle(isEnabled: viewModel.canGetQuote && !viewModel.isLoadingQuote))
-                        .disabled(!viewModel.canGetQuote || viewModel.isLoadingQuote)
+                        .buttonStyle(PrimaryButtonStyle(isEnabled: viewModel.canGetQuote))
+                        .disabled(!viewModel.canGetQuote)
                         .padding(.horizontal, 20)
                     }
 
@@ -167,16 +176,21 @@ struct SwapView: View {
             }
             .onChange(of: viewModel.fromToken) {
                 viewModel.quote = nil
+                viewModel.error = nil
             }
             .onChange(of: viewModel.toToken) {
                 viewModel.quote = nil
+                viewModel.error = nil
             }
             .onChange(of: viewModel.selectedChainId) {
                 // Reset tokens when chain changes
+                viewModel.cancelAutoQuote()
                 viewModel.fromToken = walletService.tokens.first(where: {
                     $0.chain == viewModel.selectedChainModelId
                 })
                 viewModel.toToken = nil
+                viewModel.fromAmount = ""
+                viewModel.toAmount = ""
                 viewModel.quote = nil
                 viewModel.error = nil
             }
@@ -277,6 +291,7 @@ private struct SwapTokenSection: View {
     let token: TokenModel?
     @Binding var amount: String
     let isEditable: Bool
+    let showMaxButton: Bool
     let onTokenTap: () -> Void
 
     var body: some View {
@@ -334,7 +349,7 @@ private struct SwapTokenSection: View {
 
                     Spacer()
 
-                    if isEditable, let token {
+                    if isEditable, showMaxButton, let token {
                         Button("Max") {
                             amount = token.formattedBalance
                         }

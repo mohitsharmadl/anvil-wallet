@@ -108,7 +108,6 @@ final class SwapViewModel: ObservableObject {
         quoteAmountType = quoteAmountType == .exactInput ? .exactOutput : .exactInput
         quote = nil
         error = nil
-        scheduleAutoQuote()
     }
 
     func setFromAmount(_ value: String) {
@@ -117,7 +116,6 @@ final class SwapViewModel: ObservableObject {
         estimateOppositeAmount()
         quote = nil
         error = nil
-        scheduleAutoQuote()
     }
 
     func setToAmount(_ value: String) {
@@ -126,7 +124,6 @@ final class SwapViewModel: ObservableObject {
         estimateOppositeAmount()
         quote = nil
         error = nil
-        scheduleAutoQuote()
     }
 
     func scheduleAutoQuote() {
