@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import LocalAuthentication
+import os
 import SwiftUI
 
 // MARK: - Transaction Request Types
@@ -356,7 +357,6 @@ final class WalletService: ObservableObject {
         case .eth(let ethReq):
             let result = try signEthTransaction(
                 seed: seedBytes,
-                passphrase: "",
                 account: accountIdx,
                 index: 0,
                 chainId: ethReq.chainId,
@@ -502,12 +502,23 @@ final class WalletService: ObservableObject {
         }
     }
 
+    /// Last time token discovery ran successfully.
+    private var lastTokenDiscoveryAt: Date = .distantPast
+
+    /// Token discovery cooldown: 10 minutes between runs.
+    private let tokenDiscoveryCooldown: TimeInterval = 600
+
     func runTokenDiscovery() async {
         guard let ethAddress = addresses["ethereum"] else { return }
+        guard Date().timeIntervalSince(lastTokenDiscoveryAt) >= tokenDiscoveryCooldown else { return }
         do {
             let discovered = try await TokenDiscoveryService.shared.discoverTokens(for: ethAddress)
             await mergeDiscoveredTokens(discovered)
-        } catch {}
+            lastTokenDiscoveryAt = Date()
+        } catch {
+            Logger(subsystem: "com.anvilwallet.app", category: "TokenDiscovery")
+                .error("Token discovery failed: \(error.localizedDescription)")
+        }
     }
 
     func refreshBalances() async throws {

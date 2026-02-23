@@ -131,8 +131,7 @@ pub fn derive_ed25519_key(
         derivation_path: path_str,
     };
 
-    // Zeroize intermediates
-    key.zeroize();
+    // Zeroize intermediates (key is moved into derived, only chain_code needs cleanup)
     chain_code.zeroize();
 
     Ok(derived)

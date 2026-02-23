@@ -35,7 +35,6 @@ fn eth_full_pipeline_native_transfer() {
     let seed = mnemonic_to_seed(mnemonic, String::new()).unwrap();
     let signed_tx = sign_eth_transaction(
         seed,
-        String::new(),
         0,
         0,
         1,      // Ethereum mainnet
@@ -63,7 +62,6 @@ fn eth_full_pipeline_erc20_transfer() {
     // Sign ERC-20 transfer
     let signed_tx = sign_erc20_transfer(
         seed,
-        String::new(),
         0,
         0,
         1,      // Ethereum

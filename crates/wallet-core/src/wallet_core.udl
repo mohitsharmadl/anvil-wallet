@@ -122,7 +122,6 @@ namespace wallet_core {
     [Throws=WalletError]
     bytes sign_eth_transaction(
         bytes seed,
-        string passphrase,
         u32 account,
         u32 index,
         u64 chain_id,
@@ -165,7 +164,6 @@ namespace wallet_core {
     [Throws=WalletError]
     bytes sign_erc20_transfer(
         bytes seed,
-        string passphrase,
         u32 account,
         u32 index,
         u64 chain_id,

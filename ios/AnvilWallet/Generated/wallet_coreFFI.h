@@ -309,7 +309,7 @@ RustBuffer uniffi_wallet_core_fn_func_sign_btc_transaction(RustBuffer seed, uint
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ERC20_TRANSFER
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ERC20_TRANSFER
-RustBuffer uniffi_wallet_core_fn_func_sign_erc20_transfer(RustBuffer seed, RustBuffer passphrase, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer token_contract, RustBuffer to_address, RustBuffer amount_hex, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
+RustBuffer uniffi_wallet_core_fn_func_sign_erc20_transfer(RustBuffer seed, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer token_contract, RustBuffer to_address, RustBuffer amount_hex, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_MESSAGE
@@ -324,7 +324,7 @@ RustBuffer uniffi_wallet_core_fn_func_sign_eth_raw_hash(RustBuffer seed, uint32_
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_TRANSACTION
 #define UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_ETH_TRANSACTION
-RustBuffer uniffi_wallet_core_fn_func_sign_eth_transaction(RustBuffer seed, RustBuffer passphrase, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer to_address, RustBuffer value_wei_hex, RustBuffer data, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
+RustBuffer uniffi_wallet_core_fn_func_sign_eth_transaction(RustBuffer seed, uint32_t account, uint32_t index, uint64_t chain_id, uint64_t nonce, RustBuffer to_address, RustBuffer value_wei_hex, RustBuffer data, RustBuffer max_priority_fee_hex, RustBuffer max_fee_hex, uint64_t gas_limit, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_WALLET_CORE_FN_FUNC_SIGN_SOL_MESSAGE

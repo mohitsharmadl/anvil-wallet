@@ -1327,11 +1327,10 @@ public func signBtcTransaction(seed: Data, account: UInt32, index: UInt32, utxos
 /**
  * Sign an ERC-20 token transfer (returns raw signed tx bytes)
  */
-public func signErc20Transfer(seed: Data, passphrase: String, account: UInt32, index: UInt32, chainId: UInt64, nonce: UInt64, tokenContract: String, toAddress: String, amountHex: String, maxPriorityFeeHex: String, maxFeeHex: String, gasLimit: UInt64)throws  -> Data {
+public func signErc20Transfer(seed: Data, account: UInt32, index: UInt32, chainId: UInt64, nonce: UInt64, tokenContract: String, toAddress: String, amountHex: String, maxPriorityFeeHex: String, maxFeeHex: String, gasLimit: UInt64)throws  -> Data {
     return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
     uniffi_wallet_core_fn_func_sign_erc20_transfer(
         FfiConverterData.lower(seed),
-        FfiConverterString.lower(passphrase),
         FfiConverterUInt32.lower(account),
         FfiConverterUInt32.lower(index),
         FfiConverterUInt64.lower(chainId),
@@ -1374,11 +1373,10 @@ public func signEthRawHash(seed: Data, account: UInt32, index: UInt32, hash: Dat
 /**
  * Sign an Ethereum transaction (returns raw signed tx bytes)
  */
-public func signEthTransaction(seed: Data, passphrase: String, account: UInt32, index: UInt32, chainId: UInt64, nonce: UInt64, toAddress: String, valueWeiHex: String, data: Data, maxPriorityFeeHex: String, maxFeeHex: String, gasLimit: UInt64)throws  -> Data {
+public func signEthTransaction(seed: Data, account: UInt32, index: UInt32, chainId: UInt64, nonce: UInt64, toAddress: String, valueWeiHex: String, data: Data, maxPriorityFeeHex: String, maxFeeHex: String, gasLimit: UInt64)throws  -> Data {
     return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeWalletError.lift) {
     uniffi_wallet_core_fn_func_sign_eth_transaction(
         FfiConverterData.lower(seed),
-        FfiConverterString.lower(passphrase),
         FfiConverterUInt32.lower(account),
         FfiConverterUInt32.lower(index),
         FfiConverterUInt64.lower(chainId),
@@ -1535,7 +1533,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_wallet_core_checksum_func_sign_btc_transaction() != 52378) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wallet_core_checksum_func_sign_erc20_transfer() != 2168) {
+    if (uniffi_wallet_core_checksum_func_sign_erc20_transfer() != 9785) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_sign_eth_message() != 57108) {
@@ -1544,7 +1542,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_wallet_core_checksum_func_sign_eth_raw_hash() != 25819) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_wallet_core_checksum_func_sign_eth_transaction() != 65117) {
+    if (uniffi_wallet_core_checksum_func_sign_eth_transaction() != 37727) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_wallet_core_checksum_func_sign_sol_message() != 1329) {

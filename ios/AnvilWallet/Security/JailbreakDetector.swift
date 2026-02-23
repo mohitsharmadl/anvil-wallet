@@ -46,7 +46,7 @@ enum JailbreakDetector {
         }
 
         // Layer 5: Check fork() behavior
-        if checkForkBehavior() {
+        if checkProcessSpawn() {
             indicators.append("fork() succeeded (should fail in sandbox)")
         }
 
@@ -194,9 +194,9 @@ enum JailbreakDetector {
 
     // MARK: - Layer 5: Process Spawn Behavior
 
-    /// Attempts to spawn a process. On a non-jailbroken device, this should fail
-    /// because the app sandbox restricts process creation.
-    private static func checkForkBehavior() -> Bool {
+    /// Attempts to spawn a process via posix_spawn. On a non-jailbroken device,
+    /// this should fail because the app sandbox restricts process creation.
+    private static func checkProcessSpawn() -> Bool {
         var pid: pid_t = 0
         let result = posix_spawn(&pid, "/bin/ls", nil, nil, nil, nil)
         if result == 0 {

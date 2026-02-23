@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import os
 
 /// ScreenshotProtection prevents sensitive wallet data from being captured
 /// in screenshots or the app switcher thumbnail.
@@ -46,8 +47,8 @@ final class ScreenshotProtection: ObservableObject {
             object: nil,
             queue: .main
         ) { _ in
-            // Log the event -- in production, could show a warning
-            print("[Security] Screenshot detected")
+            Logger(subsystem: "com.anvilwallet.app", category: "Security")
+                .warning("Screenshot detected")
         }
     }
 

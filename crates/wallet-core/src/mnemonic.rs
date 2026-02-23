@@ -29,8 +29,10 @@ pub fn mnemonic_to_seed(phrase: &str, passphrase: &str) -> Result<Vec<u8>, Walle
     let mnemonic = Mnemonic::parse_in_normalized(Language::English, phrase)
         .map_err(|e| WalletError::InvalidMnemonic(e.to_string()))?;
 
-    let seed = mnemonic.to_seed(passphrase);
-    Ok(seed.to_vec())
+    let mut seed_arr = mnemonic.to_seed(passphrase);
+    let seed_vec = seed_arr.to_vec();
+    seed_arr.zeroize();
+    Ok(seed_vec)
 }
 
 /// Get the word list for autocomplete
