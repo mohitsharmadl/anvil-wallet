@@ -109,7 +109,7 @@ final class WalletService: ObservableObject {
         ChainPreferencesStore.shared.$disabledChainIds
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.rebuildTokensForEnabledChains() }
+            .sink { [weak self] (_: Set<String>) in self?.rebuildTokensForEnabledChains() }
             .store(in: &cancellables)
     }
 
