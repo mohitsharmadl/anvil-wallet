@@ -4,6 +4,7 @@ import SwiftUI
 /// Driven entirely by `SessionLockManager` state.
 struct LockScreenView: View {
     @ObservedObject var manager: SessionLockManager
+    @State private var showPassword = false
 
     private let biometricService = BiometricService()
 
@@ -49,15 +50,31 @@ struct LockScreenView: View {
                 .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
 
-            SecureField("Password", text: $manager.unlockPassword)
+            HStack(spacing: 0) {
+                Group {
+                    if showPassword {
+                        TextField("Password", text: $manager.unlockPassword)
+                    } else {
+                        SecureField("Password", text: $manager.unlockPassword)
+                    }
+                }
                 .font(.body)
-                .padding(12)
-                .background(Color.backgroundCard)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(manager.unlockError != nil ? Color.error : Color.border, lineWidth: 1)
-                )
+
+                Button {
+                    showPassword.toggle()
+                } label: {
+                    Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                        .foregroundColor(.textSecondary)
+                        .font(.body)
+                }
+            }
+            .padding(12)
+            .background(Color.backgroundCard)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(manager.unlockError != nil ? Color.error : Color.border, lineWidth: 1)
+            )
 
             if let errorMessage = manager.unlockError {
                 Text(errorMessage)

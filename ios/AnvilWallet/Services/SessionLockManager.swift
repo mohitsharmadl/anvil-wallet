@@ -6,8 +6,11 @@ import SwiftUI
 /// Protocol that the host app implements to integrate session lock with its own
 /// password validation and post-unlock logic.
 protocol SessionLockDelegate: AnyObject {
-    /// Validate a user-entered password. Throw if incorrect.
+    /// Validate a user-entered password by decrypting the seed. Throw if incorrect.
     func validatePassword(_ password: String) async throws
+    /// Cache a password that was already verified (e.g. from biometric keychain).
+    /// Skips the expensive SE decrypt + Argon2id round-trip.
+    func cacheSessionPassword(_ password: String)
     /// Called after a successful unlock (biometric or password).
     func didUnlock() async
 }
@@ -59,6 +62,9 @@ final class SessionLockManager: ObservableObject {
     private var backgroundedAt: Date?
     private var inactivatedAt: Date?
     private var biometricAttempted = false
+    /// Timestamp of last successful unlock. Used to add a short grace period
+    /// so Face ID `.inactive` → `.active` transitions don't immediately re-lock.
+    private var lastUnlockedAt: Date?
 
     private init() {}
 
@@ -83,17 +89,14 @@ final class SessionLockManager: ObservableObject {
         do {
             try await delegate?.validatePassword(unlockPassword)
             savePasswordForBiometrics(unlockPassword)
-            // Capture delegate before setting isLocked = false, which removes
-            // LockScreenView and cancels any structured .task that called us.
             let delegate = self.delegate
+            lastUnlockedAt = Date()
             await MainActor.run {
                 isLocked = false
                 isUnlocking = false
                 unlockPassword = ""
                 unlockError = nil
             }
-            // Fire in unstructured Task so the refresh survives view
-            // disappearance cancellation from SwiftUI's .task modifier.
             Task { await delegate?.didUnlock() }
         } catch {
             await MainActor.run {
@@ -104,6 +107,13 @@ final class SessionLockManager: ObservableObject {
     }
 
     /// Unlocks using Face ID / Touch ID via biometric-protected Keychain.
+    ///
+    /// Unlocks using Face ID / Touch ID via biometric-protected Keychain.
+    ///
+    /// Only ONE Face ID prompt: the biometric Keychain read. The password
+    /// retrieved was validated when it was first stored, so we cache it
+    /// directly without an SE decrypt round-trip. The SE decrypt will
+    /// happen later when the user actually signs a transaction.
     func unlockWithBiometrics() async {
         await MainActor.run {
             isUnlocking = true
@@ -118,18 +128,19 @@ final class SessionLockManager: ObservableObject {
                 }
                 return
             }
-            try await delegate?.validatePassword(password)
-            // Capture delegate before setting isLocked = false, which removes
-            // LockScreenView and cancels any structured .task that called us.
+
+            // Trust the password from the biometric keychain — it was validated
+            // when stored. Skip the SE decrypt to avoid a second Face ID prompt.
+            delegate?.cacheSessionPassword(password)
+
             let delegate = self.delegate
+            lastUnlockedAt = Date()
             await MainActor.run {
                 isLocked = false
                 isUnlocking = false
                 unlockPassword = ""
                 unlockError = nil
             }
-            // Fire in unstructured Task so the refresh survives view
-            // disappearance cancellation from SwiftUI's .task modifier.
             Task { await delegate?.didUnlock() }
         } catch {
             await MainActor.run {
@@ -145,9 +156,12 @@ final class SessionLockManager: ObservableObject {
         guard !biometricAttempted else { return }
         await MainActor.run { biometricAttempted = true }
 
+        // Don't check `hasBiometricPassword` here — that calls keychain.exists()
+        // on a .biometryCurrentSet item, which triggers Face ID just to check
+        // existence. unlockWithBiometrics() already handles the "no password"
+        // case by falling back to manual password entry.
         guard biometric.canUseBiometrics(),
-              SecurityService.shared.isBiometricAuthEnabled,
-              hasBiometricPassword else {
+              SecurityService.shared.isBiometricAuthEnabled else {
             await MainActor.run { showPasswordFallback = true }
             return
         }
@@ -166,7 +180,11 @@ final class SessionLockManager: ObservableObject {
         case .background:
             backgroundedAt = Date()
         case .active:
-            if !isLocked, !isUnlocking,
+            // Skip auto-lock during the 3-second grace period after unlock.
+            // Face ID dialogs cause brief .inactive → .active transitions that
+            // would otherwise immediately re-lock when interval is "Immediately".
+            let inGracePeriod = lastUnlockedAt.map { Date().timeIntervalSince($0) < 3 } ?? false
+            if !isLocked, !isUnlocking, !inGracePeriod,
                let leftAppAt = backgroundedAt ?? inactivatedAt {
                 let elapsed = Date().timeIntervalSince(leftAppAt)
                 let interval = autoLockInterval.seconds

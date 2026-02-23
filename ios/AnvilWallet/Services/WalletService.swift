@@ -1602,6 +1602,10 @@ extension WalletService: SessionLockDelegate {
         try await setSessionPassword(password)
     }
 
+    func cacheSessionPassword(_ password: String) {
+        sessionPasswordBytes = ContiguousArray(password.utf8)
+    }
+
     func didUnlock() async {
         try? await refreshBalances()
         try? await refreshPrices()

@@ -37,17 +37,32 @@ struct WalletHomeView: View {
         return Array(sorted.prefix(3))
     }
 
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        case 17..<22: return "Good evening"
+        default: return "Good night"
+        }
+    }
+
     var body: some View {
         NavigationStack(path: $router.walletPath) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
+                    // Greeting header + notification bell
+                    greetingHeader
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+
                     // Account switcher chip
                     accountSwitcher
-                        .padding(.top, 4)
+                        .padding(.top, 6)
 
                     // Hero balance section
                     balanceSection
-                        .padding(.top, 4)
+                        .padding(.top, 0)
                         .padding(.bottom, 18)
 
                     chainAllocation
@@ -79,37 +94,7 @@ struct WalletHomeView: View {
                 }
             }
             .background(Color.backgroundPrimary)
-            .navigationTitle("Wallet")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: AppRouter.WalletDestination.notifications) {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bell")
-                                .font(.body.weight(.medium))
-                                .foregroundColor(.textSecondary)
-                                .frame(width: 44, height: 44)
-                                .background(Color.backgroundCard)
-                                .clipShape(Circle())
-
-                            if notificationService.unreadCount > 0 {
-                                Text("\(min(notificationService.unreadCount, 99))")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .frame(minWidth: 16, minHeight: 16)
-                                    .background(Color.error)
-                                    .clipShape(Circle())
-                                    .offset(x: 4, y: -4)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(notificationService.unreadCount > 0
-                        ? "Notifications, \(notificationService.unreadCount) unread"
-                        : "Notifications")
-                    .accessibilityHint("Double tap to view notifications")
-                }
-            }
+            .navigationBarHidden(true)
             .sheet(isPresented: $showSwap) {
                 SwapView()
             }
@@ -174,6 +159,44 @@ struct WalletHomeView: View {
         }
     }
 
+    // MARK: - Greeting Header
+
+    private var greetingHeader: some View {
+        HStack {
+            Text(greeting)
+                .font(.title3.bold())
+                .foregroundColor(.textPrimary)
+
+            Spacer()
+
+            NavigationLink(value: AppRouter.WalletDestination.notifications) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bell")
+                        .font(.body.weight(.medium))
+                        .foregroundColor(.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(Color.backgroundCard)
+                        .clipShape(Circle())
+
+                    if notificationService.unreadCount > 0 {
+                        Text("\(min(notificationService.unreadCount, 99))")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(minWidth: 16, minHeight: 16)
+                            .background(Color.error)
+                            .clipShape(Circle())
+                            .offset(x: 4, y: -4)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(notificationService.unreadCount > 0
+                ? "Notifications, \(notificationService.unreadCount) unread"
+                : "Notifications")
+            .accessibilityHint("Double tap to view notifications")
+        }
+    }
+
     // MARK: - Balance Section
 
     private var balanceSection: some View {
@@ -216,7 +239,7 @@ struct WalletHomeView: View {
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, 10)
         .padding(.horizontal, 20)
     }
 
