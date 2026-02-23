@@ -111,6 +111,8 @@ final class WalletService: ObservableObject {
     private init() {
         isWalletCreated = keychain.exists(key: encryptedSeedKey)
         if isWalletCreated {
+            // Always start locked on cold launch — require Face ID / password
+            isSessionLocked = true
             loadWalletMetadata()
         }
     }
@@ -329,6 +331,7 @@ final class WalletService: ObservableObject {
             self.currentWallet = wallet
             self.accounts = [wallet]
             self.activeAccountIndex = 0
+            self.isSessionLocked = false
             self.isWalletCreated = true
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
@@ -400,6 +403,7 @@ final class WalletService: ObservableObject {
             self.currentWallet = wallet
             self.accounts = [wallet]
             self.activeAccountIndex = 0
+            self.isSessionLocked = false
             self.isWalletCreated = true
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
