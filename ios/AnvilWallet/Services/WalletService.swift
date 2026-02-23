@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import LocalAuthentication
 import SwiftUI
 
 // MARK: - Transaction Request Types
@@ -332,13 +333,13 @@ final class WalletService: ObservableObject {
     func signTransaction(request: TransactionRequest) async throws -> Data {
         let password = try requireSessionPassword()
 
-        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign transaction")
+        let authContext = try await authenticateForSigning(reason: "Authenticate to sign transaction")
 
         guard let doubleEncrypted = try keychain.load(key: WalletKeychainKeys.encryptedSeed) else {
             throw AppWalletError.seedNotFound
         }
 
-        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted, context: authContext)
         let (salt, ciphertext) = try backup.unpackSaltAndCiphertext(from: packed)
         var seedBytes = try decryptSeedWithPassword(
             ciphertext: ciphertext,
@@ -416,9 +417,9 @@ final class WalletService: ObservableObject {
 
     func signMessage(_ message: [UInt8]) async throws -> [UInt8] {
         let password = try requireSessionPassword()
-        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign message")
+        let ctx = try await authenticateForSigning(reason: "Authenticate to sign message")
 
-        var seedBytes = try decryptSeed(password: password)
+        var seedBytes = try decryptSeed(password: password, context: ctx)
         defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
 
         let signature = try signEthMessage(
@@ -433,9 +434,9 @@ final class WalletService: ObservableObject {
     func signRawHash(_ hash: [UInt8]) async throws -> [UInt8] {
         guard hash.count == 32 else { throw AppWalletError.signingFailed }
         let password = try requireSessionPassword()
-        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign typed data")
+        let ctx = try await authenticateForSigning(reason: "Authenticate to sign typed data")
 
-        var seedBytes = try decryptSeed(password: password)
+        var seedBytes = try decryptSeed(password: password, context: ctx)
         defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
 
         let signature = try signEthRawHash(
@@ -449,9 +450,9 @@ final class WalletService: ObservableObject {
 
     func signSolanaRawTransaction(_ rawTx: Data) async throws -> Data {
         let password = try requireSessionPassword()
-        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign Solana transaction")
+        let ctx = try await authenticateForSigning(reason: "Authenticate to sign Solana transaction")
 
-        var seedBytes = try decryptSeed(password: password)
+        var seedBytes = try decryptSeed(password: password, context: ctx)
         defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
 
         return try signSolRawTransaction(
@@ -463,9 +464,9 @@ final class WalletService: ObservableObject {
 
     func signSolanaMessage(_ message: [UInt8]) async throws -> [UInt8] {
         let password = try requireSessionPassword()
-        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign Solana message")
+        let ctx = try await authenticateForSigning(reason: "Authenticate to sign Solana message")
 
-        var seedBytes = try decryptSeed(password: password)
+        var seedBytes = try decryptSeed(password: password, context: ctx)
         defer { for i in seedBytes.indices { seedBytes[i] = 0 } }
 
         let signature = try signSolMessage(
@@ -849,12 +850,37 @@ final class WalletService: ObservableObject {
         }
     }
 
+    /// Authenticates with Face ID and returns the LAContext so the Secure Enclave
+    /// can reuse it without prompting a second time.
+    private func authenticateForSigning(reason: String) async throws -> LAContext? {
+        guard securityService.isBiometricAuthEnabled else { return nil }
+
+        let context = LAContext()
+        context.localizedFallbackTitle = "Use Passcode"
+        context.localizedCancelTitle = "Cancel"
+
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            return nil
+        }
+
+        let success = try await context.evaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics,
+            localizedReason: reason
+        )
+        guard success else {
+            throw AppWalletError.authenticationFailed
+        }
+
+        return context
+    }
+
     /// Decrypts the seed using the full SE + password pipeline.
-    private func decryptSeed(password: String) throws -> Data {
+    private func decryptSeed(password: String, context: LAContext? = nil) throws -> Data {
         guard let doubleEncrypted = try keychain.load(key: WalletKeychainKeys.encryptedSeed) else {
             throw AppWalletError.seedNotFound
         }
-        let packed = try secureEnclave.decrypt(data: doubleEncrypted)
+        let packed = try secureEnclave.decrypt(data: doubleEncrypted, context: context)
         let (salt, ciphertext) = try backup.unpackSaltAndCiphertext(from: packed)
         return try decryptSeedWithPassword(
             ciphertext: ciphertext,

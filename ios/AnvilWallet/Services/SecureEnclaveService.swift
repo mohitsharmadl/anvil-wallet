@@ -43,7 +43,7 @@ final class SecureEnclaveService {
 
     // MARK: - Key Management
 
-    /// Creates a new P-256 key in the Secure Enclave with biometric protection.
+    /// Creates a new P-256 key in the Secure Enclave.
     ///
     /// The key is created with `.biometryCurrentSet` access control, meaning:
     ///   - User must authenticate with Face ID / Touch ID to use the key
@@ -52,28 +52,35 @@ final class SecureEnclaveService {
     /// On simulator, creates a software CryptoKit key instead.
     ///
     /// - Returns: The SecKey reference (on device) or stores internally (on simulator)
+    /// - Parameter requiresBiometrics: When true, binds key usage to current biometric set.
     @discardableResult
-    func createKey() throws -> SecKey {
+    func createKey(requiresBiometrics: Bool = true) throws -> SecKey {
         // Delete any existing key first
         deleteKey()
 
         #if targetEnvironment(simulator)
         return try createSoftwareKey()
         #else
-        return try createSecureEnclaveKey()
+        return try createSecureEnclaveKey(requiresBiometrics: requiresBiometrics)
         #endif
     }
 
     /// Retrieves the existing Secure Enclave key.
     ///
+    /// - Parameter context: An optional pre-authenticated LAContext. When provided,
+    ///   the Secure Enclave reuses this authentication instead of prompting again.
     /// - Returns: The SecKey reference
-    func getKey() throws -> SecKey {
-        let query: [String: Any] = [
+    func getKey(context: LAContext? = nil) throws -> SecKey {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassKey,
             kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
             kSecAttrApplicationTag as String: keyTag.data(using: .utf8)!,
             kSecReturnRef as String: true,
         ]
+
+        if let context {
+            query[kSecUseAuthenticationContext as String] = context
+        }
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -136,11 +143,15 @@ final class SecureEnclaveService {
     ///
     /// This triggers biometric authentication because the SE private key
     /// was created with `.biometryCurrentSet` access control.
+    /// Pass a pre-authenticated `LAContext` to skip the second biometric prompt.
     ///
-    /// - Parameter data: The encrypted data to decrypt
+    /// - Parameters:
+    ///   - data: The encrypted data to decrypt
+    ///   - using: Optional key to use (defaults to stored key)
+    ///   - context: Optional pre-authenticated LAContext to reuse biometric auth
     /// - Returns: The decrypted plaintext data
-    func decrypt(data: Data) throws -> Data {
-        let decryptionKey = try getKey()
+    func decrypt(data: Data, using key: SecKey? = nil, context: LAContext? = nil) throws -> Data {
+        let decryptionKey = try key ?? getKey(context: context)
 
         var error: Unmanaged<CFError>?
         guard let decryptedData = SecKeyCreateDecryptedData(
@@ -158,14 +169,20 @@ final class SecureEnclaveService {
 
     // MARK: - Private Helpers
 
-    private func createSecureEnclaveKey() throws -> SecKey {
+    private func createSecureEnclaveKey(requiresBiometrics: Bool) throws -> SecKey {
         var error: Unmanaged<CFError>?
 
-        // Access control: biometric authentication required for private key operations
+        // Access control:
+        // - requiresBiometrics=true: only current biometric set can use the key
+        // - requiresBiometrics=false: key usable without biometric prompts
+        let flags: SecAccessControlCreateFlags = requiresBiometrics
+            ? [.privateKeyUsage, .biometryCurrentSet]
+            : [.privateKeyUsage]
+
         guard let accessControl = SecAccessControlCreateWithFlags(
             kCFAllocatorDefault,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            [.privateKeyUsage, .biometryCurrentSet],
+            flags,
             &error
         ) else {
             let errorMessage = error?.takeRetainedValue().localizedDescription ?? "Unknown error"
