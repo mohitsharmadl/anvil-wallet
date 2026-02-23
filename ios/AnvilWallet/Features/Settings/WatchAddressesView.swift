@@ -9,7 +9,7 @@ struct WatchAddressesView: View {
     @State private var validationError: String?
 
     private var chains: [ChainModel] {
-        ChainModel.defaults
+        ChainPreferencesStore.shared.enabledDefaults
     }
 
     var body: some View {

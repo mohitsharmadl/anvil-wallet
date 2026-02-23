@@ -31,7 +31,7 @@ actor TokenDiscoveryService {
     /// and returns contracts with non-zero balances.
     func discoverTokens(for address: String) async throws -> [DiscoveredToken] {
         var discovered: [DiscoveredToken] = []
-        let evmChains = ChainModel.defaults.filter { $0.chainType == .evm && $0.explorerApiUrl != nil }
+        let evmChains = ChainPreferencesStore.shared.enabledDefaults.filter { $0.chainType == .evm && $0.explorerApiUrl != nil }
 
         for chain in evmChains {
             guard let explorerApiUrl = chain.explorerApiUrl else { continue }

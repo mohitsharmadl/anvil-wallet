@@ -73,7 +73,7 @@ final class TransactionHistoryService {
         // Fetch in parallel using a task group
         try await withThrowingTaskGroup(of: [TransactionModel].self) { group in
             for (chainId, address) in addresses {
-                guard let chain = ChainModel.defaults.first(where: { $0.id == chainId }) else { continue }
+                guard let chain = ChainPreferencesStore.shared.enabledDefaults.first(where: { $0.id == chainId }) else { continue }
 
                 switch chain.chainType {
                 case .bitcoin:

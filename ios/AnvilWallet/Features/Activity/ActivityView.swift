@@ -38,7 +38,7 @@ struct ActivityView: View {
     /// Chains that have at least one transaction, for the chain filter picker.
     private var chainsWithTransactions: [ChainModel] {
         let chainIds = Set(allTransactions.map { $0.chain })
-        return ChainModel.defaults.filter { chainIds.contains($0.id) }
+        return ChainPreferencesStore.shared.enabledDefaults.filter { chainIds.contains($0.id) }
     }
 
     private var filteredTransactions: [TransactionModel] {

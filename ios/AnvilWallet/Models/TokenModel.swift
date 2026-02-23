@@ -77,4 +77,15 @@ struct TokenModel: Identifiable, Codable, Hashable {
     static let zcashDefaults: [TokenModel] = [
         TokenModel(symbol: "ZEC", name: "Zcash", chain: "zcash", decimals: 8),
     ]
+
+    /// Returns default tokens only for chains the user has enabled.
+    static func enabledDefaultTokens() -> [TokenModel] {
+        let prefs = ChainPreferencesStore.shared
+        var tokens: [TokenModel] = []
+        if prefs.isEnabled("ethereum") { tokens += ethereumDefaults }
+        if prefs.isEnabled("solana") { tokens += solanaDefaults }
+        if prefs.isEnabled("bitcoin") { tokens += bitcoinDefaults }
+        if prefs.isEnabled("zcash") { tokens += zcashDefaults }
+        return tokens
+    }
 }

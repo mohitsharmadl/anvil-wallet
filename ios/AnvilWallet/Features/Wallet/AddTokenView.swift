@@ -23,7 +23,7 @@ struct AddTokenView: View {
 
     /// Chains that support custom token addition (EVM + Solana).
     private var supportedChains: [ChainModel] {
-        ChainModel.defaults.filter { $0.chainType == .evm || $0.chainType == .solana }
+        ChainPreferencesStore.shared.enabledDefaults.filter { $0.chainType == .evm || $0.chainType == .solana }
     }
 
     private var isEVM: Bool {

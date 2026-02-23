@@ -7,7 +7,7 @@ struct ChainPickerView: View {
     @EnvironmentObject var router: AppRouter
 
     private var availableChains: [(chain: ChainModel, address: String)] {
-        ChainModel.defaults.compactMap { chain in
+        ChainPreferencesStore.shared.enabledDefaults.compactMap { chain in
             guard let address = walletService.addresses[chain.id] else { return nil }
             return (chain: chain, address: address)
         }

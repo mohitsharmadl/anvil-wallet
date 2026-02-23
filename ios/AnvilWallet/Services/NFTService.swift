@@ -29,7 +29,7 @@ actor NFTService {
     func discoverNFTs(for addresses: [String: String]) async -> [NFTModel] {
         var allNFTs: [NFTModel] = []
 
-        for chain in ChainModel.defaults where chain.chainType == .evm {
+        for chain in ChainPreferencesStore.shared.enabledDefaults where chain.chainType == .evm {
             guard let address = addresses[chain.id],
                   let explorerApiUrl = chain.explorerApiUrl else { continue }
 

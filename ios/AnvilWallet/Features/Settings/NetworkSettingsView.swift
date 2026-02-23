@@ -4,6 +4,7 @@ import SwiftUI
 /// including switching between mainnet and testnet and setting custom RPC URLs.
 struct NetworkSettingsView: View {
     @StateObject private var rpcStore = CustomRPCStore.shared
+    @StateObject private var chainPrefs = ChainPreferencesStore.shared
     @State private var showTestnets = false
     @State private var selectedChain: ChainModel?
 
@@ -16,6 +17,22 @@ struct NetworkSettingsView: View {
 
     var body: some View {
         List {
+            // Active chain toggles
+            Section("Active Chains") {
+                ForEach(ChainModel.defaults) { chain in
+                    Toggle(isOn: Binding(
+                        get: { chainPrefs.isEnabled(chain.id) },
+                        set: { chainPrefs.setEnabled(chain.id, enabled: $0) }
+                    )) {
+                        Text(chain.name)
+                            .foregroundColor(.textPrimary)
+                    }
+                    .tint(.accentGreen)
+                    .disabled(chain.id == "ethereum")
+                }
+            }
+            .listRowBackground(Color.backgroundCard)
+
             // Testnet toggle
             Section {
                 Toggle(isOn: $showTestnets) {

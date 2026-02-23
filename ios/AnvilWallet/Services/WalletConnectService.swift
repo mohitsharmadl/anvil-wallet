@@ -320,6 +320,17 @@ final class WalletConnectService: ObservableObject {
             evmChainList = ["eip155:1"]
         }
 
+        // Filter to only chains the user has enabled
+        let chainPrefs = ChainPreferencesStore.shared
+        evmChainList = evmChainList.filter { wcChain in
+            guard let idStr = wcChain.split(separator: ":").last,
+                  let chainId = UInt64(idStr),
+                  let chain = ChainModel.allChains.first(where: { $0.evmChainId == chainId }) else {
+                return true // Unknown chains pass through
+            }
+            return chainPrefs.isEnabled(chain.id)
+        }
+
         if !evmChainList.isEmpty {
             let evmAccounts = evmChainList.compactMap { chainString -> Account? in
                 guard let blockchain = Blockchain(chainString) else { return nil }
@@ -334,8 +345,8 @@ final class WalletConnectService: ObservableObject {
             )
         }
 
-        // Solana namespace
-        if let solAddr = solAddress, !solanaChains.isEmpty {
+        // Solana namespace (only if Solana is enabled)
+        if let solAddr = solAddress, !solanaChains.isEmpty, chainPrefs.isEnabled("solana") {
             let solAccounts = solanaChains.compactMap { chainString -> Account? in
                 guard let blockchain = Blockchain(chainString) else { return nil }
                 return Account(blockchain: blockchain, address: solAddr)
