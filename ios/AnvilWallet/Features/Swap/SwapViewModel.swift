@@ -161,8 +161,8 @@ final class SwapViewModel: ObservableObject {
         let rawAmount = decimalAmount * multiplier
         let rawAmountString = NSDecimalNumber(decimal: rawAmount).stringValue
 
-        let fromMint = fromToken.contractAddress ?? fromToken.symbol
-        let toMint = toToken.contractAddress ?? toToken.symbol
+        let fromMint = fromToken.contractAddress ?? nativeTokenAddress(for: chain)
+        let toMint = toToken.contractAddress ?? nativeTokenAddress(for: chain)
 
         isLoadingQuote = true
         error = nil
@@ -213,6 +213,20 @@ final class SwapViewModel: ObservableObject {
         }
 
         isExecutingSwap = false
+    }
+
+    // MARK: - Native Token Address
+
+    /// Returns the native token placeholder address for swap APIs.
+    private func nativeTokenAddress(for chain: ChainModel) -> String {
+        switch chain.chainType {
+        case .solana:
+            return "So11111111111111111111111111111111111111112"
+        case .evm:
+            return CommonTokens.nativeToken
+        default:
+            return ""
+        }
     }
 
     // MARK: - Price Estimation

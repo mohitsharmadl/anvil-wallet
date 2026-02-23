@@ -155,7 +155,7 @@ struct LoadingOverlay: ViewModifier {
                                     .foregroundColor(.white)
                             }
                             .padding(32)
-                            .background(Color.backgroundElevated)
+                            .background(Color(red: 0.13, green: 0.15, blue: 0.18))
                             .cornerRadius(16)
                         }
                     }
