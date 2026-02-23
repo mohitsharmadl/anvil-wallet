@@ -74,6 +74,7 @@ final class WalletService: ObservableObject {
     private let keychain = KeychainService()
     private let secureEnclave = SecureEnclaveService()
     private let biometric = BiometricService()
+    private let securityService = SecurityService.shared
 
     @Published var isWalletCreated: Bool = false
     @Published var addresses: [String: String] = [:] // chainId -> address
@@ -82,6 +83,10 @@ final class WalletService: ObservableObject {
     @Published var transactions: [TransactionModel] = []
     @Published var watchPortfolio: [WatchPortfolioEntry] = []
     @Published var watchTransactions: [TransactionModel] = []
+
+    /// Whether the session is locked (requires password + biometric to unlock).
+    /// Driven by auto-lock on background return. Gates balance/price fetching.
+    @Published var isSessionLocked = false
 
     /// All HD accounts derived from the same seed.
     @Published var accounts: [WalletModel] = []
@@ -153,6 +158,41 @@ final class WalletService: ObservableObject {
         for i in seedBytes.indices { seedBytes[i] = 0 }
 
         sessionPasswordBytes = ContiguousArray(password.utf8)
+        await MainActor.run { isSessionLocked = false }
+    }
+
+    /// Re-wraps encrypted wallet blobs under a new Secure Enclave key policy.
+    /// This enables switching between biometric-bound and password-only key usage.
+    func migrateSecureEnclaveProtection(requiresBiometrics: Bool) throws {
+        guard let seedCipher = try keychain.load(key: encryptedSeedKey) else {
+            throw AppWalletError.seedNotFound
+        }
+
+        let oldKey = try secureEnclave.getKey()
+
+        // Decrypt all existing blobs first, before replacing the key.
+        let packedSeed = try secureEnclave.decrypt(data: seedCipher, using: oldKey)
+        let packedMnemonic = try keychain.load(key: encryptedMnemonicKey).map {
+            try secureEnclave.decrypt(data: $0, using: oldKey)
+        }
+        let packedPassphrase = try keychain.load(key: encryptedPassphraseKey).map {
+            try secureEnclave.decrypt(data: $0, using: oldKey)
+        }
+
+        // Replace key with the requested policy and re-encrypt blobs.
+        let newKey = try secureEnclave.createKey(requiresBiometrics: requiresBiometrics)
+        let rewrappedSeed = try secureEnclave.encrypt(data: packedSeed, using: newKey)
+        try keychain.save(key: encryptedSeedKey, data: rewrappedSeed)
+
+        if let packedMnemonic {
+            let rewrappedMnemonic = try secureEnclave.encrypt(data: packedMnemonic, using: newKey)
+            try keychain.save(key: encryptedMnemonicKey, data: rewrappedMnemonic)
+        }
+
+        if let packedPassphrase {
+            let rewrappedPassphrase = try secureEnclave.encrypt(data: packedPassphrase, using: newKey)
+            try keychain.save(key: encryptedPassphraseKey, data: rewrappedPassphrase)
+        }
     }
 
     // MARK: - Combined Data Packing
@@ -403,12 +443,7 @@ final class WalletService: ObservableObject {
         let password = String(decoding: pwBytes, as: UTF8.self)
 
         // Step 2: Biometric authentication
-        let authenticated = try await biometric.authenticate(
-            reason: "Authenticate to sign transaction"
-        )
-        guard authenticated else {
-            throw AppWalletError.authenticationFailed
-        }
+        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign transaction")
 
         // Step 3: Load encrypted seed from Keychain
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
@@ -536,6 +571,7 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token balances for all chains.
     func refreshBalances() async throws {
+        guard !isSessionLocked else { return }
         let rpc = RPCService.shared
 
         // Snapshot token list to iterate
@@ -620,6 +656,7 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token prices from price service.
     func refreshPrices() async throws {
+        guard !isSessionLocked else { return }
         let priceService = PriceService.shared
         let symbols = tokens.map { $0.symbol.lowercased() }
         let prices = try await priceService.fetchPrices(for: symbols)
@@ -771,12 +808,7 @@ final class WalletService: ObservableObject {
         }
         let password = String(decoding: pwBytes, as: UTF8.self)
 
-        let authenticated = try await biometric.authenticate(
-            reason: "Authenticate to sign message"
-        )
-        guard authenticated else {
-            throw AppWalletError.authenticationFailed
-        }
+        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign message")
 
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
             throw AppWalletError.seedNotFound
@@ -817,12 +849,7 @@ final class WalletService: ObservableObject {
         }
         let password = String(decoding: pwBytes, as: UTF8.self)
 
-        let authenticated = try await biometric.authenticate(
-            reason: "Authenticate to sign typed data"
-        )
-        guard authenticated else {
-            throw AppWalletError.authenticationFailed
-        }
+        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign typed data")
 
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
             throw AppWalletError.seedNotFound
@@ -860,12 +887,7 @@ final class WalletService: ObservableObject {
         }
         let password = String(decoding: pwBytes, as: UTF8.self)
 
-        let authenticated = try await biometric.authenticate(
-            reason: "Authenticate to sign Solana transaction"
-        )
-        guard authenticated else {
-            throw AppWalletError.authenticationFailed
-        }
+        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign Solana transaction")
 
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
             throw AppWalletError.seedNotFound
@@ -902,12 +924,7 @@ final class WalletService: ObservableObject {
         }
         let password = String(decoding: pwBytes, as: UTF8.self)
 
-        let authenticated = try await biometric.authenticate(
-            reason: "Authenticate to sign Solana message"
-        )
-        guard authenticated else {
-            throw AppWalletError.authenticationFailed
-        }
+        try await authenticateForSigningIfEnabled(reason: "Authenticate to sign Solana message")
 
         guard let doubleEncrypted = try keychain.load(key: encryptedSeedKey) else {
             throw AppWalletError.seedNotFound
@@ -932,6 +949,14 @@ final class WalletService: ObservableObject {
     }
 
     // MARK: - Mnemonic Encryption
+
+    private func authenticateForSigningIfEnabled(reason: String) async throws {
+        guard securityService.isBiometricAuthEnabled else { return }
+        let authenticated = try await biometric.authenticate(reason: reason)
+        guard authenticated else {
+            throw AppWalletError.authenticationFailed
+        }
+    }
 
     /// Encrypts and stores the mnemonic string using the same double-encryption pipeline as the seed.
     private func encryptAndStoreMnemonic(_ mnemonic: String, password: String, seKey: SecKey) throws {

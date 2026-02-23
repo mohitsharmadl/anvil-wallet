@@ -82,7 +82,6 @@ struct AnvilWalletApp: App {
     @State private var inactivatedAt: Date?
     @State private var showSecurityWarning = false
     @State private var securityWarningDismissed = false
-    @State private var showSessionUnlock = false
     @State private var unlockPassword = ""
     @State private var unlockError: String?
     @State private var isUnlocking = false
@@ -132,9 +131,9 @@ struct AnvilWalletApp: App {
                         .ignoresSafeArea()
                 }
 
-                if showSessionUnlock {
+                if walletService.isSessionLocked && walletService.isWalletCreated {
                     Rectangle()
-                        .fill(Color.backgroundPrimary.opacity(0.96))
+                        .fill(Color.backgroundPrimary)
                         .ignoresSafeArea()
 
                     SessionUnlockOverlay(
@@ -159,18 +158,16 @@ struct AnvilWalletApp: App {
                 securityService.activateScreenProtection()
             case .active:
                 securityService.deactivateScreenProtection()
-                if !showSessionUnlock, !isUnlocking, let leftAppAt = backgroundedAt ?? inactivatedAt {
+                if !walletService.isSessionLocked, !isUnlocking,
+                   let leftAppAt = backgroundedAt ?? inactivatedAt {
                     let elapsed = Date().timeIntervalSince(leftAppAt)
                     let interval = autoLockSeconds
-                    if interval >= 0, elapsed >= interval {
+                    if interval >= 0, elapsed >= interval, walletService.isWalletCreated {
                         walletService.clearSessionPassword()
-                        if walletService.isWalletCreated {
-                            showSessionUnlock = true
-                            unlockPassword = ""
-                            unlockError = nil
-                        }
+                        walletService.isSessionLocked = true
+                        unlockPassword = ""
+                        unlockError = nil
                     }
-                    // interval < 0 means "never" -- don't clear
                 }
                 self.backgroundedAt = nil
                 self.inactivatedAt = nil
@@ -191,17 +188,19 @@ struct AnvilWalletApp: App {
             unlockError = nil
         }
         do {
+            // setSessionPassword validates password via SE decrypt (triggers Face ID)
+            // and sets isSessionLocked = false on success
             try await walletService.setSessionPassword(unlockPassword)
             await MainActor.run {
                 isUnlocking = false
-                showSessionUnlock = false
                 unlockPassword = ""
                 unlockError = nil
-                // Clear timestamps so a delayed .active from the Face ID dialog
-                // cannot re-lock the session after we've already unlocked.
                 backgroundedAt = nil
                 inactivatedAt = nil
             }
+            // Refresh balances now that session is unlocked
+            try? await walletService.refreshBalances()
+            try? await walletService.refreshPrices()
         } catch {
             await MainActor.run {
                 isUnlocking = false
