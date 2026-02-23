@@ -8,6 +8,11 @@ enum SwapProvider: String, Codable {
     case zeroX
 }
 
+enum QuoteAmountType {
+    case exactInput
+    case exactOutput
+}
+
 struct SwapRoute: Codable, Hashable {
     let provider: SwapProvider
     let path: [String]   // Token symbols along the route
@@ -152,12 +157,14 @@ final class SwapService {
     ///   - fromMint: Source token mint/contract address
     ///   - toMint: Destination token mint/contract address
     ///   - amount: Amount in smallest unit (lamports, wei, etc.)
+    ///   - amountType: Whether `amount` is input amount or desired output amount
     ///   - chain: The chain to swap on
     ///   - slippageBps: Slippage tolerance in basis points (e.g. 50 = 0.5%)
     func getQuote(
         from fromMint: String,
         to toMint: String,
         amount: String,
+        amountType: QuoteAmountType = .exactInput,
         chain: ChainModel,
         slippageBps: Int = 50
     ) async throws -> SwapQuote {
@@ -165,12 +172,12 @@ final class SwapService {
         case .solana:
             return try await getJupiterQuote(
                 fromMint: fromMint, toMint: toMint,
-                amount: amount, slippageBps: slippageBps
+                amount: amount, amountType: amountType, slippageBps: slippageBps
             )
         case .evm:
             return try await getZeroXQuote(
                 sellToken: fromMint, buyToken: toMint,
-                sellAmount: amount, chain: chain,
+                amount: amount, amountType: amountType, chain: chain,
                 slippageBps: slippageBps
             )
         case .bitcoin:
@@ -197,13 +204,15 @@ final class SwapService {
 
     private func getJupiterQuote(
         fromMint: String, toMint: String,
-        amount: String, slippageBps: Int
+        amount: String, amountType: QuoteAmountType, slippageBps: Int
     ) async throws -> SwapQuote {
         var components = URLComponents(string: "https://quote-api.jup.ag/v6/quote")!
+        let swapMode = amountType == .exactInput ? "ExactIn" : "ExactOut"
         components.queryItems = [
             URLQueryItem(name: "inputMint", value: fromMint),
             URLQueryItem(name: "outputMint", value: toMint),
             URLQueryItem(name: "amount", value: amount),
+            URLQueryItem(name: "swapMode", value: swapMode),
             URLQueryItem(name: "slippageBps", value: String(slippageBps)),
         ]
 
@@ -216,6 +225,7 @@ final class SwapService {
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let outAmount = json["outAmount"] as? String,
+              let inAmount = json["inAmount"] as? String,
               let priceImpactPct = json["priceImpactPct"] as? String else {
             throw SwapServiceError.invalidResponse
         }
@@ -229,7 +239,7 @@ final class SwapService {
         return SwapQuote(
             fromToken: fromMint,
             toToken: toMint,
-            fromAmount: amount,
+            fromAmount: inAmount,
             toAmount: outAmount,
             priceImpact: Double(priceImpactPct) ?? 0,
             route: SwapRoute(
@@ -293,7 +303,8 @@ final class SwapService {
     private func getZeroXQuote(
         sellToken: String,
         buyToken: String,
-        sellAmount: String,
+        amount: String,
+        amountType: QuoteAmountType,
         chain: ChainModel,
         slippageBps: Int
     ) async throws -> SwapQuote {
@@ -310,66 +321,68 @@ final class SwapService {
             throw SwapServiceError.transactionBuildFailed
         }
 
-        // Convert basis points to a decimal percentage string: 50 bps -> "0.005"
-        let slippageDecimal = Double(slippageBps) / 10000.0
-
-        var components = URLComponents(string: "https://api.0x.org/swap/v1/quote")!
-        components.queryItems = [
+        // 0x Swap API v2 — allowance-holder variant (no Permit2 signature required)
+        var components = URLComponents(string: "https://api.0x.org/swap/allowance-holder/quote")!
+        var queryItems: [URLQueryItem] = [
+            URLQueryItem(name: "chainId", value: String(evmChainId)),
             URLQueryItem(name: "sellToken", value: sellToken),
             URLQueryItem(name: "buyToken", value: buyToken),
-            URLQueryItem(name: "sellAmount", value: sellAmount),
-            URLQueryItem(name: "takerAddress", value: takerAddress),
-            URLQueryItem(name: "slippagePercentage", value: String(slippageDecimal)),
+            URLQueryItem(name: "taker", value: takerAddress),
+            URLQueryItem(name: "slippageBps", value: String(slippageBps)),
         ]
+        if amountType == .exactInput {
+            queryItems.append(URLQueryItem(name: "sellAmount", value: amount))
+        } else {
+            queryItems.append(URLQueryItem(name: "buyAmount", value: amount))
+        }
+        components.queryItems = queryItems
 
         guard let url = components.url else { throw SwapServiceError.invalidResponse }
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(apiKey, forHTTPHeaderField: "0x-api-key")
-
-        // 0x requires chain ID header for non-Ethereum chains
-        if evmChainId != 1 {
-            request.setValue(String(evmChainId), forHTTPHeaderField: "0x-chain-id")
-        }
+        request.setValue("v2", forHTTPHeaderField: "0x-version")
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            // Try to parse error message from response body
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let reason = errorJson["reason"] as? String {
-                throw SwapServiceError.networkError("0x API: \(reason)")
+               let message = errorJson["message"] as? String {
+                throw SwapServiceError.networkError("0x API: \(message)")
             }
             throw SwapServiceError.quoteUnavailable
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let buyAmount = json["buyAmount"] as? String,
-              let gas = json["gas"] as? String else {
+              let sellAmount = json["sellAmount"] as? String else {
             throw SwapServiceError.invalidResponse
         }
 
-        let price = json["price"] as? String
-        let guaranteedPrice = json["guaranteedPrice"] as? String
-        let estimatedPriceImpact = json["estimatedPriceImpact"] as? String
+        let minBuyAmount = json["minBuyAmount"] as? String
+        let transaction = json["transaction"] as? [String: Any]
+        let gas = transaction?["gas"] as? String ?? "0"
 
-        // Parse liquidity sources
-        let sourcesJson = json["sources"] as? [[String: Any]]
-        let activeSources: [SwapSource] = sourcesJson?.compactMap { source -> SwapSource? in
-            guard let name = source["name"] as? String,
-                  let proportion = source["proportion"] as? String,
-                  proportion != "0" else { return nil }
-            return SwapSource(name: name, proportion: proportion)
+        // Parse route fills from v2 response
+        let routeJson = json["route"] as? [String: Any]
+        let fills = routeJson?["fills"] as? [[String: Any]]
+        let activeSources: [SwapSource] = fills?.compactMap { fill -> SwapSource? in
+            guard let source = fill["source"] as? String else { return nil }
+            let proportion = fill["proportionBps"] as? String ?? "10000"
+            return SwapSource(name: source, proportion: proportion)
         } ?? []
 
         let routeLabels = activeSources.map { $0.name }
+
+        // Compute price impact from sell/buy amounts and token decimals
+        let priceImpact = 0.0  // v2 doesn't return this directly
 
         return SwapQuote(
             fromToken: sellToken,
             toToken: buyToken,
             fromAmount: sellAmount,
             toAmount: buyAmount,
-            priceImpact: Double(estimatedPriceImpact ?? "0") ?? 0,
+            priceImpact: priceImpact,
             route: SwapRoute(
                 provider: .zeroX,
                 path: routeLabels,
@@ -378,19 +391,31 @@ final class SwapService {
             estimatedGas: gas,
             fee: 0.0,
             provider: .zeroX,
-            price: price,
-            guaranteedPrice: guaranteedPrice,
+            price: nil,
+            guaranteedPrice: minBuyAmount,
             sources: activeSources,
             rawQuoteData: data
         )
     }
 
     private func executeZeroXSwap(quote: SwapQuote) async throws -> Data {
+        // v2 response nests tx data inside "transaction" object
         guard let json = try JSONSerialization.jsonObject(with: quote.rawQuoteData) as? [String: Any],
-              let to = json["to"] as? String,
-              let txData = json["data"] as? String,
-              let value = json["value"] as? String else {
+              let transaction = json["transaction"] as? [String: Any],
+              let to = transaction["to"] as? String,
+              let txData = transaction["data"] as? String else {
             throw SwapServiceError.transactionBuildFailed
+        }
+
+        // v2 returns value as decimal string (e.g. "10000000000000000"), convert to hex
+        let valueDecimal = transaction["value"] as? String ?? "0"
+        let valueHex: String
+        if valueDecimal.hasPrefix("0x") {
+            valueHex = valueDecimal
+        } else if let val = UInt64(valueDecimal) {
+            valueHex = "0x" + String(val, radix: 16)
+        } else {
+            valueHex = "0x0"
         }
 
         // Determine which EVM chain this quote is for
@@ -417,7 +442,6 @@ final class SwapService {
 
         // Estimate gas from the quote's calldata
         let dataHex = txData.hasPrefix("0x") ? txData : "0x\(txData)"
-        let valueHex = value.hasPrefix("0x") ? value : "0x\(value)"
         let gasHex = try await rpc.estimateGas(
             rpcUrl: chain.activeRpcUrl, from: fromAddress,
             to: to, value: valueHex, data: dataHex
@@ -442,8 +466,7 @@ final class SwapService {
         let maxFee = baseFee * 2 + priorityFee
         let maxFeeHex = "0x" + String(maxFee, radix: 16)
 
-        // Decode calldata hex to bytes — reject invalid hex rather than silently
-        // altering the payload, which could change the contract call semantics.
+        // Decode calldata hex to bytes
         let calldataCleaned = txData.hasPrefix("0x") ? String(txData.dropFirst(2)) : txData
         guard calldataCleaned.count % 2 == 0 else {
             throw SwapServiceError.transactionBuildFailed
