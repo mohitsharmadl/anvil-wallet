@@ -197,11 +197,15 @@ struct AnvilWalletApp: App {
                 showSessionUnlock = false
                 unlockPassword = ""
                 unlockError = nil
+                // Clear timestamps so a delayed .active from the Face ID dialog
+                // cannot re-lock the session after we've already unlocked.
+                backgroundedAt = nil
+                inactivatedAt = nil
             }
         } catch {
             await MainActor.run {
                 isUnlocking = false
-                unlockError = "Incorrect password. Please try again."
+                unlockError = error.localizedDescription
             }
         }
     }
