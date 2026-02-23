@@ -72,7 +72,8 @@ struct SwapView: View {
                     if let quote = viewModel.quote {
                         QuoteDetailsView(
                             quote: quote,
-                            exchangeRate: viewModel.exchangeRateDisplay
+                            exchangeRate: viewModel.exchangeRateDisplay,
+                            guaranteedPriceFormatted: viewModel.guaranteedPriceDisplay
                         )
                         .padding(.horizontal, 20)
                     }
@@ -385,6 +386,7 @@ private struct SwapTokenSection: View {
 private struct QuoteDetailsView: View {
     let quote: SwapQuote
     let exchangeRate: String?
+    let guaranteedPriceFormatted: String?
 
     var body: some View {
         VStack(spacing: 10) {
@@ -392,28 +394,25 @@ private struct QuoteDetailsView: View {
                 QuoteRow(label: "Rate", value: exchangeRate)
             }
 
-            if let guaranteedPrice = quote.guaranteedPrice {
-                QuoteRow(label: "Guaranteed Price", value: guaranteedPrice)
+            if let guaranteedPriceFormatted {
+                QuoteRow(label: "Min. Received", value: guaranteedPriceFormatted)
             }
 
-            QuoteRow(
-                label: "Price Impact",
-                value: String(format: "%.2f%%", quote.priceImpact),
-                valueColor: quote.priceImpact > 1.0 ? .error : .textSecondary
-            )
-
-            QuoteRow(label: "Estimated Gas", value: "\(quote.estimatedGas)")
+            if quote.priceImpact > 0 {
+                QuoteRow(
+                    label: "Price Impact",
+                    value: String(format: "%.2f%%", quote.priceImpact),
+                    valueColor: quote.priceImpact > 1.0 ? .error : .textSecondary
+                )
+            }
 
             if let sources = quote.sources, !sources.isEmpty {
                 QuoteRow(
-                    label: "Sources",
+                    label: "Route",
                     value: sources.map { $0.name }.joined(separator: ", ")
                 )
-            } else {
-                QuoteRow(
-                    label: "Route",
-                    value: quote.route.label.isEmpty ? "Direct" : quote.route.label
-                )
+            } else if !quote.route.label.isEmpty {
+                QuoteRow(label: "Route", value: quote.route.label)
             }
         }
         .padding(14)

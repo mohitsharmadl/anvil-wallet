@@ -83,6 +83,15 @@ final class SwapViewModel: ObservableObject {
         return from.chain == to.chain
     }
 
+    /// Minimum output after slippage, e.g. "19.866 USDT"
+    var guaranteedPriceDisplay: String? {
+        guard let quote, let toToken else { return nil }
+        guard let minBuy = quote.guaranteedPrice else { return nil }
+        let formatted = formatRawAmount(minBuy, decimals: toToken.decimals)
+        guard !formatted.isEmpty else { return nil }
+        return "\(formatted) \(toToken.symbol)"
+    }
+
     /// Exchange rate string, e.g. "1 ETH = 3200.5 USDC"
     var exchangeRateDisplay: String? {
         guard let quote, let fromToken, let toToken else { return nil }
@@ -217,7 +226,12 @@ final class SwapViewModel: ObservableObject {
             let result = try await swapService.executeSwap(quote: quote)
             txHash = String(data: result, encoding: .utf8)
         } catch {
-            self.error = error.localizedDescription
+            let msg = error.localizedDescription
+            if msg.contains("Authentication cancelled") || msg.contains("User cancel") {
+                self.error = "Authenticate with Face ID to confirm the swap."
+            } else {
+                self.error = msg
+            }
         }
 
         isExecutingSwap = false
