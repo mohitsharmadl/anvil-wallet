@@ -19,7 +19,7 @@ struct SwapRoute: Codable, Hashable {
     let label: String    // Human-readable route description
 }
 
-struct SwapQuote: Codable {
+struct SwapQuote: Codable, Equatable {
     let fromToken: String       // Mint address or contract address
     let toToken: String
     let fromAmount: String      // Raw amount (smallest unit)
@@ -404,19 +404,24 @@ final class SwapService {
             throw SwapServiceError.transactionBuildFailed
         }
 
-        // v2 returns value as decimal string (e.g. "10000000000000000"), convert to hex
-        let valueDecimal = transaction["value"] as? String ?? "0"
+        // v2 returns value as decimal string (e.g. "10000000000000000"), convert to hex.
+        // Handle both String and NSNumber types from JSON, and support arbitrary precision.
         let valueHex: String
-        if valueDecimal.hasPrefix("0x") {
-            valueHex = valueDecimal
-        } else if let val = UInt64(valueDecimal) {
-            valueHex = "0x" + String(val, radix: 16)
+        if let valueStr = transaction["value"] as? String {
+            if valueStr.hasPrefix("0x") {
+                valueHex = valueStr
+            } else {
+                valueHex = Self.decimalToHex(valueStr)
+            }
+        } else if let valueNum = transaction["value"] as? NSNumber {
+            let decStr = valueNum.stringValue
+            valueHex = Self.decimalToHex(decStr)
         } else {
             valueHex = "0x0"
         }
 
         // Determine which EVM chain this quote is for
-        let chainIdNum = json["chainId"] as? Int ?? 1
+        let chainIdNum = (json["chainId"] as? NSNumber)?.intValue ?? 1
         let chain = ChainModel.allChains.first { chain in
             chain.evmChainId == UInt64(chainIdNum)
         } ?? ChainModel.ethereum
@@ -429,6 +434,10 @@ final class SwapService {
             throw SwapServiceError.transactionBuildFailed
         }
 
+        // Use gas from 0x response — the API calculates the optimal gas for the swap.
+        // Falls back to estimateGas only if the API didn't provide gas.
+        let gasFromApi = (transaction["gas"] as? String).flatMap { UInt64($0) }
+
         // Fetch nonce
         let rpc = RPCService.shared
         let nonceHex = try await rpc.getTransactionCount(rpcUrl: chain.activeRpcUrl, address: fromAddress)
@@ -437,15 +446,20 @@ final class SwapService {
             throw SwapServiceError.invalidHexResponse("nonce")
         }
 
-        // Estimate gas from the quote's calldata
-        let dataHex = txData.hasPrefix("0x") ? txData : "0x\(txData)"
-        let gasHex = try await rpc.estimateGas(
-            rpcUrl: chain.activeRpcUrl, from: fromAddress,
-            to: to, value: valueHex, data: dataHex
-        )
-        let gasClean = gasHex.hasPrefix("0x") ? String(gasHex.dropFirst(2)) : gasHex
-        guard let gasEstimate = UInt64(gasClean, radix: 16) else {
-            throw SwapServiceError.invalidHexResponse("gas estimate")
+        let gasEstimate: UInt64
+        if let gasFromApi {
+            gasEstimate = gasFromApi
+        } else {
+            let dataHex = txData.hasPrefix("0x") ? txData : "0x\(txData)"
+            let gasHex = try await rpc.estimateGas(
+                rpcUrl: chain.activeRpcUrl, from: fromAddress,
+                to: to, value: valueHex, data: dataHex
+            )
+            let gasClean = gasHex.hasPrefix("0x") ? String(gasHex.dropFirst(2)) : gasHex
+            guard let est = UInt64(gasClean, radix: 16) else {
+                throw SwapServiceError.invalidHexResponse("gas estimate")
+            }
+            gasEstimate = est
         }
 
         // Fetch EIP-1559 fee data
@@ -482,6 +496,13 @@ final class SwapService {
 
         // Build typed EVM transaction request
         let gasLimit = gasEstimate + gasEstimate / 5  // 20% buffer
+
+        Self.logger.info("""
+            Swap tx: chain=\(evmChainId) nonce=\(nonce) gas=\(gasLimit) \
+            to=\(to.prefix(10))... value=\(valueHex) data=\(calldataBytes.count)B \
+            maxFee=\(maxFeeHex) priorityFee=\(fees.priorityFeeHex)
+            """)
+
         let ethReq = EthTransactionRequest(
             chainId: evmChainId,
             nonce: nonce,
@@ -496,11 +517,40 @@ final class SwapService {
         let signedTx = try await WalletService.shared.signTransaction(request: .eth(ethReq))
         let signedTxHex = "0x" + signedTx.map { String(format: "%02x", $0) }.joined()
 
+        Self.logger.info("Signed swap tx: \(signedTx.count) bytes")
+
         let txHash = try await rpc.sendRawTransaction(
             rpcUrl: chain.activeRpcUrl,
             signedTx: signedTxHex
         )
 
         return Data(txHash.utf8)
+    }
+
+    /// Converts a decimal string to a "0x" hex string.
+    /// Handles values that exceed UInt64 range using NSDecimalNumber.
+    private static func decimalToHex(_ decimal: String) -> String {
+        guard let dec = Decimal(string: decimal), dec > 0 else { return "0x0" }
+        // For values that fit in UInt64 (most cases), use direct conversion
+        if let val = UInt64(decimal) {
+            return "0x" + String(val, radix: 16)
+        }
+        // Fallback for very large values: manual base-16 conversion
+        let handler = NSDecimalNumberHandler(
+            roundingMode: .down, scale: 0,
+            raiseOnExactness: false, raiseOnOverflow: false,
+            raiseOnUnderflow: false, raiseOnDivideByZero: false
+        )
+        var result = ""
+        var remaining = NSDecimalNumber(decimal: dec)
+        let sixteen = NSDecimalNumber(value: 16)
+        let zero = NSDecimalNumber.zero
+        while remaining.compare(zero) == .orderedDescending {
+            let quotient = remaining.dividing(by: sixteen, withBehavior: handler)
+            let rem = remaining.subtracting(quotient.multiplying(by: sixteen))
+            result = String(rem.intValue, radix: 16) + result
+            remaining = quotient
+        }
+        return result.isEmpty ? "0x0" : "0x" + result
     }
 }

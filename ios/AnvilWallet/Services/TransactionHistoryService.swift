@@ -550,10 +550,24 @@ final class TransactionHistoryService {
     private func fetchEVMTransactions(address: String, chain: ChainModel) async throws -> [TransactionModel] {
         guard let explorerApiUrl = chain.explorerApiUrl else { return [] }
 
-        // Build the txlist query URL using the chain's explorer API
+        // Fetch native transactions and ERC-20 token transfers in parallel
+        async let nativeTxs = fetchEVMNativeTransactions(address: address, explorerApiUrl: explorerApiUrl, chain: chain)
+        async let tokenTxs = fetchEVMTokenTransfers(address: address, explorerApiUrl: explorerApiUrl, chain: chain)
+
+        let allTxs = (try await nativeTxs) + (try await tokenTxs)
+
+        // Deduplicate by hash + tokenSymbol (same hash can appear in both native and token transfers)
+        var seen = Set<String>()
+        return allTxs.filter { tx in
+            let key = "\(tx.hash.lowercased())_\(tx.tokenSymbol)_\(tx.contractAddress ?? "")"
+            return seen.insert(key).inserted
+        }.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    /// Fetches native ETH/MATIC/etc transactions via Etherscan `txlist` action.
+    private func fetchEVMNativeTransactions(address: String, explorerApiUrl: String, chain: ChainModel) async throws -> [TransactionModel] {
         var urlString = "\(explorerApiUrl)?module=account&action=txlist&address=\(address)&startblock=0&endblock=99999999&page=1&offset=50&sort=desc"
 
-        // Attach Etherscan API key only for etherscan.io domains where our key works
         if !etherscanApiKey.isEmpty, let host = URLComponents(string: explorerApiUrl)?.host,
            host.hasSuffix("etherscan.io") || host.hasSuffix("etherscan.com") {
             urlString += "&apikey=\(etherscanApiKey)"
@@ -605,6 +619,68 @@ final class TransactionHistoryService {
                 timestamp: timestamp,
                 tokenSymbol: nativeSymbol,
                 tokenDecimals: 18
+            )
+        }
+    }
+
+    /// Fetches ERC-20 token transfers via Etherscan `tokentx` action.
+    private func fetchEVMTokenTransfers(address: String, explorerApiUrl: String, chain: ChainModel) async throws -> [TransactionModel] {
+        var urlString = "\(explorerApiUrl)?module=account&action=tokentx&address=\(address)&startblock=0&endblock=99999999&page=1&offset=50&sort=desc"
+
+        if !etherscanApiKey.isEmpty, let host = URLComponents(string: explorerApiUrl)?.host,
+           host.hasSuffix("etherscan.io") || host.hasSuffix("etherscan.com") {
+            urlString += "&apikey=\(etherscanApiKey)"
+        }
+
+        guard let url = URL(string: urlString) else { return [] }
+
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else { return [] }
+
+        struct TokenTxResponse: Decodable {
+            let status: String
+            let result: [TokenTx]?
+
+            struct TokenTx: Decodable {
+                let hash: String
+                let from: String
+                let to: String
+                let value: String
+                let contractAddress: String
+                let tokenName: String
+                let tokenSymbol: String
+                let tokenDecimal: String
+                let gasUsed: String
+                let gasPrice: String
+                let timeStamp: String
+            }
+        }
+
+        let tokenResponse = try JSONDecoder().decode(TokenTxResponse.self, from: data)
+        guard let txs = tokenResponse.result else { return [] }
+
+        return txs.compactMap { tx in
+            let decimals = Int(tx.tokenDecimal) ?? 18
+            let rawValue = Double(tx.value) ?? 0
+            let humanValue = rawValue / pow(10.0, Double(decimals))
+            let gasUsed = Double(tx.gasUsed) ?? 0
+            let gasPrice = Double(tx.gasPrice) ?? 0
+            let feeEth = (gasUsed * gasPrice) / 1e18
+            let timestamp = Date(timeIntervalSince1970: TimeInterval(Int(tx.timeStamp) ?? 0))
+
+            return TransactionModel(
+                hash: tx.hash,
+                chain: chain.id,
+                from: tx.from,
+                to: tx.to,
+                amount: String(format: "%.\(min(decimals, 8))f", humanValue),
+                fee: String(format: "%.6f", feeEth),
+                status: .confirmed,
+                timestamp: timestamp,
+                tokenSymbol: tx.tokenSymbol,
+                tokenDecimals: decimals,
+                contractAddress: tx.contractAddress.lowercased()
             )
         }
     }
