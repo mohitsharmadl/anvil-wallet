@@ -83,13 +83,18 @@ final class SessionLockManager: ObservableObject {
         do {
             try await delegate?.validatePassword(unlockPassword)
             savePasswordForBiometrics(unlockPassword)
+            // Capture delegate before setting isLocked = false, which removes
+            // LockScreenView and cancels any structured .task that called us.
+            let delegate = self.delegate
             await MainActor.run {
                 isLocked = false
                 isUnlocking = false
                 unlockPassword = ""
                 unlockError = nil
             }
-            await delegate?.didUnlock()
+            // Fire in unstructured Task so the refresh survives view
+            // disappearance cancellation from SwiftUI's .task modifier.
+            Task { await delegate?.didUnlock() }
         } catch {
             await MainActor.run {
                 isUnlocking = false
@@ -114,13 +119,18 @@ final class SessionLockManager: ObservableObject {
                 return
             }
             try await delegate?.validatePassword(password)
+            // Capture delegate before setting isLocked = false, which removes
+            // LockScreenView and cancels any structured .task that called us.
+            let delegate = self.delegate
             await MainActor.run {
                 isLocked = false
                 isUnlocking = false
                 unlockPassword = ""
                 unlockError = nil
             }
-            await delegate?.didUnlock()
+            // Fire in unstructured Task so the refresh survives view
+            // disappearance cancellation from SwiftUI's .task modifier.
+            Task { await delegate?.didUnlock() }
         } catch {
             await MainActor.run {
                 isUnlocking = false
