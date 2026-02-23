@@ -84,10 +84,6 @@ final class WalletService: ObservableObject {
     @Published var watchPortfolio: [WatchPortfolioEntry] = []
     @Published var watchTransactions: [TransactionModel] = []
 
-    /// Whether the session is locked (requires password + biometric to unlock).
-    /// Driven by auto-lock on background return. Gates balance/price fetching.
-    @Published var isSessionLocked = false
-
     /// All HD accounts derived from the same seed.
     @Published var accounts: [WalletModel] = []
 
@@ -101,7 +97,6 @@ final class WalletService: ObservableObject {
     private let walletMetadataKey = "com.anvilwallet.walletMetadata"
     private let passwordSaltKey = "com.anvilwallet.passwordSalt"
     private let accountsMetadataKey = "com.anvilwallet.accountsMetadata"
-    private let biometricPasswordKey = "com.anvilwallet.biometricPassword"
 
     /// In-memory session password stored as raw bytes for explicit zeroization.
     /// Swift String instances are immutable and may linger in memory after deallocation.
@@ -111,8 +106,6 @@ final class WalletService: ObservableObject {
     private init() {
         isWalletCreated = keychain.exists(key: encryptedSeedKey)
         if isWalletCreated {
-            // Always start locked on cold launch — require Face ID / password
-            isSessionLocked = true
             loadWalletMetadata()
         }
     }
@@ -139,38 +132,6 @@ final class WalletService: ObservableObject {
         sessionPasswordBytes = nil
     }
 
-    /// Saves the wallet password to biometric-protected Keychain so session unlock
-    /// can use Face ID / Touch ID alone (no retyping). Best-effort — failures are silent.
-    private func saveBiometricPassword(_ password: String) {
-        guard let data = password.data(using: .utf8) else { return }
-        try? keychain.saveWithBiometricProtection(key: biometricPasswordKey, data: data)
-    }
-
-    /// Clears the biometric-protected password (e.g. on wallet deletion or password change failure).
-    func clearBiometricPassword() {
-        try? keychain.delete(key: biometricPasswordKey)
-    }
-
-    /// Whether a biometric-stored password exists for Face ID unlock.
-    var hasBiometricPassword: Bool {
-        keychain.exists(key: biometricPasswordKey)
-    }
-
-    /// Unlocks the session using Face ID / Touch ID alone.
-    /// Reads the password from biometric-protected Keychain (triggers Face ID),
-    /// then caches it as the session password.
-    func unlockSessionWithBiometrics() async throws {
-        guard let passwordData = try keychain.load(key: biometricPasswordKey) else {
-            throw AppWalletError.biometricPasswordNotStored
-        }
-        guard let password = String(data: passwordData, encoding: .utf8) else {
-            throw AppWalletError.biometricPasswordNotStored
-        }
-        // Biometric Keychain already validated identity via Face ID.
-        sessionPasswordBytes = ContiguousArray(password.utf8)
-        await MainActor.run { isSessionLocked = false }
-    }
-
     /// Sets the session password after user re-enters it (e.g. after returning from background).
     /// Validates the password by attempting a decrypt round-trip before accepting it.
     func setSessionPassword(_ password: String) async throws {
@@ -193,8 +154,6 @@ final class WalletService: ObservableObject {
         for i in seedBytes.indices { seedBytes[i] = 0 }
 
         sessionPasswordBytes = ContiguousArray(password.utf8)
-        saveBiometricPassword(password)
-        await MainActor.run { isSessionLocked = false }
     }
 
     /// Re-wraps encrypted wallet blobs under a new Secure Enclave key policy.
@@ -310,7 +269,7 @@ final class WalletService: ObservableObject {
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
-        saveBiometricPassword(password)
+        SessionLockManager.shared.savePasswordForBiometrics(password)
 
         // Step 6: Derive addresses from mnemonic (not raw seed)
         let derivedAddresses = try deriveAddresses(mnemonic: mnemonicString, passphrase: passphrase, account: 0)
@@ -331,7 +290,6 @@ final class WalletService: ObservableObject {
             self.currentWallet = wallet
             self.accounts = [wallet]
             self.activeAccountIndex = 0
-            self.isSessionLocked = false
             self.isWalletCreated = true
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
@@ -382,7 +340,7 @@ final class WalletService: ObservableObject {
 
         // Step 5: Cache session password as zeroizable bytes
         sessionPasswordBytes = ContiguousArray(password.utf8)
-        saveBiometricPassword(password)
+        SessionLockManager.shared.savePasswordForBiometrics(password)
 
         // Step 6: Derive addresses from mnemonic
         let derivedAddresses = try deriveAddresses(mnemonic: mnemonic, passphrase: passphrase, account: 0)
@@ -403,7 +361,6 @@ final class WalletService: ObservableObject {
             self.currentWallet = wallet
             self.accounts = [wallet]
             self.activeAccountIndex = 0
-            self.isSessionLocked = false
             self.isWalletCreated = true
             self.tokens = TokenModel.ethereumDefaults + TokenModel.solanaDefaults + TokenModel.bitcoinDefaults + TokenModel.zcashDefaults
         }
@@ -611,7 +568,6 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token balances for all chains.
     func refreshBalances() async throws {
-        guard !isSessionLocked else { return }
         let rpc = RPCService.shared
 
         // Snapshot token list to iterate
@@ -696,7 +652,6 @@ final class WalletService: ObservableObject {
 
     /// Refreshes token prices from price service.
     func refreshPrices() async throws {
-        guard !isSessionLocked else { return }
         let priceService = PriceService.shared
         let symbols = tokens.map { $0.symbol.lowercased() }
         let prices = try await priceService.fetchPrices(for: symbols)
@@ -1153,7 +1108,7 @@ final class WalletService: ObservableObject {
         // Step 5: Update session password
         clearSessionPassword()
         sessionPasswordBytes = ContiguousArray(newPassword.utf8)
-        saveBiometricPassword(newPassword)
+        SessionLockManager.shared.savePasswordForBiometrics(newPassword)
     }
 
     // MARK: - Encrypted Backup Export
@@ -1640,6 +1595,19 @@ final class WalletService: ObservableObject {
     }
 }
 
+// MARK: - SessionLockDelegate
+
+extension WalletService: SessionLockDelegate {
+    func validatePassword(_ password: String) async throws {
+        try await setSessionPassword(password)
+    }
+
+    func didUnlock() async {
+        try? await refreshBalances()
+        try? await refreshPrices()
+    }
+}
+
 // MARK: - Wallet Errors
 
 enum AppWalletError: LocalizedError {
@@ -1651,7 +1619,6 @@ enum AppWalletError: LocalizedError {
     case keyDerivationFailed
     case signingFailed
     case passwordRequired
-    case biometricPasswordNotStored
     case networkError(String)
     case rustFFIError(String)
 
@@ -1673,8 +1640,6 @@ enum AppWalletError: LocalizedError {
             return "Failed to sign the transaction."
         case .passwordRequired:
             return "Password required. Please re-enter your password."
-        case .biometricPasswordNotStored:
-            return "Biometric unlock not available. Please enter your password."
         case .networkError(let message):
             return "Network error: \(message)"
         case .rustFFIError(let message):

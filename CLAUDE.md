@@ -22,6 +22,13 @@ cargo check -p wallet-core      # Quick compile check
 - `crates/chain-zec/` — Zcash transparent v5 transactions
 - `ios/AnvilWallet/` — SwiftUI iOS app
 
+## Session Lock Architecture
+- `SessionLockManager` — ObservableObject singleton owning all lock state (isLocked, auto-lock timer, biometric Keychain)
+- `LockScreenView` — self-contained SwiftUI view driven by SessionLockManager
+- `SessionLockDelegate` protocol — host app implements `validatePassword(_:)` and `didUnlock()`
+- `WalletService` conforms to `SessionLockDelegate`; AnvilWalletApp wires delegate + shows LockScreenView
+- `AutoLockInterval` — standalone enum in Models/
+
 ## Key Constraints
 - UniFFI 0.28 passes owned types (String, Vec<u8>) across FFI, not references
 - Secure Enclave only supports P-256, not secp256k1 — hence double encryption

@@ -1,34 +1,15 @@
 import SwiftUI
 
-// MARK: - Auto-Lock Interval
-
-/// Configurable auto-lock timeout intervals. Persisted via @AppStorage.
-enum AutoLockInterval: String, CaseIterable {
-    case immediately = "Immediately"
-    case oneMinute = "1 minute"
-    case fiveMinutes = "5 minutes"
-    case fifteenMinutes = "15 minutes"
-    case never = "Never"
-
-    var seconds: TimeInterval {
-        switch self {
-        case .immediately: return 0
-        case .oneMinute: return 60
-        case .fiveMinutes: return 300
-        case .fifteenMinutes: return 900
-        case .never: return -1 // negative means never lock
-        }
-    }
-}
-
 /// SecuritySettingsView allows users to manage wallet security settings.
 struct SecuritySettingsView: View {
     @EnvironmentObject var walletService: WalletService
     @ObservedObject private var securityService = SecurityService.shared
+    @ObservedObject private var lockManager = SessionLockManager.shared
 
-    @State private var isBiometricEnabled = true
-    @AppStorage("autoLockInterval") private var autoLockInterval = AutoLockInterval.fiveMinutes
     @State private var showChangePassword = false
+    @State private var isApplyingBiometricPolicy = false
+    @State private var biometricPolicyError: String?
+    @State private var ignoreBiometricToggleChange = false
 
     private let biometricService = BiometricService()
 
@@ -36,7 +17,7 @@ struct SecuritySettingsView: View {
         List {
             // Biometric authentication
             Section("Authentication") {
-                Toggle(isOn: $isBiometricEnabled) {
+                Toggle(isOn: $securityService.isBiometricAuthEnabled) {
                     HStack(spacing: 12) {
                         Image(systemName: biometricService.biometricType() == .faceID ? "faceid" : "touchid")
                             .foregroundColor(.accentGreen)
@@ -44,16 +25,25 @@ struct SecuritySettingsView: View {
                         VStack(alignment: .leading) {
                             Text(biometricService.biometricName())
                                 .foregroundColor(.textPrimary)
-                            Text("Biometric auth is always required for signing")
+                            Text("Use biometrics to unlock signing keys")
                                 .font(.caption)
                                 .foregroundColor(.textSecondary)
                         }
                     }
                 }
                 .tint(.accentGreen)
-                .disabled(true)
+                .disabled(isApplyingBiometricPolicy)
 
-                Picker("Auto-Lock", selection: $autoLockInterval) {
+                if let biometricPolicyError {
+                    Text(biometricPolicyError)
+                        .font(.caption)
+                        .foregroundColor(.error)
+                }
+
+                Picker("Auto-Lock", selection: Binding(
+                    get: { lockManager.autoLockInterval },
+                    set: { lockManager.autoLockInterval = $0 }
+                )) {
                     ForEach(AutoLockInterval.allCases, id: \.self) { interval in
                         Text(interval.rawValue).tag(interval)
                     }
@@ -182,6 +172,32 @@ struct SecuritySettingsView: View {
         .sheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
                 .environmentObject(walletService)
+        }
+        .onChange(of: securityService.isBiometricAuthEnabled) { oldValue, newValue in
+            guard !ignoreBiometricToggleChange else { return }
+            Task { await applyBiometricPolicyChange(from: oldValue, to: newValue) }
+        }
+    }
+
+    private func applyBiometricPolicyChange(from oldValue: Bool, to newValue: Bool) async {
+        await MainActor.run {
+            isApplyingBiometricPolicy = true
+            biometricPolicyError = nil
+        }
+
+        do {
+            try walletService.migrateSecureEnclaveProtection(requiresBiometrics: newValue)
+            await MainActor.run {
+                isApplyingBiometricPolicy = false
+            }
+        } catch {
+            await MainActor.run {
+                isApplyingBiometricPolicy = false
+                biometricPolicyError = "Could not apply biometric setting. Please authenticate and try again."
+                ignoreBiometricToggleChange = true
+                securityService.isBiometricAuthEnabled = oldValue
+                ignoreBiometricToggleChange = false
+            }
         }
     }
 }

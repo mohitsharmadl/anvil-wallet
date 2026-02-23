@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F6A7B8C9D0E1F0 /* AutoLockInterval.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E100 /* AutoLockInterval.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F1 /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E101 /* LockScreenView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* SessionLockManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E102 /* SessionLockManager.swift */; };
 		01C2B101A4175AF1E1493DD8 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78EDB97134A48161614EBCD /* QRScannerView.swift */; };
 		02C86DE4B8F29C05B5B67233 /* RiskBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79677F1BFDB0967F06B27C6 /* RiskBannerView.swift */; };
 		060D9099E0C6976D78C7874D /* SecurityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4D76CD540B24378D8DEE92 /* SecurityService.swift */; };
@@ -220,6 +223,9 @@
 		93B10227387D2AA2B1DC1817 /* AnvilWallet.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AnvilWallet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9689174EDE6C320D2903DE0D /* MoonPayWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonPayWebView.swift; sourceTree = "<group>"; };
 		97B03A5C4D68DB8DD9AA3094 /* EtherscanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EtherscanService.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E100 /* AutoLockInterval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoLockInterval.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E101 /* LockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E102 /* SessionLockManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLockManager.swift; sourceTree = "<group>"; };
 		9B1C2A288F879ABD66E76061 /* AddressBookService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressBookService.swift; sourceTree = "<group>"; };
 		9C03059D5A494CD6BF8DE2C4 /* BridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeService.swift; sourceTree = "<group>"; };
 		A658B1CB638D24E8CE493FAC /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
@@ -296,6 +302,7 @@
 			isa = PBXGroup;
 			children = (
 				58CB602FF66D665E6BFBD223 /* BalanceChangePreviewView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E101 /* LockScreenView.swift */,
 				0B9C642D180AC8D92BA541E0 /* PriceChartView.swift */,
 				E79677F1BFDB0967F06B27C6 /* RiskBannerView.swift */,
 				F4469386B3A6F7F7566490A6 /* TokenIconView.swift */,
@@ -415,6 +422,7 @@
 				61D843EF46CD12F68B4CB725 /* RPCService.swift */,
 				C71F6412709C43E017CD623C /* SecureEnclaveService.swift */,
 				5D4D76CD540B24378D8DEE92 /* SecurityService.swift */,
+				A1B2C3D4E5F6A7B8C9D0E102 /* SessionLockManager.swift */,
 				17E661C4BDFEB00DB2EDC5CB /* StakingService.swift */,
 				D3E25617C0E38F30DB233F7A /* SwapService.swift */,
 				EBEBC780C24120B1031F008B /* TokenDiscoveryService.swift */,
@@ -432,6 +440,7 @@
 		9ABC1CDA74E6B87570CB3F7D /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F6A7B8C9D0E100 /* AutoLockInterval.swift */,
 				658CA0A71B5D222A59C693F4 /* ChainModel.swift */,
 				1AFACCEF28237990B3717E53 /* NFTModel.swift */,
 				C61FC7C4A3F825FEC127C18C /* TokenModel.swift */,
@@ -688,6 +697,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				89026BCDA7600122FB0409CC /* AccountManagerView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F0 /* AutoLockInterval.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F1 /* LockScreenView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* SessionLockManager.swift in Sources */,
 				ACBC724102FBA2FBE44C11A3 /* AccountPickerView.swift in Sources */,
 				EDCF06BA7BBA0DB1E6B3A065 /* ActivityView.swift in Sources */,
 				7954521A0BBB6FECDC4AC180 /* AddTokenView.swift in Sources */,
