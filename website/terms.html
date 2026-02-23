@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service — Anvil Wallet</title>
+  <meta name="description" content="Anvil Wallet Terms of Service. Open-source self-custody crypto wallet.">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0e17'/><path d='M50 18L22 40v8l28 16 28-16v-8L50 18z' fill='%23f59e0b'/><path d='M30 52v20l20 12 20-12V52L50 64 30 52z' fill='%23d97706'/></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f1420;
+      --bg-tertiary: #141926;
+      --border: #1e2740;
+      --border-light: #2a3454;
+      --text-primary: #f0f2f5;
+      --text-secondary: #8b95a9;
+      --text-tertiary: #5c6680;
+      --accent: #f59e0b;
+      --accent-hover: #fbbf24;
+      --accent-dim: rgba(245, 158, 11, 0.12);
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      background: rgba(10, 14, 23, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-primary); }
+    .nav-logo svg { width: 28px; height: 28px; }
+    .nav-logo span { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+    .nav-back { text-decoration: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-back:hover { color: var(--text-primary); }
+
+    /* Content */
+    .page-content { padding: 120px 0 80px; }
+    .page-content h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    .page-meta { font-size: 14px; color: var(--text-tertiary); margin-bottom: 48px; font-family: var(--font-mono); }
+
+    .tldr {
+      padding: 20px 24px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 10px;
+      margin-bottom: 48px;
+    }
+    .tldr p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+    .tldr strong { color: var(--accent); }
+
+    .page-content h2 { font-size: 22px; font-weight: 700; margin-top: 48px; margin-bottom: 16px; letter-spacing: -0.02em; }
+    .page-content p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 16px; }
+    .page-content ul { list-style: none; margin-bottom: 16px; }
+    .page-content ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.8; padding-left: 20px; position: relative; }
+    .page-content ul li::before { content: '--'; position: absolute; left: 0; color: var(--text-tertiary); }
+
+    /* Footer */
+    footer { padding: 48px 0; border-top: 1px solid var(--border); }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    .footer-left { display: flex; align-items: center; gap: 8px; }
+    .footer-left svg { width: 20px; height: 20px; }
+    .footer-left span { font-weight: 700; font-size: 14px; }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 500; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text-primary); }
+    .footer-license { font-size: 12px; color: var(--text-tertiary); font-family: var(--font-mono); }
+
+    @media (max-width: 768px) {
+      .page-content h1 { font-size: 28px; }
+      .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+          <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+        </svg>
+        <span>Anvil Wallet</span>
+      </a>
+      <a href="/" class="nav-back">Back to home</a>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="container">
+      <h1>Terms of Service</h1>
+      <p class="page-meta">Last updated: February 2026</p>
+
+      <div class="tldr">
+        <p><strong>TL;DR</strong> -- Anvil Wallet is open-source software (MIT License). You control your own keys. We have no access to your funds and cannot recover lost seed phrases.</p>
+      </div>
+
+      <h2>1. Acceptance of Terms</h2>
+      <p>By downloading, installing, or using Anvil Wallet ("the Software"), you agree to these Terms of Service. If you do not agree, do not use the Software.</p>
+
+      <h2>2. Self-Custody Responsibility</h2>
+      <p>Anvil Wallet is a self-custody wallet. This means:</p>
+      <ul>
+        <li>You are solely responsible for your seed phrase (recovery phrase)</li>
+        <li>If you lose your seed phrase, your funds are permanently unrecoverable</li>
+        <li>No one at Anvil Wallet can access, freeze, or recover your funds</li>
+        <li>You are responsible for the security of the device on which the wallet is installed</li>
+      </ul>
+      <p>There are no accounts, no servers, and no backdoors. The cryptographic guarantee of self-custody is absolute.</p>
+
+      <h2>3. No Warranty</h2>
+      <p>The Software is provided "as is" under the MIT License, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement.</p>
+
+      <h2>4. No Financial Advice</h2>
+      <p>Anvil Wallet is a tool for managing cryptocurrency. Nothing in the Software or its documentation constitutes financial, investment, legal, or tax advice. You are solely responsible for your own financial decisions.</p>
+
+      <h2>5. Supported Chains</h2>
+      <p>Anvil Wallet supports Bitcoin, Ethereum, Solana, Zcash, and several EVM-compatible chains (Polygon, Arbitrum, Base, Optimism, BSC, Avalanche). Support for additional chains may be added over time. The availability and correctness of blockchain interactions depend on the underlying networks and third-party RPC providers.</p>
+
+      <h2>6. Prohibited Use</h2>
+      <p>You agree not to use the Software for:</p>
+      <ul>
+        <li>Any activity that violates applicable laws or regulations</li>
+        <li>Money laundering, terrorist financing, or sanctions evasion</li>
+        <li>Any activity that could damage, disable, or impair the Software</li>
+      </ul>
+
+      <h2>7. Limitation of Liability</h2>
+      <p>To the maximum extent permitted by law, the authors and contributors of Anvil Wallet shall not be liable for any direct, indirect, incidental, special, consequential, or exemplary damages, including but not limited to loss of cryptocurrency, arising from the use of the Software.</p>
+
+      <h2>8. Open Source</h2>
+      <p>Anvil Wallet is open-source software licensed under the <a href="https://github.com/mohitsharmadl/anvil-wallet/blob/main/LICENSE" style="color: var(--accent); text-decoration: none;">MIT License</a>. You are free to inspect, modify, and distribute the source code in accordance with that license.</p>
+
+      <h2>9. Changes to These Terms</h2>
+      <p>We may update these Terms from time to time. Changes will be posted here with an updated date. Continued use of the Software after changes constitutes acceptance of the new terms.</p>
+
+      <h2>10. Contact</h2>
+      <p>For questions about these terms, open an issue on our <a href="https://github.com/mohitsharmadl/anvil-wallet" style="color: var(--accent); text-decoration: none;">GitHub repository</a>.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+          <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+        </svg>
+        <span>Anvil Wallet</span>
+      </div>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <span class="footer-license">MIT License</span>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Anvil Wallet</title>
+  <meta name="description" content="Anvil Wallet Privacy Policy. Zero telemetry. Zero analytics. Your keys never leave your device.">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%230a0e17'/><path d='M50 18L22 40v8l28 16 28-16v-8L50 18z' fill='%23f59e0b'/><path d='M30 52v20l20 12 20-12V52L50 64 30 52z' fill='%23d97706'/></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #0f1420;
+      --bg-tertiary: #141926;
+      --border: #1e2740;
+      --border-light: #2a3454;
+      --text-primary: #f0f2f5;
+      --text-secondary: #8b95a9;
+      --text-tertiary: #5c6680;
+      --accent: #f59e0b;
+      --accent-hover: #fbbf24;
+      --accent-dim: rgba(245, 158, 11, 0.12);
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      background: rgba(10, 14, 23, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-primary); }
+    .nav-logo svg { width: 28px; height: 28px; }
+    .nav-logo span { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+    .nav-back { text-decoration: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-back:hover { color: var(--text-primary); }
+
+    /* Content */
+    .page-content { padding: 120px 0 80px; }
+    .page-content h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    .page-meta { font-size: 14px; color: var(--text-tertiary); margin-bottom: 48px; font-family: var(--font-mono); }
+
+    .tldr {
+      padding: 20px 24px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 10px;
+      margin-bottom: 48px;
+    }
+    .tldr p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+    .tldr strong { color: var(--accent); }
+
+    .page-content h2 { font-size: 22px; font-weight: 700; margin-top: 48px; margin-bottom: 16px; letter-spacing: -0.02em; }
+    .page-content p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 16px; }
+    .page-content ul { list-style: none; margin-bottom: 16px; }
+    .page-content ul li { font-size: 15px; color: var(--text-secondary); line-height: 1.8; padding-left: 20px; position: relative; }
+    .page-content ul li::before { content: '--'; position: absolute; left: 0; color: var(--text-tertiary); }
+
+    /* Footer */
+    footer { padding: 48px 0; border-top: 1px solid var(--border); }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    .footer-left { display: flex; align-items: center; gap: 8px; }
+    .footer-left svg { width: 20px; height: 20px; }
+    .footer-left span { font-weight: 700; font-size: 14px; }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 500; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text-primary); }
+    .footer-license { font-size: 12px; color: var(--text-tertiary); font-family: var(--font-mono); }
+
+    @media (max-width: 768px) {
+      .page-content h1 { font-size: 28px; }
+      .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+          <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+        </svg>
+        <span>Anvil Wallet</span>
+      </a>
+      <a href="/" class="nav-back">Back to home</a>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="container">
+      <h1>Privacy Policy</h1>
+      <p class="page-meta">Last updated: February 2026</p>
+
+      <div class="tldr">
+        <p><strong>TL;DR</strong> -- Anvil Wallet collects nothing. No accounts, no analytics, no telemetry. Your keys and data stay on your device.</p>
+      </div>
+
+      <h2>What We Don't Collect</h2>
+      <p>Anvil Wallet does not collect, store, or transmit any personal information. Specifically, we do not collect:</p>
+      <ul>
+        <li>Names, email addresses, or account identifiers</li>
+        <li>IP addresses or device identifiers</li>
+        <li>Usage analytics or crash reports</li>
+        <li>Private keys, seed phrases, or wallet balances</li>
+        <li>Transaction history or blockchain addresses</li>
+      </ul>
+
+      <h2>What Stays on Your Device</h2>
+      <p>All sensitive data is generated, stored, and processed entirely on your device:</p>
+      <ul>
+        <li>Your seed phrase (BIP-39 mnemonic) -- generated locally, encrypted with AES-256-GCM + Secure Enclave</li>
+        <li>Your private keys -- derived from the seed, zeroized from memory after use</li>
+        <li>Your wallet configuration and token lists</li>
+        <li>Your WalletConnect sessions</li>
+      </ul>
+      <p>None of this data ever leaves your device. There are no servers. There is no "cloud sync."</p>
+
+      <h2>Network Requests</h2>
+      <p>Anvil Wallet makes network requests solely to interact with public blockchain infrastructure:</p>
+      <ul>
+        <li>RPC nodes (Ethereum, Solana, Bitcoin, Zcash) -- to fetch balances, broadcast transactions, and query on-chain data</li>
+        <li>Price APIs -- to display fiat-equivalent token prices</li>
+        <li>Block explorers -- to fetch transaction history</li>
+      </ul>
+      <p>These requests contain only the blockchain addresses and data necessary for the specific operation. No identifying information is attached.</p>
+
+      <h2>WalletConnect</h2>
+      <p>When you connect to a dApp via WalletConnect, a peer-to-peer encrypted session is established between your device and the dApp. Anvil Wallet facilitates this connection using the Reown (formerly WalletConnect) relay network. Session data is encrypted end-to-end; the relay cannot read your messages.</p>
+
+      <h2>Third-Party Services</h2>
+      <p>Anvil Wallet does not integrate any third-party analytics, advertising, or tracking SDKs. The only external dependencies are:</p>
+      <ul>
+        <li>Public blockchain RPC endpoints</li>
+        <li>Reown SDK for WalletConnect</li>
+        <li>TrustKit for certificate pinning verification</li>
+      </ul>
+
+      <h2>Data Retention</h2>
+      <p>Since we collect no data, there is nothing to retain or delete. If you uninstall Anvil Wallet, all local data (encrypted seed, keys, settings) is removed with it.</p>
+
+      <h2>Children</h2>
+      <p>Anvil Wallet is not directed at children under 13. We do not knowingly collect information from children.</p>
+
+      <h2>Changes to This Policy</h2>
+      <p>If we update this policy, we will post the revised version here with an updated date. Given our zero-collection approach, material changes are unlikely.</p>
+
+      <h2>Contact</h2>
+      <p>For questions about this privacy policy, open an issue on our <a href="https://github.com/mohitsharmadl/anvil-wallet" style="color: var(--accent); text-decoration: none;">GitHub repository</a>.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 14L18 36v10l32 18 32-18V36L50 14z" fill="#f59e0b"/>
+          <path d="M26 50v24l24 14 24-14V50L50 66 26 50z" fill="#d97706"/>
+        </svg>
+        <span>Anvil Wallet</span>
+      </div>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="https://github.com/mohitsharmadl/anvil-wallet" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <span class="footer-license">MIT License</span>
+    </div>
+  </footer>
+
+</body>
+</html>

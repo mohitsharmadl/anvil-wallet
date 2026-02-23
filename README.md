@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://www.rust-lang.org"><img alt="Rust" src="https://img.shields.io/badge/Rust-1.92-000000?logo=rust&logoColor=white"></a>
-  <a href="#"><img alt="Tests" src="https://img.shields.io/badge/tests-241%20passing-brightgreen"></a>
+  <a href="#"><img alt="Tests" src="https://img.shields.io/badge/tests-334%20passing-brightgreen"></a>
   <a href="#"><img alt="Platform" src="https://img.shields.io/badge/platform-iOS%2016+-007AFF?logo=apple&logoColor=white"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <a href="#"><img alt="Analytics" src="https://img.shields.io/badge/analytics-zero-critical"></a>
@@ -48,7 +48,7 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Rust crypto core (6 crates) | Complete | 241+ tests passing |
+| Rust crypto core (6 crates) | Complete | 334 tests passing |
 | BIP-39 mnemonic generation | Complete | 24-word, via Rust FFI |
 | HD key derivation (BTC, ETH, SOL, ZEC) | Complete | BIP-44/84 paths |
 | AES-256-GCM + Argon2id encryption | Complete | Double encryption with SE |
@@ -86,6 +86,9 @@ No accounts. No servers. No tracking. Your keys never leave your device.
 |                                                     |
 |   chain-btc       chain-eth        chain-sol        |
 |   (Bitcoin)       (EVM)            (Solana)         |
+|                                                     |
+|   chain-zec                                         |
+|   (Zcash)                                           |
 +-----------------------------------------------------+
 ```
 
@@ -101,6 +104,7 @@ anvil-wallet/
 |   |-- chain-btc/         # Bitcoin P2WPKH, UTXO transaction building
 |   |-- chain-eth/         # Ethereum EIP-1559, ERC-20, 7 EVM chains
 |   |-- chain-sol/         # Solana Ed25519, manual wire format, SPL tokens
+|   |-- chain-zec/         # Zcash transparent v5 transactions
 |-- ios/
 |   |-- AnvilWallet/
 |       |-- App/            # Entry point, ContentView
@@ -129,9 +133,9 @@ anvil-wallet/
 
 | | |
 |---|---|
-| **241** | Tests passing |
+| **334** | Tests passing |
 | **6** | Rust crates |
-| **46** | Swift files |
+| **109** | Swift files |
 | **16** | Security layers |
 | **0** | Analytics SDKs |
 
@@ -191,7 +195,7 @@ cargo install uniffi-bindgen-cli --version 0.28.0
 ### Run Tests
 
 ```bash
-# All 241 tests
+# All 334 tests
 cargo test --workspace
 
 # Individual crate
@@ -199,6 +203,7 @@ cargo test -p crypto-utils
 cargo test -p chain-btc
 cargo test -p chain-eth
 cargo test -p chain-sol
+cargo test -p chain-zec
 cargo test -p wallet-core
 ```
 

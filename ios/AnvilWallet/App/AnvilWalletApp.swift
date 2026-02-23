@@ -159,7 +159,7 @@ struct AnvilWalletApp: App {
                 securityService.activateScreenProtection()
             case .active:
                 securityService.deactivateScreenProtection()
-                if let leftAppAt = backgroundedAt ?? inactivatedAt {
+                if !showSessionUnlock, !isUnlocking, let leftAppAt = backgroundedAt ?? inactivatedAt {
                     let elapsed = Date().timeIntervalSince(leftAppAt)
                     let interval = autoLockSeconds
                     if interval >= 0, elapsed >= interval {

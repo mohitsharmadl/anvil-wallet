@@ -6,7 +6,7 @@ Website: anvilwallet.com | Twitter: @anvilwallet | Instagram: @anvilwallet
 
 ## Quick Commands
 ```bash
-cargo test --workspace          # Run all 241 Rust tests
+cargo test --workspace          # Run all 334 Rust tests
 cargo test -p crypto-utils      # Test single crate
 cargo check -p wallet-core      # Quick compile check
 ./build-scripts/build-ios.sh    # Build XCFramework for iOS
@@ -19,6 +19,7 @@ cargo check -p wallet-core      # Quick compile check
 - `crates/chain-btc/` — Bitcoin P2WPKH, UTXO transactions
 - `crates/chain-eth/` — Ethereum EIP-1559, ERC-20, 7 EVM chains
 - `crates/chain-sol/` — Solana Ed25519, manual wire format, SPL tokens
+- `crates/chain-zec/` — Zcash transparent v5 transactions
 - `ios/AnvilWallet/` — SwiftUI iOS app
 
 ## Key Constraints
