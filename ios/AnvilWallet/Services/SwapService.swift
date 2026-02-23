@@ -330,11 +330,8 @@ final class SwapService {
             URLQueryItem(name: "taker", value: takerAddress),
             URLQueryItem(name: "slippageBps", value: String(slippageBps)),
         ]
-        if amountType == .exactInput {
-            queryItems.append(URLQueryItem(name: "sellAmount", value: amount))
-        } else {
-            queryItems.append(URLQueryItem(name: "buyAmount", value: amount))
-        }
+        // 0x v2 only supports sellAmount — always provide it
+        queryItems.append(URLQueryItem(name: "sellAmount", value: amount))
         components.queryItems = queryItems
 
         guard let url = components.url else { throw SwapServiceError.invalidResponse }

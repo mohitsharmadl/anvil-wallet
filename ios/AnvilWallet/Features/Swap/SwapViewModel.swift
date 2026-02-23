@@ -149,14 +149,29 @@ final class SwapViewModel: ObservableObject {
             error = "Cross-chain swaps are not supported. Select tokens on the same chain."
             return
         }
-        let typedAmountString = quoteAmountType == .exactInput ? fromAmount : toAmount
+        // 0x v2 only supports sellAmount, so for EVM always use fromAmount.
+        // Jupiter (Solana) supports both exactInput and exactOutput.
+        let effectiveAmountType: QuoteAmountType
+        let typedAmountString: String
+        let typedToken: TokenModel
+
+        if chain.chainType == .evm {
+            // Always use sell amount for 0x v2
+            effectiveAmountType = .exactInput
+            typedAmountString = fromAmount
+            typedToken = fromToken
+        } else {
+            effectiveAmountType = quoteAmountType
+            typedAmountString = quoteAmountType == .exactInput ? fromAmount : toAmount
+            typedToken = quoteAmountType == .exactInput ? fromToken : toToken
+        }
+
         guard let decimalAmount = Decimal(string: typedAmountString), decimalAmount > 0 else {
             error = "Enter a valid amount"
             return
         }
 
-        // Convert human-readable amount to smallest unit based on typed side
-        let typedToken = quoteAmountType == .exactInput ? fromToken : toToken
+        // Convert human-readable amount to smallest unit
         let multiplier = pow(Decimal(10), typedToken.decimals)
         let rawAmount = decimalAmount * multiplier
         let rawAmountString = NSDecimalNumber(decimal: rawAmount).stringValue
@@ -174,7 +189,7 @@ final class SwapViewModel: ObservableObject {
                 from: fromMint,
                 to: toMint,
                 amount: rawAmountString,
-                amountType: quoteAmountType,
+                amountType: effectiveAmountType,
                 chain: chain,
                 slippageBps: slippageBps
             )
@@ -266,9 +281,11 @@ final class SwapViewModel: ObservableObject {
     private func updateDisplayedAmountsFromQuote() {
         guard let quote, let fromToken, let toToken else { return }
 
-        if quoteAmountType == .exactInput {
-            toAmount = formatRawAmount(quote.toAmount, decimals: toToken.decimals)
-        } else {
+        // Always update the To amount from the quote's buyAmount
+        toAmount = formatRawAmount(quote.toAmount, decimals: toToken.decimals)
+
+        // For EVM (0x v2 always returns exact sell), also update From if user typed To
+        if quoteAmountType == .exactOutput {
             fromAmount = formatRawAmount(quote.fromAmount, decimals: fromToken.decimals)
         }
     }
