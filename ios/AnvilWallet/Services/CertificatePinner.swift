@@ -127,8 +127,8 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
         ],
         // 0x DEX aggregator API (swap quotes and execution)
         "api.0x.org": [
-            "iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=",  // intermediate CA
-            "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",  // backup CA
+            "7jl7QNJXk6kSVEG5sB7zJ1SxD2QrVoW450oFmyNtkCI=",  // leaf
+            "kZwN96eHtZftBWrOZUsd6cA4es80n3NzSk/XtYz2EqQ=",  // intermediate CA
         ],
         // Jupiter DEX aggregator API (Solana swaps)
         "quote-api.jup.ag": [

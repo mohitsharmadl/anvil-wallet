@@ -180,15 +180,8 @@ final class SwapViewModel: ObservableObject {
             )
             updateDisplayedAmountsFromQuote()
         } catch is CancellationError {
-            // Expected when user edits quickly and previous auto-quote task is canceled.
             return
         } catch {
-            let nsError = error as NSError
-            let isCancelledURLRequest = nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
-            if isCancelledURLRequest {
-                // Ignore transient URLSession cancellation from superseded quote requests.
-                return
-            }
             self.error = error.localizedDescription
         }
     }
