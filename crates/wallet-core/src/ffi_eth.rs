@@ -3,24 +3,34 @@ use crate::hd_derivation;
 use crate::types::Chain;
 use zeroize::Zeroize;
 
+/// Execute a closure with the seed, guaranteeing zeroization on both success and error paths.
+fn with_zeroized_seed<F, T>(mut seed: Vec<u8>, f: F) -> Result<T, WalletError>
+where
+    F: FnOnce(&[u8]) -> Result<T, WalletError>,
+{
+    let result = f(&seed);
+    seed.zeroize();
+    result
+}
+
 /// Sign an arbitrary message with EIP-191 personal_sign.
 /// Returns 65-byte signature (r + s + v).
 pub fn sign_eth_message(
-    mut seed: Vec<u8>,
+    seed: Vec<u8>,
     account: u32,
     index: u32,
     message: Vec<u8>,
 ) -> Result<Vec<u8>, WalletError> {
-    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
-    let sig = chain_eth::transaction::sign_message(&message, &key.private_key)
-        .map_err(|e| WalletError::TransactionFailed(e.to_string()))?;
-    seed.zeroize();
-    Ok(sig)
+    with_zeroized_seed(seed, |s| {
+        let key = hd_derivation::derive_secp256k1_key(s, Chain::Ethereum, account, index)?;
+        chain_eth::transaction::sign_message(&message, &key.private_key)
+            .map_err(|e| WalletError::TransactionFailed(e.to_string()))
+    })
 }
 
 /// Sign an Ethereum EIP-1559 transaction
 pub fn sign_eth_transaction(
-    mut seed: Vec<u8>,
+    seed: Vec<u8>,
     account: u32,
     index: u32,
     chain_id: u64,
@@ -32,42 +42,43 @@ pub fn sign_eth_transaction(
     max_fee_hex: String,
     gas_limit: u64,
 ) -> Result<Vec<u8>, WalletError> {
-    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
+    with_zeroized_seed(seed, |s| {
+        let key = hd_derivation::derive_secp256k1_key(s, Chain::Ethereum, account, index)?;
 
-    let value_wei = u128::from_str_radix(value_wei_hex.trim_start_matches("0x"), 16)
-        .map_err(|e| WalletError::TransactionFailed(format!("Invalid value: {e}")))?;
-    let max_priority_fee = u128::from_str_radix(max_priority_fee_hex.trim_start_matches("0x"), 16)
-        .map_err(|e| WalletError::TransactionFailed(format!("Invalid priority fee: {e}")))?;
-    let max_fee = u128::from_str_radix(max_fee_hex.trim_start_matches("0x"), 16)
-        .map_err(|e| WalletError::TransactionFailed(format!("Invalid max fee: {e}")))?;
+        let value_wei = u128::from_str_radix(value_wei_hex.trim_start_matches("0x"), 16)
+            .map_err(|e| WalletError::TransactionFailed(format!("Invalid value: {e}")))?;
+        let max_priority_fee = u128::from_str_radix(max_priority_fee_hex.trim_start_matches("0x"), 16)
+            .map_err(|e| WalletError::TransactionFailed(format!("Invalid priority fee: {e}")))?;
+        let max_fee = u128::from_str_radix(max_fee_hex.trim_start_matches("0x"), 16)
+            .map_err(|e| WalletError::TransactionFailed(format!("Invalid max fee: {e}")))?;
 
-    let tx = if data.is_empty() {
-        chain_eth::transaction::build_transfer(
-            chain_id,
-            nonce,
-            &to_address,
-            value_wei,
-            max_priority_fee,
-            max_fee,
-            gas_limit,
-        )?
-    } else {
-        let mut tx = chain_eth::transaction::build_transfer(
-            chain_id,
-            nonce,
-            &to_address,
-            value_wei,
-            max_priority_fee,
-            max_fee,
-            gas_limit,
-        )?;
-        tx.data = data;
-        tx
-    };
+        let tx = if data.is_empty() {
+            chain_eth::transaction::build_transfer(
+                chain_id,
+                nonce,
+                &to_address,
+                value_wei,
+                max_priority_fee,
+                max_fee,
+                gas_limit,
+            )?
+        } else {
+            let mut tx = chain_eth::transaction::build_transfer(
+                chain_id,
+                nonce,
+                &to_address,
+                value_wei,
+                max_priority_fee,
+                max_fee,
+                gas_limit,
+            )?;
+            tx.data = data;
+            tx
+        };
 
-    let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
-    seed.zeroize();
-    Ok(signed.raw_tx)
+        let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
+        Ok(signed.raw_tx)
+    })
 }
 
 /// Recover uncompressed secp256k1 public key from a 65-byte signature + 32-byte message hash.
@@ -100,7 +111,7 @@ pub fn recover_eth_pubkey(signature: Vec<u8>, message_hash: Vec<u8>) -> Result<V
 /// Sign a raw 32-byte hash with the Ethereum private key (no EIP-191 prefix).
 /// Used for EIP-712 typed data signing where the caller computes the final hash.
 pub fn sign_eth_raw_hash(
-    mut seed: Vec<u8>,
+    seed: Vec<u8>,
     account: u32,
     index: u32,
     hash: Vec<u8>,
@@ -110,17 +121,17 @@ pub fn sign_eth_raw_hash(
             "Hash must be exactly 32 bytes".into(),
         ));
     }
-    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
-    let hash_arr: [u8; 32] = hash.as_slice().try_into().unwrap();
-    let sig = chain_eth::transaction::sign_raw_hash(&hash_arr, &key.private_key)
-        .map_err(|e| WalletError::SigningFailed(e.to_string()))?;
-    seed.zeroize();
-    Ok(sig)
+    with_zeroized_seed(seed, |s| {
+        let key = hd_derivation::derive_secp256k1_key(s, Chain::Ethereum, account, index)?;
+        let hash_arr: [u8; 32] = hash.as_slice().try_into().unwrap();
+        chain_eth::transaction::sign_raw_hash(&hash_arr, &key.private_key)
+            .map_err(|e| WalletError::SigningFailed(e.to_string()))
+    })
 }
 
 /// Sign an ERC-20 token transfer on any EVM chain
 pub fn sign_erc20_transfer(
-    mut seed: Vec<u8>,
+    seed: Vec<u8>,
     account: u32,
     index: u32,
     chain_id: u64,
@@ -132,9 +143,7 @@ pub fn sign_erc20_transfer(
     max_fee_hex: String,
     gas_limit: u64,
 ) -> Result<Vec<u8>, WalletError> {
-    let key = hd_derivation::derive_secp256k1_key(&seed, Chain::Ethereum, account, index)?;
-
-    // Parse amount as big-endian [u8; 32] uint256
+    // Parse amount as big-endian [u8; 32] uint256 (before entering closure to avoid seed leak on parse error)
     let amount_str = amount_hex.trim_start_matches("0x");
     // Left-pad odd-length hex to even length (e.g. "f4240" -> "0f4240")
     let padded = if amount_str.len() % 2 != 0 {
@@ -150,25 +159,28 @@ pub fn sign_erc20_transfer(
     let mut amount = [0u8; 32];
     amount[32 - amount_bytes.len()..].copy_from_slice(&amount_bytes);
 
-    let max_priority_fee = u128::from_str_radix(max_priority_fee_hex.trim_start_matches("0x"), 16)
-        .map_err(|e| WalletError::TransactionFailed(format!("Invalid priority fee: {e}")))?;
-    let max_fee = u128::from_str_radix(max_fee_hex.trim_start_matches("0x"), 16)
-        .map_err(|e| WalletError::TransactionFailed(format!("Invalid max fee: {e}")))?;
+    with_zeroized_seed(seed, |s| {
+        let key = hd_derivation::derive_secp256k1_key(s, Chain::Ethereum, account, index)?;
 
-    let tx = chain_eth::transaction::build_erc20_transfer(
-        chain_id,
-        nonce,
-        &token_contract,
-        &to_address,
-        amount,
-        max_priority_fee,
-        max_fee,
-        gas_limit,
-    )?;
+        let max_priority_fee = u128::from_str_radix(max_priority_fee_hex.trim_start_matches("0x"), 16)
+            .map_err(|e| WalletError::TransactionFailed(format!("Invalid priority fee: {e}")))?;
+        let max_fee = u128::from_str_radix(max_fee_hex.trim_start_matches("0x"), 16)
+            .map_err(|e| WalletError::TransactionFailed(format!("Invalid max fee: {e}")))?;
 
-    let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
-    seed.zeroize();
-    Ok(signed.raw_tx)
+        let tx = chain_eth::transaction::build_erc20_transfer(
+            chain_id,
+            nonce,
+            &token_contract,
+            &to_address,
+            amount,
+            max_priority_fee,
+            max_fee,
+            gas_limit,
+        )?;
+
+        let signed = chain_eth::transaction::sign_transaction(&tx, &key.private_key)?;
+        Ok(signed.raw_tx)
+    })
 }
 
 #[cfg(test)]

@@ -202,6 +202,7 @@ enum JailbreakDetector {
         if result == 0 {
             // Spawn succeeded — device is likely jailbroken
             kill(pid, SIGTERM)
+            waitpid(pid, nil, 0) // Reap child to prevent zombie process
             return true
         }
         // posix_spawn failed (expected on non-jailbroken)

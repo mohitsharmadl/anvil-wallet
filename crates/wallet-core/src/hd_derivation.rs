@@ -145,11 +145,10 @@ fn parse_derivation_path(path: &str) -> Result<Vec<u32>, WalletError> {
 
     path.split('/')
         .map(|component| {
-            let (num_str, _is_hardened) = if component.ends_with('\'') || component.ends_with('h')
-            {
-                (&component[..component.len() - 1], true)
+            let num_str = if component.ends_with('\'') || component.ends_with('h') {
+                &component[..component.len() - 1]
             } else {
-                (component, false)
+                component
             };
             num_str
                 .parse::<u32>()
